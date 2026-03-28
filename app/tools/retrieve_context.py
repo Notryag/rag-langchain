@@ -1,10 +1,12 @@
+import logging
 from textwrap import shorten
 
-from langchain_core.documents import Document
 from langchain_core.tools import tool
 
 from app.config.settings import settings
 from app.retrieval.vectorstore import get_vector_store
+
+logger = logging.getLogger(__name__)
 
 
 def _format_docs(docs: list) -> str:
@@ -24,6 +26,17 @@ def _format_docs(docs: list) -> str:
 @tool
 def retrieve_context(query:str) -> str:
     """Retrieve information to help answer a query."""
-    vector_store = get_vector_store()
-    docs = vector_store.similarity_search(query, k = settings.top_k)
-    return _format_docs(docs)
+    logger.info(
+        "工具调用：retrieve_context。query_chars=%s top_k=%s 预览=%s",
+        len(query),
+        settings.top_k,
+        shorten(query.replace("\n", " "), width=120, placeholder="..."),
+    )
+    try:
+        vector_store = get_vector_store()
+        docs = vector_store.similarity_search(query, k=settings.top_k)
+        logger.info("工具执行完成：retrieve_context。hit_count=%s", len(docs))
+        return _format_docs(docs)
+    except Exception:
+        logger.exception("工具执行失败：retrieve_context")
+        raise

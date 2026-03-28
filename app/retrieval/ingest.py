@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from pathlib import Path
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from app.config.logging_setup import setup_logging
 from app.retrieval.vectorstore import get_vector_store
 
 CHROMA_GET_BATCH_SIZE = 512
+logger = logging.getLogger(__name__)
 
 
 def load_documents(data_dir: str) -> list:
@@ -17,7 +20,6 @@ def load_documents(data_dir: str) -> list:
     root = Path(data_dir)
 
     if not root.exists():
-        print(root.resolve())
         raise FileNotFoundError(f"Data directory not found: {root.resolve()}")
 
     for path in root.rglob("*"):
@@ -31,6 +33,7 @@ def load_documents(data_dir: str) -> list:
         elif suffix in {".txt", ".md"}:
             docs.extend(TextLoader(str(path), encoding="utf-8").load())
 
+    logger.info("原始文档加载完成。data_dir=%s 文档数=%s", root.resolve(), len(docs))
     return docs
 
 
@@ -93,8 +96,11 @@ def _get_existing_ids(vector_store, ids: list[str]) -> set[str]:
 
 
 def ingest_documents(data_dir: str) -> int:
+    setup_logging()
+    logger.info("开始执行入库。data_dir=%s", Path(data_dir).resolve())
     raw_docs = load_documents(data_dir)
     if not raw_docs:
+        logger.info("没有可入库的文档。data_dir=%s", Path(data_dir).resolve())
         return 0
 
     splitter = RecursiveCharacterTextSplitter(
@@ -103,6 +109,12 @@ def ingest_documents(data_dir: str) -> int:
     )
     split_docs = splitter.split_documents(raw_docs)
     prepared_docs = _prepare_chunk_ids(split_docs, data_dir)
+    logger.info(
+        "切分并生成 chunk 完成。raw_docs=%s split_docs=%s unique_chunks=%s",
+        len(raw_docs),
+        len(split_docs),
+        len(prepared_docs),
+    )
 
     vector_store = get_vector_store()
     existing_ids = _get_existing_ids(
@@ -110,11 +122,18 @@ def ingest_documents(data_dir: str) -> int:
         [doc.id for doc in prepared_docs if doc.id],
     )
     new_docs = [doc for doc in prepared_docs if doc.id not in existing_ids]
+    logger.info(
+        "入库去重完成。existing=%s new=%s",
+        len(existing_ids),
+        len(new_docs),
+    )
 
     if not new_docs:
+        logger.info("跳过入库，所有 chunk 都已存在。")
         return 0
 
     vector_store.add_documents(new_docs)
+    logger.info("入库完成。inserted_chunks=%s", len(new_docs))
     return len(new_docs)
 
 

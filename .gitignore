@@ -20,6 +20,7 @@ venv/
 
 # Local vector store data
 storage/chroma/
+logs/
 
 # OS files
 .DS_Store

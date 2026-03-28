@@ -17,6 +17,9 @@ class Settings:
     vector_db_dir: str
     collection_name: str
     top_k: int
+    log_dir: str
+    log_level: str
+    log_file_name: str
 
     @classmethod
     def load(cls) -> "Settings":
@@ -28,6 +31,9 @@ class Settings:
             vector_db_dir=os.getenv("VECTOR_DB_DIR", "./storage/chroma"),
             collection_name=os.getenv("COLLECTION_NAME", "rag_docs"),
             top_k=int(os.getenv("TOP_K", "3")),
+            log_dir=os.getenv("LOG_DIR", "./logs"),
+            log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            log_file_name=os.getenv("LOG_FILE_NAME", "app.log"),
         )
     
 settings = Settings.load()
