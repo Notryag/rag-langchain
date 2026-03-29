@@ -11,7 +11,7 @@ import streamlit as st
 
 from app.config.logging_setup import setup_logging
 from app.config.settings import settings
-from app.services.chat_service import ask, new_thread_id
+from app.services.chat_client import get_chat_client, new_thread_id
 
 APP_TITLE = "LangChain RAG 控制台"
 APP_SUBTITLE = "面向本地知识库的问答界面"
@@ -115,6 +115,24 @@ def _render_sidebar(log_path: Path) -> None:
         )
 
 
+def _render_assistant_meta(message: dict) -> None:
+    status_lines = message.get("status_lines") or []
+    if status_lines:
+        st.caption(" | ".join(status_lines))
+
+    meta = message.get("meta") or {}
+    usage = meta.get("usage") or {}
+    elapsed_ms = meta.get("elapsed_ms")
+    parts = []
+    if elapsed_ms is not None:
+        parts.append(f"{elapsed_ms} ms")
+    total_tokens = usage.get("total_tokens")
+    if total_tokens is not None:
+        parts.append(f"tokens={total_tokens}")
+    if parts:
+        st.caption(" | ".join(parts))
+
+
 def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
@@ -122,6 +140,7 @@ def main() -> None:
         layout="centered",
     )
     log_path = setup_logging()
+    client = get_chat_client()
     _ensure_session_state()
     _inject_styles()
     _render_sidebar(log_path)
@@ -138,6 +157,8 @@ def main() -> None:
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
+            if message["role"] == "assistant":
+                _render_assistant_meta(message)
             st.markdown(message["content"])
 
     prompt = st.chat_input("输入问题，回车发送")
@@ -149,14 +170,39 @@ def main() -> None:
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("正在检索知识库并生成回答..."):
-            try:
-                answer = ask(prompt, st.session_state.thread_id)
-            except Exception as exc:
-                answer = f"请求失败：{exc}"
-            st.markdown(answer)
+        status_placeholder = st.empty()
+        answer_placeholder = st.empty()
+        answer = ""
+        status_lines: list[str] = []
+        meta: dict = {}
 
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+        try:
+            for event in client.stream(prompt, st.session_state.thread_id):
+                if event.kind == "status":
+                    status_lines.append(event.text)
+                    status_placeholder.caption(" | ".join(status_lines))
+                    continue
+
+                if event.kind == "token":
+                    answer += event.text
+                    answer_placeholder.markdown(answer)
+                    continue
+
+                meta = event.metadata
+        except Exception as exc:
+            answer = f"请求失败：{exc}"
+            answer_placeholder.markdown(answer)
+
+        _render_assistant_meta({"status_lines": status_lines, "meta": meta})
+
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": answer,
+            "status_lines": status_lines,
+            "meta": meta,
+        }
+    )
 
 
 if __name__ == "__main__":
