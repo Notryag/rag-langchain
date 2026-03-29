@@ -36,6 +36,7 @@ def retrieve_context(query:str) -> str:
         vector_store = get_vector_store()
         docs = vector_store.similarity_search(query, k=settings.top_k)
         logger.info("工具执行完成：retrieve_context。hit_count=%s", len(docs))
+        logger.debug("检索到的文档详情：%s", [doc.page_content for doc in docs])
         return _format_docs(docs)
     except Exception:
         logger.exception("工具执行失败：retrieve_context")
