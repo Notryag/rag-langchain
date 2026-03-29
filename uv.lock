@@ -2704,6 +2704,7 @@ dependencies = [
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "streamlit" },
+    { name = "typing-extensions" },
 ]
 
 [package.metadata]
@@ -2718,6 +2719,7 @@ requires-dist = [
     { name = "pypdf", specifier = ">=5.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "streamlit", specifier = ">=1.44.0" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]

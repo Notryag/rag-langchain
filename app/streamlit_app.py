@@ -175,20 +175,42 @@ def main() -> None:
         answer = ""
         status_lines: list[str] = []
         meta: dict = {}
+        current_ai_id = None
 
         try:
-            for event in client.stream(prompt, st.session_state.thread_id):
-                if event.kind == "status":
-                    status_lines.append(event.text)
+            for event in client.stream(prompt, thread_id=st.session_state.thread_id):
+                if event.type == "values":
+                    continue
+
+                if event.type == "messages-tuple":
+                    event_type = event.data.get("type")
+                    if event_type == "ai":
+                        tool_calls = event.data.get("tool_calls") or []
+                        if tool_calls:
+                            for tool_call in tool_calls:
+                                status_lines.append(f"调用工具 {tool_call.get('name')}")
+                            status_placeholder.caption(" | ".join(status_lines))
+                            current_ai_id = None
+                            continue
+
+                        content = event.data.get("content", "")
+                        if content:
+                            message_id = event.data.get("id")
+                            if current_ai_id != message_id:
+                                current_ai_id = message_id
+                                answer = ""
+                            answer += content
+                            answer_placeholder.markdown(answer)
+                        continue
+
+                    if event_type == "tool":
+                        status_lines.append(f"{event.data.get('name')} 已返回结果")
+
                     status_placeholder.caption(" | ".join(status_lines))
                     continue
 
-                if event.kind == "token":
-                    answer += event.text
-                    answer_placeholder.markdown(answer)
-                    continue
-
-                meta = event.metadata
+                if event.type == "end":
+                    meta = event.data
         except Exception as exc:
             answer = f"请求失败：{exc}"
             answer_placeholder.markdown(answer)
