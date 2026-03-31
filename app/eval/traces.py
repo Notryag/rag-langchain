@@ -52,19 +52,25 @@ def capture_chat_trace(query: str, *, thread_id: str | None = None) -> dict[str,
     citations: list[dict[str, Any]] = []
     status_lines: list[str] = []
     usage: dict[str, Any] | None = None
+    current_ai_id: str | None = None
 
     for event in client.stream(query, thread_id=resolved_thread_id):
         if event.type == "messages-tuple":
             event_type = event.data.get("type")
             if event_type == "ai":
+                message_id = event.data.get("id")
                 tool_calls = event.data.get("tool_calls") or []
                 if tool_calls:
                     for tool_call in tool_calls:
                         status_lines.append(f"调用工具 {tool_call.get('name')}")
+                    current_ai_id = None
                     continue
 
                 content = event.data.get("content", "")
                 if content:
+                    if current_ai_id != message_id:
+                        current_ai_id = message_id
+                        answer_parts = []
                     answer_parts.append(content)
                 continue
 

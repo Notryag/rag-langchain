@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @tool
 def retrieve_context(query: str) -> str:
-    """Retrieve information to help answer a query."""
+    """Must-use tool for questions about the indexed local knowledge base. Returns citation-formatted retrieved context."""
     logger.info(
         "工具调用：retrieve_context。query_chars=%s top_k=%s search_type=%s",
         len(query),
