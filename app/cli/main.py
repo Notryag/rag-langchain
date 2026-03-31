@@ -1,6 +1,7 @@
 import logging
 
 from app.config.logging_setup import setup_logging
+from app.retrieval.retriever import format_citation_label
 from app.services.chat_client import get_chat_client, new_thread_id
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,8 @@ def main() -> None:
                             print()
                             current_ai_id = None
                         print(f"[状态] {event.data.get('name')} 已返回结果")
+                        for citation in event.data.get("citations") or []:
+                            print(f"[引用] {format_citation_label(citation)}")
                         continue
 
                 if event.type == "end":

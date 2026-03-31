@@ -9,6 +9,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config.logging_setup import setup_logging
+from app.config.settings import settings
 from app.retrieval.vectorstore import get_vector_store
 
 CHROMA_GET_BATCH_SIZE = 512
@@ -104,8 +105,8 @@ def ingest_documents(data_dir: str) -> int:
         return 0
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=120,
+        chunk_size=settings.chunk_size,
+        chunk_overlap=settings.chunk_overlap,
     )
     split_docs = splitter.split_documents(raw_docs)
     prepared_docs = _prepare_chunk_ids(split_docs, data_dir)

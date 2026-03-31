@@ -11,6 +11,7 @@ import streamlit as st
 
 from app.config.logging_setup import setup_logging
 from app.config.settings import settings
+from app.retrieval.retriever import format_citation_label
 from app.services.chat_client import get_chat_client, new_thread_id
 
 APP_TITLE = "LangChain RAG 控制台"
@@ -104,10 +105,12 @@ def _render_sidebar(log_path: Path) -> None:
                 <div><strong>模型</strong>: {settings.chat_model}</div>
                 <div><strong>Embedding</strong>: {settings.embedding_model}</div>
                 <div><strong>Top K</strong>: {settings.top_k}</div>
+                <div><strong>检索</strong>: {settings.retrieval_search_type}</div>
                 <div><strong>线程</strong>: {st.session_state.thread_id}</div>
             </div>
             <div class="meta-card">
                 <div><strong>向量库</strong>: {settings.vector_db_dir}</div>
+                <div><strong>Chunk</strong>: {settings.chunk_size}/{settings.chunk_overlap}</div>
                 <div><strong>日志</strong>: {log_path.as_posix()}</div>
             </div>
             """,
@@ -120,6 +123,10 @@ def _render_assistant_meta(message: dict) -> None:
     if status_lines:
         st.caption(" | ".join(status_lines))
 
+    citations = message.get("citations") or []
+    if citations:
+        st.caption("引用: " + " | ".join(format_citation_label(citation) for citation in citations))
+
     meta = message.get("meta") or {}
     usage = meta.get("usage") or {}
     elapsed_ms = meta.get("elapsed_ms")
@@ -129,6 +136,7 @@ def _render_assistant_meta(message: dict) -> None:
     total_tokens = usage.get("total_tokens")
     if total_tokens is not None:
         parts.append(f"tokens={total_tokens}")
+    parts.append(f"search={settings.retrieval_search_type}")
     if parts:
         st.caption(" | ".join(parts))
 
@@ -174,6 +182,7 @@ def main() -> None:
         answer_placeholder = st.empty()
         answer = ""
         status_lines: list[str] = []
+        citations: list[dict] = []
         meta: dict = {}
         current_ai_id = None
 
@@ -205,6 +214,9 @@ def main() -> None:
 
                     if event_type == "tool":
                         status_lines.append(f"{event.data.get('name')} 已返回结果")
+                        for citation in event.data.get("citations") or []:
+                            if citation not in citations:
+                                citations.append(citation)
 
                     status_placeholder.caption(" | ".join(status_lines))
                     continue
@@ -215,13 +227,14 @@ def main() -> None:
             answer = f"请求失败：{exc}"
             answer_placeholder.markdown(answer)
 
-        _render_assistant_meta({"status_lines": status_lines, "meta": meta})
+        _render_assistant_meta({"status_lines": status_lines, "meta": meta, "citations": citations})
 
     st.session_state.messages.append(
         {
             "role": "assistant",
             "content": answer,
             "status_lines": status_lines,
+            "citations": citations,
             "meta": meta,
         }
     )
