@@ -4,7 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 from textwrap import shorten
-from typing import Any
+from typing import Any, Mapping, TypedDict
 
 from langchain_core.documents import Document
 
@@ -13,12 +13,23 @@ from app.retrieval.vectorstore import get_vector_store
 
 logger = logging.getLogger(__name__)
 
+_QUERY_PREVIEW_WIDTH = 120
+_CHUNK_PREVIEW_WIDTH = 1200
+_SUPPORTED_SEARCH_TYPES = {"similarity", "mmr"}
+
 _CITATION_LINE_RE = re.compile(
     r"^\[(?P<rank>\d+)\] source=(?P<source>[^,\n]+)"
     r"(?:, page=(?P<page>[^,\n]+))?"
     r"(?:, chunk=(?P<chunk>[^,\n]+))?$",
     re.MULTILINE,
 )
+
+
+class Citation(TypedDict):
+    rank: int
+    source: str
+    page: str | None
+    chunk_index: int | None
 
 
 @dataclass(frozen=True)
@@ -31,6 +42,30 @@ class RetrievedChunk:
     chunk_index: int | None
     metadata: dict[str, Any]
 
+    @classmethod
+    def from_document(cls, doc: Document, rank: int) -> "RetrievedChunk":
+        metadata = dict(doc.metadata or {})
+        return cls(
+            rank=rank,
+            content=doc.page_content,
+            document_id=getattr(doc, "id", None),
+            source=metadata.get("source", "unknown"),
+            page=_normalize_page(metadata.get("page")),
+            chunk_index=_normalize_chunk_index(metadata.get("chunk_index")),
+            metadata=metadata,
+        )
+
+    def format_citation_label(self) -> str:
+        return _compose_citation_label(
+            source=self.source,
+            page=self.page,
+            chunk_index=self.chunk_index,
+        )
+
+    def format_for_context(self) -> str:
+        content = _single_line_preview(self.content, width=_CHUNK_PREVIEW_WIDTH)
+        return f"[{self.rank}] {self.format_citation_label()}\n{content}"
+
 
 def _normalize_page(page: Any) -> str | None:
     if page in ("", None, "na"):
@@ -38,25 +73,39 @@ def _normalize_page(page: Any) -> str | None:
     return str(page)
 
 
+def _normalize_chunk_index(chunk_index: Any) -> int | None:
+    if chunk_index in (None, ""):
+        return None
+    return int(chunk_index)
+
+
+def _single_line_preview(text: str, *, width: int) -> str:
+    return shorten(text.replace("\n", " "), width=width, placeholder="...")
+
+
 def _normalize_search_type(search_type: str | None) -> str:
     normalized = (search_type or settings.retrieval_search_type).lower()
-    if normalized not in {"similarity", "mmr"}:
+    if normalized not in _SUPPORTED_SEARCH_TYPES:
         raise ValueError(f"Unsupported retrieval search type: {normalized}")
     return normalized
 
 
-def _doc_to_chunk(doc: Document, rank: int) -> RetrievedChunk:
-    metadata = dict(doc.metadata or {})
-    chunk_index = metadata.get("chunk_index")
-    return RetrievedChunk(
-        rank=rank,
-        content=doc.page_content,
-        document_id=getattr(doc, "id", None),
-        source=metadata.get("source", "unknown"),
-        page=_normalize_page(metadata.get("page")),
-        chunk_index=int(chunk_index) if chunk_index not in (None, "") else None,
-        metadata=metadata,
-    )
+def _search_documents(
+    query: str,
+    *,
+    top_k: int,
+    search_type: str,
+    fetch_k: int,
+) -> list[Document]:
+    vector_store = get_vector_store()
+    # 多样性搜索 尽量找内容不重复的资料
+    if search_type == "mmr":
+        return vector_store.max_marginal_relevance_search(
+            query,
+            k=top_k,
+            fetch_k=fetch_k,
+        )
+    return vector_store.similarity_search(query, k=top_k)
 
 
 def retrieve_chunks(
@@ -75,29 +124,22 @@ def retrieve_chunks(
         resolved_search_type,
         resolved_top_k,
         resolved_fetch_k,
-        shorten(query.replace("\n", " "), width=120, placeholder="..."),
+        _single_line_preview(query, width=_QUERY_PREVIEW_WIDTH),
     )
 
-    vector_store = get_vector_store()
-    if resolved_search_type == "mmr":
-        docs = vector_store.max_marginal_relevance_search(
-            query,
-            k=resolved_top_k,
-            fetch_k=resolved_fetch_k,
-        )
-    else:
-        docs = vector_store.similarity_search(query, k=resolved_top_k)
+    docs = _search_documents(
+        query,
+        top_k=resolved_top_k,
+        search_type=resolved_search_type,
+        fetch_k=resolved_fetch_k,
+    )
 
-    chunks = [_doc_to_chunk(doc, rank=index) for index, doc in enumerate(docs, start=1)]
+    chunks = [RetrievedChunk.from_document(doc, rank=index) for index, doc in enumerate(docs, start=1)]
     logger.info("检索完成。search_type=%s hit_count=%s", resolved_search_type, len(chunks))
     return chunks
 
 
-def format_citation_label(citation: dict[str, Any] | RetrievedChunk) -> str:
-    source = citation.source if isinstance(citation, RetrievedChunk) else citation.get("source", "unknown")
-    page = citation.page if isinstance(citation, RetrievedChunk) else citation.get("page")
-    chunk_index = citation.chunk_index if isinstance(citation, RetrievedChunk) else citation.get("chunk_index")
-
+def _compose_citation_label(*, source: str, page: str | None, chunk_index: int | None) -> str:
     parts = [f"source={source}"]
     if page not in (None, "", "na"):
         parts.append(f"page={page}")
@@ -106,27 +148,40 @@ def format_citation_label(citation: dict[str, Any] | RetrievedChunk) -> str:
     return ", ".join(parts)
 
 
+def _citation_parts(citation: Mapping[str, Any] | RetrievedChunk) -> tuple[str, str | None, int | None]:
+    if isinstance(citation, RetrievedChunk):
+        return citation.source, citation.page, citation.chunk_index
+    return (
+        str(citation.get("source", "unknown")),
+        _normalize_page(citation.get("page")),
+        _normalize_chunk_index(citation.get("chunk_index")),
+    )
+
+
+def format_citation_label(citation: Citation | RetrievedChunk) -> str:
+    source, page, chunk_index = _citation_parts(citation)
+    return _compose_citation_label(
+        source=source,
+        page=page,
+        chunk_index=chunk_index,
+    )
+
+
 def format_retrieved_chunks(chunks: list[RetrievedChunk]) -> str:
     if not chunks:
         return "No relevant context found."
 
-    blocks = []
-    for chunk in chunks:
-        content = shorten(chunk.content.replace("\n", " "), width=1200, placeholder="...")
-        blocks.append(f"[{chunk.rank}] {format_citation_label(chunk)}\n{content}")
-    return "\n\n".join(blocks)
+    return "\n\n".join(chunk.format_for_context() for chunk in chunks)
 
 
-def extract_citations_from_text(text: str) -> list[dict[str, Any]]:
-    citations: list[dict[str, Any]] = []
-    for match in _CITATION_LINE_RE.finditer(text):
-        chunk_value = match.group("chunk")
-        citations.append(
-            {
-                "rank": int(match.group("rank")),
-                "source": match.group("source"),
-                "page": match.group("page"),
-                "chunk_index": int(chunk_value) if chunk_value not in (None, "") else None,
-            }
-        )
-    return citations
+def _match_to_citation(match: re.Match[str]) -> Citation:
+    return {
+        "rank": int(match.group("rank")),
+        "source": match.group("source"),
+        "page": _normalize_page(match.group("page")),
+        "chunk_index": _normalize_chunk_index(match.group("chunk")),
+    }
+
+
+def extract_citations_from_text(text: str) -> list[Citation]:
+    return [_match_to_citation(match) for match in _CITATION_LINE_RE.finditer(text)]
