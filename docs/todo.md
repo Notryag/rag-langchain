@@ -22,17 +22,17 @@
 
 ### 回答评测
 
-- [ ] 新建 `app/eval/answer_eval.py`
-- [ ] 建立回答结果采样脚本
-- [ ] 对回答做人工评分或规则评分
-- [ ] 至少区分正确、部分正确、无法回答但合理、幻觉四类结果
+- [x] 新建 `app/eval/answer_eval.py`
+- [x] 建立回答结果采样脚本
+- [x] 对回答做人工评分或规则评分
+- [x] 至少区分正确、部分正确、无法回答但合理、幻觉四类结果
 - [ ] 沉淀 bad case 样本
 
 ### 可观测
 
-- [ ] 给一次完整问答记录 query、retrieved chunks、answer、citations
-- [ ] 明确日志字段，便于后续回放问题
-- [ ] 预留 traces 接口位置，后续可接 LangSmith 或其他 tracing
+- [x] 给一次完整问答记录 query、retrieved chunks、answer、citations
+- [x] 明确日志字段，便于后续回放问题
+- [x] 预留 traces 接口位置，后续可接 LangSmith 或其他 tracing
 
 ## P1 工程边界
 
