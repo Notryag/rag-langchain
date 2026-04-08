@@ -45,7 +45,7 @@
 
 ### Agent 与 Middleware
 
-- [ ] 明确 `create_agent.py` 只负责模型、工具、middleware 装配
+- [x] 明确 `create_agent.py` 只负责模型、工具、middleware 装配
 - [x] 把当前 middleware 真正接入主链路
 - [ ] 梳理 prompt 与动态上下文注入策略
 - [ ] 明确哪些逻辑属于 tool，哪些逻辑属于 agent
