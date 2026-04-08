@@ -3,6 +3,7 @@
 相关文档:
 
 - 项目现状: [project-status.md](project-status.md)
+- 架构说明: [architecture.md](architecture.md)
 - 执行清单: [todo.md](todo.md)
 
 ## 长期目标

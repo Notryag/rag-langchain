@@ -44,6 +44,10 @@ def build_thread_config(thread_id: str) -> dict:
     return {"configurable": {"thread_id": thread_id}}
 
 
+def build_runtime_context(thread_id: str) -> dict[str, Any]:
+    return {"thread_id": thread_id}
+
+
 def _stringify_content(content: Any) -> str:
     if isinstance(content, str):
         return content
@@ -87,6 +91,7 @@ class AgentChatClient:
         result = self._agent.invoke(
             {"messages": [{"role": "user", "content": user_input}]},
             config=build_thread_config(thread_id),
+            context=build_runtime_context(thread_id),
         )
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
         final_msg = result["messages"][-1]
@@ -175,7 +180,7 @@ class AgentChatClient:
 
         state: dict[str, Any] = {"messages": [HumanMessage(content=message)]}
         config = build_thread_config(thread_id)
-        context = {"thread_id": thread_id}
+        context = build_runtime_context(thread_id)
 
         seen_ids = self._get_existing_message_ids(config)
         seen_tool_calls: set[str] = set()

@@ -15,6 +15,7 @@
 
 - 项目现状: [docs/project-status.md](docs/project-status.md)
 - 规划与路线图: [docs/roadmap.md](docs/roadmap.md)
+- 架构说明: [docs/architecture.md](docs/architecture.md)
 - 执行清单: [docs/todo.md](docs/todo.md)
 - 开发与运行约定: [docs/development.md](docs/development.md)
 
