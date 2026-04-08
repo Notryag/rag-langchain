@@ -4,40 +4,16 @@ import hashlib
 import logging
 from pathlib import Path
 
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config.logging_setup import setup_logging
 from app.config.settings import settings
+from app.retrieval.loaders import load_documents
 from app.retrieval.vectorstore import get_vector_store
 
 CHROMA_GET_BATCH_SIZE = 512
 logger = logging.getLogger(__name__)
-
-
-def load_documents(data_dir: str) -> list:
-    docs = []
-    root = Path(data_dir)
-
-    if not root.exists():
-        raise FileNotFoundError(f"Data directory not found: {root.resolve()}")
-
-    for path in root.rglob("*"):
-        if path.is_dir():
-            continue
-
-        suffix = path.suffix.lower()
-
-        if suffix == ".pdf":
-            docs.extend(PyPDFLoader(str(path)).load())
-        elif suffix in {".txt", ".md"}:
-            docs.extend(TextLoader(str(path), encoding="utf-8").load())
-
-    logger.info("原始文档加载完成。data_dir=%s 文档数=%s", root.resolve(), len(docs))
-    return docs
-
-
 def _normalize_source(source: str | None, data_root: Path) -> str:
     if not source:
         return ""
