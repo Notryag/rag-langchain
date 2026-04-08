@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
@@ -8,6 +9,7 @@ from app.config.settings import settings
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=1)
 def get_embeddings() -> OpenAIEmbeddings:
     kwargs = {
         "model": settings.embedding_model,
@@ -23,7 +25,9 @@ def get_embeddings() -> OpenAIEmbeddings:
     )
     return OpenAIEmbeddings(**kwargs)
 
-def  get_vector_store() -> Chroma:
+
+@lru_cache(maxsize=1)
+def get_vector_store() -> Chroma:
     logger.info(
         "打开向量库。collection=%s persist_directory=%s",
         settings.collection_name,
@@ -32,11 +36,6 @@ def  get_vector_store() -> Chroma:
     vector_store = Chroma(
         collection_name=settings.collection_name,
         persist_directory=settings.vector_db_dir,
-        embedding_function=get_embeddings()
+        embedding_function=get_embeddings(),
     )
     return vector_store
-
-
-
-# if __name__ == "__main__":
-    # test_embeddings()

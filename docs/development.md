@@ -31,6 +31,17 @@ uv sync
 uv run python -m <module>
 ```
 
+## 环境变量策略
+
+- `OPENAI_API_KEY` 是必填项，即使接本地兼容服务也需要显式提供一个非空值。
+- `OPENAI_BASE_URL` 是可选项；走官方 OpenAI 可留空，走兼容网关或本地模型服务时填写。
+- `CHAT_MODEL`、`EMBEDDING_MODEL`、`VECTOR_DB_DIR`、`COLLECTION_NAME`、`LOG_DIR`、`LOG_FILE_NAME` 都有默认值，但不允许为空字符串。
+- `TOP_K`、`RETRIEVAL_FETCH_K`、`CHUNK_SIZE` 必须大于 `0`。
+- `CHUNK_OVERLAP` 必须大于等于 `0`，且必须小于 `CHUNK_SIZE`。
+- `RETRIEVAL_SEARCH_TYPE` 当前只支持 `similarity` 和 `mmr`。
+- `RETRIEVAL_FETCH_K` 必须大于等于 `TOP_K`。
+- `LOG_LEVEL` 当前只支持 `CRITICAL`、`ERROR`、`WARNING`、`INFO`、`DEBUG`。
+
 ## 常用评测命令
 
 ### 检索评测
@@ -60,6 +71,22 @@ uv run python -m app.eval.answer_eval --bad-cases-out data/eval/bad_cases.jsonl
 
 ```powershell
 uv run python -m app.eval.traces "扫地机器人连不上WiFi怎么办"
+```
+
+## 统一入口
+
+常用启动方式现在可以统一走 `app.main`:
+
+```powershell
+uv run python -m app.main cli
+uv run python -m app.main ingest --data-dir ./data/raw
+uv run python -m app.main streamlit
+```
+
+如果需要自定义 Streamlit 地址或端口:
+
+```powershell
+uv run python -m app.main streamlit --server-address 0.0.0.0 --server-port 8501
 ```
 
 ## 注意事项
