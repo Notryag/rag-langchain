@@ -2,14 +2,14 @@ import logging
 
 from app.config.logging_setup import setup_logging
 from app.retrieval.retriever import format_citation_label
-from app.services.chat_client import get_chat_client, new_thread_id
+from app.services.rag_service import get_rag_service, new_thread_id
 
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
     log_path = setup_logging()
-    client = get_chat_client()
+    rag_service = get_rag_service()
     thread_id = new_thread_id("cli")
 
     logger.info("CLI 已启动。日志文件=%s", log_path)
@@ -26,56 +26,44 @@ def main() -> None:
 
         logger.info("收到用户输入。thread_id=%s 字符数=%s", thread_id, len(user_input))
         try:
-            answer = ""
-            current_ai_id = None
-            for event in client.stream(user_input, thread_id=thread_id):
-                if event.type == "values":
+            answer_started = False
+            final_result = None
+            for event in rag_service.stream(user_input, thread_id=thread_id):
+                if event.type == "tool_call":
+                    if answer_started:
+                        print()
+                        answer_started = False
+                    print(f"[状态] {event.status_line}")
                     continue
 
-                if event.type == "messages-tuple":
-                    event_type = event.data.get("type")
-                    if event_type == "ai":
-                        tool_calls = event.data.get("tool_calls") or []
-                        if tool_calls:
-                            if current_ai_id is not None:
-                                print()
-                                current_ai_id = None
-                            for tool_call in tool_calls:
-                                print(f"[状态] 调用工具 {tool_call.get('name')}")
-                            continue
-
-                        content = event.data.get("content", "")
-                        if content:
-                            message_id = event.data.get("id")
-                            if current_ai_id != message_id:
-                                if current_ai_id is not None:
-                                    print()
-                                current_ai_id = message_id
-                                answer = ""
-                                print("AI: ", end="", flush=True)
-                            print(content, end="", flush=True)
-                            answer += content
-                        continue
-
-                    if event_type == "tool":
-                        if current_ai_id is not None:
-                            print()
-                            current_ai_id = None
-                        print(f"[状态] {event.data.get('name')} 已返回结果")
-                        for citation in event.data.get("citations") or []:
-                            print(f"[引用] {format_citation_label(citation)}")
-                        continue
-
-                if event.type == "end":
-                    if current_ai_id is not None:
+                if event.type == "tool_result":
+                    if answer_started:
                         print()
-                        current_ai_id = None
-                    usage = event.data.get("usage") or {}
-                    total_tokens = usage.get("total_tokens")
-                    if total_tokens is not None:
-                        print(f"[完成] total_tokens={total_tokens}")
+                        answer_started = False
+                    print(f"[状态] {event.status_line}")
+                    for citation in event.citations:
+                        print(f"[引用] {format_citation_label(citation)}")
+                    continue
 
-            logger.info("已生成助手回复。字符数=%s", len(answer))
+                if event.type == "answer":
+                    if not answer_started:
+                        print("AI: ", end="", flush=True)
+                        answer_started = True
+                    print(event.content, end="", flush=True)
+                    continue
+
+                if event.type == "complete":
+                    final_result = event.result
+
+            if answer_started:
+                print()
+
+            usage = (final_result.usage if final_result else None) or {}
+            total_tokens = usage.get("total_tokens")
+            if total_tokens is not None:
+                print(f"[完成] total_tokens={total_tokens}")
+
+            logger.info("已生成助手回复。字符数=%s", len(final_result.answer if final_result else ""))
         except Exception:
             logger.exception("Agent 调用失败。thread_id=%s", thread_id)
             raise

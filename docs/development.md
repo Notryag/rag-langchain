@@ -53,6 +53,7 @@ uv run python -m app.eval.sample_answers --limit 5
 ```powershell
 uv run python -m app.eval.answer_eval --limit 5
 uv run python -m app.eval.answer_eval --show-passes
+uv run python -m app.eval.answer_eval --bad-cases-out data/eval/bad_cases.jsonl
 ```
 
 ### 抓取单次 Trace
@@ -65,4 +66,5 @@ uv run python -m app.eval.traces "扫地机器人连不上WiFi怎么办"
 
 - `retrieval_eval` 依赖本地向量库和 embedding 检索链路。
 - `sample_answers` 与 `traces` 会真实调用模型，需要 `.env` 中的模型配置和 API Key 可用。
+- `answer_eval` 默认会把未通过样本导出到 `data/eval/bad_cases.jsonl`，便于后续回看 bad case。
 - 如果命令报依赖缺失，先执行 `uv sync`，再重试 `uv run ...`。

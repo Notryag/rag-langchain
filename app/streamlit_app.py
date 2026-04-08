@@ -12,7 +12,7 @@ import streamlit as st
 from app.config.logging_setup import setup_logging
 from app.config.settings import settings
 from app.retrieval.retriever import format_citation_label
-from app.services.chat_client import get_chat_client, new_thread_id
+from app.services.rag_service import get_rag_service, new_thread_id
 
 APP_TITLE = "LangChain RAG 控制台"
 APP_SUBTITLE = "面向本地知识库的问答界面"
@@ -148,7 +148,7 @@ def main() -> None:
         layout="centered",
     )
     log_path = setup_logging()
-    client = get_chat_client()
+    rag_service = get_rag_service()
     _ensure_session_state()
     _inject_styles()
     _render_sidebar(log_path)
@@ -184,57 +184,55 @@ def main() -> None:
         status_lines: list[str] = []
         citations: list[dict] = []
         meta: dict = {}
-        current_ai_id = None
+        final_result = None
 
         try:
-            for event in client.stream(prompt, thread_id=st.session_state.thread_id):
-                if event.type == "values":
-                    continue
-
-                if event.type == "messages-tuple":
-                    event_type = event.data.get("type")
-                    if event_type == "ai":
-                        tool_calls = event.data.get("tool_calls") or []
-                        if tool_calls:
-                            for tool_call in tool_calls:
-                                status_lines.append(f"调用工具 {tool_call.get('name')}")
-                            status_placeholder.caption(" | ".join(status_lines))
-                            current_ai_id = None
-                            continue
-
-                        content = event.data.get("content", "")
-                        if content:
-                            message_id = event.data.get("id")
-                            if current_ai_id != message_id:
-                                current_ai_id = message_id
-                                answer = ""
-                            answer += content
-                            answer_placeholder.markdown(answer)
-                        continue
-
-                    if event_type == "tool":
-                        status_lines.append(f"{event.data.get('name')} 已返回结果")
-                        for citation in event.data.get("citations") or []:
-                            if citation not in citations:
-                                citations.append(citation)
-
+            for event in rag_service.stream(prompt, thread_id=st.session_state.thread_id):
+                if event.type == "tool_call":
+                    status_lines.append(event.status_line)
                     status_placeholder.caption(" | ".join(status_lines))
                     continue
 
-                if event.type == "end":
-                    meta = event.data
+                if event.type == "tool_result":
+                    status_lines.append(event.status_line)
+                    for citation in event.citations:
+                        if citation not in citations:
+                            citations.append(citation)
+                    status_placeholder.caption(" | ".join(status_lines))
+                    continue
+
+                if event.type == "answer":
+                    answer = event.answer
+                    answer_placeholder.markdown(answer)
+                    continue
+
+                if event.type == "complete":
+                    final_result = event.result
+                    if final_result is not None:
+                        answer = final_result.answer
+                        citations = final_result.citations
+                        meta = {
+                            "usage": final_result.usage,
+                            "elapsed_ms": final_result.elapsed_ms,
+                        }
         except Exception as exc:
             answer = f"请求失败：{exc}"
             answer_placeholder.markdown(answer)
 
-        _render_assistant_meta({"status_lines": status_lines, "meta": meta, "citations": citations})
+        _render_assistant_meta(
+            {
+                "status_lines": final_result.status_lines if final_result else status_lines,
+                "meta": meta,
+                "citations": final_result.citations if final_result else citations,
+            }
+        )
 
     st.session_state.messages.append(
         {
             "role": "assistant",
             "content": answer,
-            "status_lines": status_lines,
-            "citations": citations,
+            "status_lines": final_result.status_lines if final_result else status_lines,
+            "citations": final_result.citations if final_result else citations,
             "meta": meta,
         }
     )

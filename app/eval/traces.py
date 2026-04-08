@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 from pathlib import Path
 from typing import Any
 
 from app.config.logging_setup import setup_logging
+from app.services.rag_service import get_rag_service, new_thread_id
 
 DEFAULT_TRACE_OUTPUT_PATH = Path("storage/exports/chat_trace.json")
 
@@ -41,66 +41,37 @@ def _dedupe_citations(citations: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def capture_chat_trace(query: str, *, thread_id: str | None = None) -> dict[str, Any]:
-    from app.services.chat_client import get_chat_client, new_thread_id
-
-    client = get_chat_client()
+    rag_service = get_rag_service()
     resolved_thread_id = thread_id or new_thread_id("trace")
-    started_at = time.perf_counter()
-
-    answer_parts: list[str] = []
     tool_events: list[dict[str, Any]] = []
-    citations: list[dict[str, Any]] = []
-    status_lines: list[str] = []
-    usage: dict[str, Any] | None = None
-    current_ai_id: str | None = None
+    final_result = None
 
-    for event in client.stream(query, thread_id=resolved_thread_id):
-        if event.type == "messages-tuple":
-            event_type = event.data.get("type")
-            if event_type == "ai":
-                message_id = event.data.get("id")
-                tool_calls = event.data.get("tool_calls") or []
-                if tool_calls:
-                    for tool_call in tool_calls:
-                        status_lines.append(f"调用工具 {tool_call.get('name')}")
-                    current_ai_id = None
-                    continue
+    for event in rag_service.stream(query, thread_id=resolved_thread_id):
+        if event.type == "tool_result":
+            tool_events.append(
+                {
+                    "name": event.tool_name,
+                    "content": event.content,
+                    "citations": event.citations,
+                }
+            )
+            continue
 
-                content = event.data.get("content", "")
-                if content:
-                    if current_ai_id != message_id:
-                        current_ai_id = message_id
-                        answer_parts = []
-                    answer_parts.append(content)
-                continue
+        if event.type == "complete":
+            final_result = event.result
 
-            if event_type == "tool":
-                status_lines.append(f"{event.data.get('name')} 已返回结果")
-                tool_citations = event.data.get("citations") or []
-                citations.extend(tool_citations)
-                tool_events.append(
-                    {
-                        "name": event.data.get("name"),
-                        "tool_call_id": event.data.get("tool_call_id"),
-                        "content": event.data.get("content", ""),
-                        "citations": tool_citations,
-                    }
-                )
-                continue
+    if final_result is None:
+        raise RuntimeError("Trace capture completed without a final result.")
 
-        if event.type == "end":
-            usage = event.data.get("usage")
-
-    elapsed_ms = int((time.perf_counter() - started_at) * 1000)
     return {
         "query": query,
-        "thread_id": resolved_thread_id,
-        "answer": "".join(answer_parts),
-        "elapsed_ms": elapsed_ms,
-        "usage": usage,
+        "thread_id": final_result.thread_id,
+        "answer": final_result.answer,
+        "elapsed_ms": final_result.elapsed_ms,
+        "usage": final_result.usage,
         "tool_events": tool_events,
-        "citations": _dedupe_citations(citations),
-        "status_lines": status_lines,
+        "citations": _dedupe_citations(final_result.citations),
+        "status_lines": final_result.status_lines,
     }
 
 

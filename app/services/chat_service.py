@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from app.services.chat_client import build_thread_config, get_chat_client, new_thread_id
+from app.services.rag_service import get_rag_service
 
 
 def get_agent():
-    return get_chat_client().agent
+    return get_rag_service().agent
 
 
 def ask(user_input: str, thread_id: str) -> str:
-    return get_chat_client().ask(user_input, thread_id).answer
+    return get_rag_service().ask(user_input, thread_id=thread_id).answer

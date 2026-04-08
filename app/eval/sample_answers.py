@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.config.logging_setup import setup_logging
 from app.eval.dataset import DEFAULT_ANSWER_EVAL_PATH, load_answer_eval_samples
-from app.services.chat_client import get_chat_client, new_thread_id
+from app.services.rag_service import get_rag_service, new_thread_id
 
 DEFAULT_OUTPUT_PATH = Path("storage/exports/answer_eval_runs.jsonl")
 
@@ -29,17 +29,17 @@ def main() -> None:
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    client = get_chat_client()
+    rag_service = get_rag_service()
 
     with output_path.open("w", encoding="utf-8") as fh:
         for sample in samples:
             thread_id = new_thread_id("eval")
-            result = client.ask(sample.query, thread_id=thread_id)
+            result = rag_service.ask(sample.query, thread_id=thread_id)
             record = {
                 "id": sample.id,
                 "query": sample.query,
                 "category": sample.category,
-                "thread_id": thread_id,
+                "thread_id": result.thread_id,
                 "answer": result.answer,
                 "elapsed_ms": result.elapsed_ms,
                 "usage": result.usage,
@@ -50,4 +50,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

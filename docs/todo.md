@@ -26,7 +26,7 @@
 - [x] 建立回答结果采样脚本
 - [x] 对回答做人工评分或规则评分
 - [x] 至少区分正确、部分正确、无法回答但合理、幻觉四类结果
-- [ ] 沉淀 bad case 样本
+- [ ] 沉淀 bad case 样本（已支持导出到 `data/eval/bad_cases.jsonl`，待实际跑评测生成样本）
 
 ### 可观测
 
@@ -38,15 +38,15 @@
 
 ### 服务层
 
-- [ ] 新建 `app/services/rag_service.py`
-- [ ] 把检索与回答主流程收敛到 service 层
-- [ ] 让 CLI、Streamlit 调同一 service 入口
-- [ ] 避免 UI 层直接拼装业务流程
+- [x] 新建 `app/services/rag_service.py`
+- [x] 把检索与回答主流程收敛到 service 层
+- [x] 让 CLI、Streamlit 调同一 service 入口
+- [x] 避免 UI 层直接拼装业务流程
 
 ### Agent 与 Middleware
 
 - [ ] 明确 `create_agent.py` 只负责模型、工具、middleware 装配
-- [ ] 把当前 middleware 真正接入主链路
+- [x] 把当前 middleware 真正接入主链路
 - [ ] 梳理 prompt 与动态上下文注入策略
 - [ ] 明确哪些逻辑属于 tool，哪些逻辑属于 agent
 
