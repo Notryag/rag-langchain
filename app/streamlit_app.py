@@ -106,6 +106,7 @@ def _render_sidebar(log_path: Path) -> None:
                 <div><strong>Embedding</strong>: {settings.embedding_model}</div>
                 <div><strong>Top K</strong>: {settings.top_k}</div>
                 <div><strong>检索</strong>: {settings.retrieval_search_type}</div>
+                <div><strong>Reranker</strong>: {"on" if settings.reranker_enabled else "off"}</div>
                 <div><strong>Context</strong>: {settings.retrieval_max_context_chars} chars</div>
                 <div><strong>线程</strong>: {st.session_state.thread_id}</div>
             </div>
@@ -138,6 +139,7 @@ def _render_assistant_meta(message: dict) -> None:
     if total_tokens is not None:
         parts.append(f"tokens={total_tokens}")
     parts.append(f"search={settings.retrieval_search_type}")
+    parts.append(f"reranker={'on' if settings.reranker_enabled else 'off'}")
     if parts:
         st.caption(" | ".join(parts))
 

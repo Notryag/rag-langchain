@@ -68,7 +68,7 @@
 
 ### 召回质量
 
-- [ ] 引入 reranker
+- [x] 引入 reranker
 - [ ] 增加 metadata 过滤能力
 - [ ] 评估是否需要 hybrid search
 - [ ] 对不同文档类型调整 chunk 策略

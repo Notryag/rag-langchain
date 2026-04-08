@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _SUPPORTED_RETRIEVAL_SEARCH_TYPES = {"similarity", "mmr"}
+_SUPPORTED_RERANKER_STRATEGIES = {"embedding_lexical"}
 _SUPPORTED_LOG_LEVELS = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
 
 
@@ -35,6 +36,18 @@ def _get_int_env(name: str, default: int) -> int:
         raise ValueError(f"Environment variable {name} must be an integer, got: {raw_value}") from exc
 
 
+def _get_bool_env(name: str, default: bool) -> bool:
+    raw_value = (os.getenv(name) or "").strip().lower()
+    if not raw_value:
+        return default
+
+    if raw_value in {"1", "true", "yes", "on"}:
+        return True
+    if raw_value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Environment variable {name} must be a boolean, got: {raw_value}")
+
+
 @dataclass(frozen=True)
 class Settings:
     openai_api_key: str
@@ -46,6 +59,8 @@ class Settings:
     top_k: int
     retrieval_search_type: str
     retrieval_fetch_k: int
+    reranker_enabled: bool
+    reranker_strategy: str
     retrieval_max_context_chars: int
     chunk_size: int
     chunk_overlap: int
@@ -59,6 +74,10 @@ class Settings:
             raise ValueError(
                 f"RETRIEVAL_SEARCH_TYPE must be one of [{supported}], got: {self.retrieval_search_type}"
             )
+
+        if self.reranker_strategy not in _SUPPORTED_RERANKER_STRATEGIES:
+            supported = ", ".join(sorted(_SUPPORTED_RERANKER_STRATEGIES))
+            raise ValueError(f"RERANKER_STRATEGY must be one of [{supported}], got: {self.reranker_strategy}")
 
         if self.log_level not in _SUPPORTED_LOG_LEVELS:
             supported = ", ".join(sorted(_SUPPORTED_LOG_LEVELS))
@@ -111,6 +130,8 @@ class Settings:
             top_k=_get_int_env("TOP_K", 3),
             retrieval_search_type=(os.getenv("RETRIEVAL_SEARCH_TYPE") or "similarity").strip().lower(),
             retrieval_fetch_k=_get_int_env("RETRIEVAL_FETCH_K", 8),
+            reranker_enabled=_get_bool_env("RERANKER_ENABLED", False),
+            reranker_strategy=(os.getenv("RERANKER_STRATEGY") or "embedding_lexical").strip().lower(),
             retrieval_max_context_chars=_get_int_env("RETRIEVAL_MAX_CONTEXT_CHARS", 4000),
             chunk_size=_get_int_env("CHUNK_SIZE", 800),
             chunk_overlap=_get_int_env("CHUNK_OVERLAP", 120),

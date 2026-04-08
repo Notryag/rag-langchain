@@ -41,6 +41,8 @@ uv run python -m <module>
 - `CHUNK_OVERLAP` 必须大于等于 `0`，且必须小于 `CHUNK_SIZE`。
 - `RETRIEVAL_SEARCH_TYPE` 当前只支持 `similarity` 和 `mmr`。
 - `RETRIEVAL_FETCH_K` 必须大于等于 `TOP_K`。
+- `RERANKER_ENABLED` 是可选布尔开关，默认 `false`。
+- `RERANKER_STRATEGY` 当前只支持 `embedding_lexical`。
 - `LOG_LEVEL` 当前只支持 `CRITICAL`、`ERROR`、`WARNING`、`INFO`、`DEBUG`。
 
 ## 常用评测命令
@@ -52,6 +54,7 @@ uv run python -m evaluation.evaluate_retrieval
 uv run python -m evaluation.evaluate_retrieval --limit 10
 uv run python -m evaluation.evaluate_retrieval --search-type similarity mmr --top-k 3 5 --fetch-k 8 12
 uv run python -m evaluation.evaluate_retrieval --show-passes
+uv run python -m evaluation.evaluate_retrieval --search-type similarity --top-k 3 --fetch-k 8 --reranker off on
 ```
 
 ### 采样回答

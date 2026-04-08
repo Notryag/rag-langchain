@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 def retrieve_context(query: str) -> str:
     """Must-use tool for questions about the indexed local knowledge base. Returns citation-formatted retrieved context."""
     logger.info(
-        "工具调用：retrieve_context。query_chars=%s top_k=%s search_type=%s",
+        "工具调用：retrieve_context。query_chars=%s top_k=%s search_type=%s reranker_enabled=%s",
         len(query),
         settings.top_k,
         settings.retrieval_search_type,
+        settings.reranker_enabled,
     )
     try:
         chunks = retrieve_chunks(query)
