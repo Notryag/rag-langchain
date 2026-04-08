@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 
 from app.config.logging_setup import setup_logging
+from app.retrieval.citations import Citation, citation_key
 from app.services.rag_service import get_rag_service, new_thread_id
 
 DEFAULT_TRACE_OUTPUT_PATH = Path("storage/exports/chat_trace.json")
@@ -23,16 +23,11 @@ TRACE_FIELDS = {
 }
 
 
-def _dedupe_citations(citations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    seen: set[tuple[Any, ...]] = set()
-    unique: list[dict[str, Any]] = []
+def _dedupe_citations(citations: list[Citation]) -> list[Citation]:
+    seen: set[tuple[object, ...]] = set()
+    unique: list[Citation] = []
     for citation in citations:
-        key = (
-            citation.get("rank"),
-            citation.get("source"),
-            citation.get("page"),
-            citation.get("chunk_index"),
-        )
+        key = citation_key(citation)
         if key in seen:
             continue
         seen.add(key)

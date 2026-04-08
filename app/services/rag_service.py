@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Generator
 
-from app.retrieval.retriever import Citation
+from app.retrieval.citations import Citation, citation_key
 from app.services.chat_client import get_chat_client, new_thread_id
 
 
@@ -28,17 +28,6 @@ class RagStreamEvent:
     tool_name: str | None = None
     citations: list[Citation] = field(default_factory=list)
     result: RagResponse | None = None
-
-
-def _citation_key(citation: Citation) -> tuple[Any, ...]:
-    return (
-        citation.get("rank"),
-        citation.get("source"),
-        citation.get("page"),
-        citation.get("chunk_index"),
-    )
-
-
 class RagService:
     def __init__(self) -> None:
         self._client = get_chat_client()
@@ -103,7 +92,7 @@ class RagService:
                     status_lines.append(status_line)
                     new_citations: list[Citation] = []
                     for citation in event.data.get("citations") or []:
-                        key = _citation_key(citation)
+                        key = citation_key(citation)
                         if key in seen_citations:
                             continue
                         seen_citations.add(key)

@@ -24,6 +24,8 @@ CLI / Streamlit / Eval
 - `agent/` 负责模型装配、prompt 策略、middleware。
 - `tools/` 负责把底层能力暴露给 agent 调用。
 - `retrieval/` 负责向量库、检索、入库、引用格式化这些纯检索能力。
+- 检索格式化阶段负责上下文去重、裁剪和输出长度控制，不把完整 chunk 原样灌给模型。
+- citation 解析与结构化单独放在 retrieval 模块内，避免 UI 和 service 自己拼 citation dict。
 
 ## Prompt 策略
 

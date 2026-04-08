@@ -46,6 +46,7 @@ class Settings:
     top_k: int
     retrieval_search_type: str
     retrieval_fetch_k: int
+    retrieval_max_context_chars: int
     chunk_size: int
     chunk_overlap: int
     log_dir: str
@@ -66,6 +67,7 @@ class Settings:
         positive_fields = {
             "TOP_K": self.top_k,
             "RETRIEVAL_FETCH_K": self.retrieval_fetch_k,
+            "RETRIEVAL_MAX_CONTEXT_CHARS": self.retrieval_max_context_chars,
             "CHUNK_SIZE": self.chunk_size,
         }
         for field_name, field_value in positive_fields.items():
@@ -109,6 +111,7 @@ class Settings:
             top_k=_get_int_env("TOP_K", 3),
             retrieval_search_type=(os.getenv("RETRIEVAL_SEARCH_TYPE") or "similarity").strip().lower(),
             retrieval_fetch_k=_get_int_env("RETRIEVAL_FETCH_K", 8),
+            retrieval_max_context_chars=_get_int_env("RETRIEVAL_MAX_CONTEXT_CHARS", 4000),
             chunk_size=_get_int_env("CHUNK_SIZE", 800),
             chunk_overlap=_get_int_env("CHUNK_OVERLAP", 120),
             log_dir=(os.getenv("LOG_DIR") or "./logs").strip(),

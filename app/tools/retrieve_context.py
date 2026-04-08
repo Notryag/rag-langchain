@@ -3,7 +3,8 @@ import logging
 from langchain_core.tools import tool
 
 from app.config.settings import settings
-from app.retrieval.retriever import format_retrieved_chunks, retrieve_chunks
+from app.retrieval.formatter import format_retrieved_chunks
+from app.retrieval.retriever import retrieve_chunks
 
 logger = logging.getLogger(__name__)
 

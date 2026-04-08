@@ -10,7 +10,7 @@ from uuid import uuid4
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.agent.create_agent import build_agent
-from app.retrieval.retriever import extract_citations_from_text
+from app.retrieval.citations import extract_citations_from_text
 
 logger = logging.getLogger(__name__)
 

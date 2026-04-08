@@ -1,7 +1,7 @@
 import logging
 
 from app.config.logging_setup import setup_logging
-from app.retrieval.retriever import format_citation_label
+from app.retrieval.formatter import format_citation_label
 from app.services.rag_service import get_rag_service, new_thread_id
 
 logger = logging.getLogger(__name__)
