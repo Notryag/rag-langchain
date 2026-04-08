@@ -105,7 +105,7 @@ agent 不应该负责:
 - 聚合底层流事件
 - 提供统一的 `ask` / `stream` 输出结构
 
-CLI、Streamlit、eval 只消费这些结果，不再自己理解底层 agent 协议。
+CLI、Streamlit、evaluation 只消费这些结果，不再自己理解底层 agent 协议。
 
 ## 当前文件映射
 

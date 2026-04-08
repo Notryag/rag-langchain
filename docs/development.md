@@ -7,7 +7,7 @@
 推荐方式:
 
 ```powershell
-uv run python -m app.eval.retrieval_eval --limit 2
+uv run python -m evaluation.evaluate_retrieval --limit 2
 ```
 
 原因:
@@ -48,30 +48,30 @@ uv run python -m <module>
 ### 检索评测
 
 ```powershell
-uv run python -m app.eval.retrieval_eval
-uv run python -m app.eval.retrieval_eval --limit 10
-uv run python -m app.eval.retrieval_eval --search-type similarity mmr --top-k 3 5 --fetch-k 8 12
-uv run python -m app.eval.retrieval_eval --show-passes
+uv run python -m evaluation.evaluate_retrieval
+uv run python -m evaluation.evaluate_retrieval --limit 10
+uv run python -m evaluation.evaluate_retrieval --search-type similarity mmr --top-k 3 5 --fetch-k 8 12
+uv run python -m evaluation.evaluate_retrieval --show-passes
 ```
 
 ### 采样回答
 
 ```powershell
-uv run python -m app.eval.sample_answers --limit 5
+uv run python -m evaluation.generate_answers --limit 5
 ```
 
 ### 回答评测
 
 ```powershell
-uv run python -m app.eval.answer_eval --limit 5
-uv run python -m app.eval.answer_eval --show-passes
-uv run python -m app.eval.answer_eval --bad-cases-out data/eval/bad_cases.jsonl
+uv run python -m evaluation.evaluate_answers --limit 5
+uv run python -m evaluation.evaluate_answers --show-passes
+uv run python -m evaluation.evaluate_answers --bad-cases-out data/eval/bad_cases.jsonl
 ```
 
 ### 抓取单次 Trace
 
 ```powershell
-uv run python -m app.eval.traces "扫地机器人连不上WiFi怎么办"
+uv run python -m evaluation.capture_trace "扫地机器人连不上WiFi怎么办"
 ```
 
 ## 统一入口
@@ -92,7 +92,7 @@ uv run python -m app.main streamlit --server-address 0.0.0.0 --server-port 8501
 
 ## 注意事项
 
-- `retrieval_eval` 依赖本地向量库和 embedding 检索链路。
-- `sample_answers` 与 `traces` 会真实调用模型，需要 `.env` 中的模型配置和 API Key 可用。
-- `answer_eval` 默认会把未通过样本导出到 `data/eval/bad_cases.jsonl`，便于后续回看 bad case。
+- `evaluate_retrieval` 依赖本地向量库和 embedding 检索链路。
+- `generate_answers` 与 `capture_trace` 会真实调用模型，需要 `.env` 中的模型配置和 API Key 可用。
+- `evaluate_answers` 默认会把未通过样本导出到 `data/eval/bad_cases.jsonl`，便于后续回看 bad case。
 - 如果命令报依赖缺失，先执行 `uv sync`，再重试 `uv run ...`。

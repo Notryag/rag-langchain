@@ -14,7 +14,7 @@
 
 ### 检索评测
 
-- [x] 新建 `app/eval/retrieval_eval.py`
+- [x] 新建 `evaluation/evaluate_retrieval.py`
 - [x] 实现单问题检索评测入口
 - [x] 输出 top-k 命中情况
 - [x] 统计命中率、召回率或简单 hit rate
@@ -22,7 +22,7 @@
 
 ### 回答评测
 
-- [x] 新建 `app/eval/answer_eval.py`
+- [x] 新建 `evaluation/evaluate_answers.py`
 - [x] 建立回答结果采样脚本
 - [x] 对回答做人工评分或规则评分
 - [x] 至少区分正确、部分正确、无法回答但合理、幻觉四类结果

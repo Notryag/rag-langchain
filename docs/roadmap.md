@@ -87,11 +87,12 @@ app/
     routes_chat.py
     routes_ingest.py
     routes_health.py
-  eval/
+evaluation/
     dataset.py
-    retrieval_eval.py
-    answer_eval.py
-    traces.py
+    evaluate_retrieval.py
+    generate_answers.py
+    evaluate_answers.py
+    capture_trace.py
 ```
 
 架构原则:
@@ -100,7 +101,7 @@ app/
 - `retrieval/` 只负责入库、召回、重排、格式化
 - `tools/` 负责暴露 agent 可调用能力
 - `services/` 负责业务编排
-- `eval/` 负责质量验证
+- `evaluation/` 负责质量验证
 
 ## 短期计划
 

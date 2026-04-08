@@ -28,6 +28,7 @@
 - `app/services/chat_client.py`: 聊天请求与流式事件编排
 - `app/cli/main.py`: 命令行交互入口
 - `app/streamlit_app.py`: Web 端演示界面
+- `evaluation/`: 顶层离线评测与 trace 工具目录
 
 ## 当前优点
 
@@ -56,6 +57,7 @@ app/
   retrieval/
   services/
   tools/
+evaluation/
 data/
   raw/
 storage/

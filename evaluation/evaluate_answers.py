@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from app.eval.dataset import DEFAULT_ANSWER_EVAL_PATH, AnswerEvalSample, load_answer_eval_samples
+from evaluation.dataset import DEFAULT_ANSWER_EVAL_PATH, AnswerEvalSample, load_answer_eval_samples
 
 DEFAULT_RUNS_PATH = Path("storage/exports/answer_eval_runs.jsonl")
 DEFAULT_BAD_CASES_PATH = Path("data/eval/bad_cases.jsonl")

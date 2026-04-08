@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 from app.config.logging_setup import setup_logging
-from app.eval.dataset import DEFAULT_ANSWER_EVAL_PATH, load_answer_eval_samples
 from app.services.rag_service import get_rag_service, new_thread_id
+from evaluation.dataset import DEFAULT_ANSWER_EVAL_PATH, load_answer_eval_samples
 
 DEFAULT_OUTPUT_PATH = Path("storage/exports/answer_eval_runs.jsonl")
 

@@ -6,8 +6,8 @@ from itertools import product
 from pathlib import Path
 
 from app.config.logging_setup import setup_logging
-from app.eval.dataset import DEFAULT_RETRIEVAL_EVAL_PATH, RetrievalEvalSample, load_retrieval_eval_samples
 from app.retrieval.retriever import RetrievedChunk, retrieve_chunks
+from evaluation.dataset import DEFAULT_RETRIEVAL_EVAL_PATH, RetrievalEvalSample, load_retrieval_eval_samples
 
 
 @dataclass(frozen=True)

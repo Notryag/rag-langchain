@@ -30,6 +30,7 @@ app/
   retrieval/
   services/
   tools/
+evaluation/
 data/
   raw/
 storage/

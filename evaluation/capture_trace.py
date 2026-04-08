@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from app.config.logging_setup import setup_logging
 from app.retrieval.citations import Citation, citation_key
