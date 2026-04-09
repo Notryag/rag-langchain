@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Generator, Iterator
+from typing import Any, Generator
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
@@ -40,12 +40,10 @@ def new_thread_id(prefix: str = "chat") -> str:
     return f"{prefix}_{uuid4().hex}"
 
 
-def build_thread_config(thread_id: str) -> dict:
-    return {"configurable": {"thread_id": thread_id}}
-
-
-def build_runtime_context(thread_id: str) -> dict[str, Any]:
-    return {"thread_id": thread_id}
+def _build_request_config(thread_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    config = {"configurable": {"thread_id": thread_id}}
+    context = {"thread_id": thread_id}
+    return config, context
 
 
 def _stringify_content(content: Any) -> str:
@@ -64,15 +62,33 @@ def _stringify_content(content: Any) -> str:
     return str(content)
 
 
-def _extract_text(content: Any) -> str:
-    return _stringify_content(content)
-
-
 def _normalize_user_input(text: str) -> str:
     normalized = text.encode("utf-8", errors="replace").decode("utf-8")
     if normalized != text:
         logger.warning("检测到不可编码字符，已使用替代字符归一化输入。")
     return normalized
+
+
+def _accumulate_usage(
+    msg: AIMessage,
+    *,
+    msg_id: str | None,
+    usage_message_ids: set[str],
+    cumulative_usage: dict[str, int],
+) -> None:
+    usage = getattr(msg, "usage_metadata", None)
+    if not usage:
+        return
+
+    if msg_id in usage_message_ids:
+        return
+
+    if msg_id:
+        usage_message_ids.add(msg_id)
+
+    cumulative_usage["input_tokens"] += usage.get("input_tokens", 0) or 0
+    cumulative_usage["output_tokens"] += usage.get("output_tokens", 0) or 0
+    cumulative_usage["total_tokens"] += usage.get("total_tokens", 0) or 0
 
 
 class AgentChatClient:
@@ -88,10 +104,11 @@ class AgentChatClient:
         user_input = _normalize_user_input(user_input)
         logger.info("收到聊天请求。thread_id=%s chars=%s", thread_id, len(user_input))
         started_at = time.perf_counter()
+        config, context = _build_request_config(thread_id)
         result = self._agent.invoke(
             {"messages": [{"role": "user", "content": user_input}]},
-            config=build_thread_config(thread_id),
-            context=build_runtime_context(thread_id),
+            config=config,
+            context=context,
         )
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
         final_msg = result["messages"][-1]
@@ -109,7 +126,7 @@ class AgentChatClient:
         base = {
             "id": getattr(message, "id", None),
             "type": message.type,
-            "content": _extract_text(getattr(message, "content", "")),
+            "content": _stringify_content(getattr(message, "content", "")),
         }
 
         if isinstance(message, HumanMessage):
@@ -132,7 +149,7 @@ class AgentChatClient:
 
         return base
 
-    def _get_existing_message_ids(self, config: dict) -> set[str]:
+    def _get_existing_message_ids(self, config: dict[str, Any]) -> set[str]:
         snapshot = self._agent.get_state(config)
         values = getattr(snapshot, "values", {}) or {}
         messages = values.get("messages", []) or []
@@ -158,17 +175,6 @@ class AgentChatClient:
 
         Event types align with the LangGraph SSE protocol so consumers can
         share one event-handling path across embedded and HTTP streaming.
-
-        Args:
-            message: User message text.
-            thread_id: Thread ID for conversation context. Auto-generated if None.
-            **kwargs: Reserved for future client-level overrides.
-
-        Yields:
-            StreamEvent with one of:
-            - type="values"
-            - type="messages-tuple"
-            - type="end"
         """
         del kwargs
 
@@ -179,8 +185,7 @@ class AgentChatClient:
         logger.info("开始流式聊天。thread_id=%s chars=%s", thread_id, len(message))
 
         state: dict[str, Any] = {"messages": [HumanMessage(content=message)]}
-        config = build_thread_config(thread_id)
-        context = build_runtime_context(thread_id)
+        config, context = _build_request_config(thread_id)
 
         seen_ids = self._get_existing_message_ids(config)
         seen_tool_calls: set[str] = set()
@@ -203,7 +208,7 @@ class AgentChatClient:
                 if metadata.get("langgraph_node") != "model":
                     continue
 
-                text = _extract_text(getattr(message_chunk, "content", message_chunk))
+                text = _stringify_content(getattr(message_chunk, "content", message_chunk))
                 if not text:
                     continue
 
@@ -223,13 +228,12 @@ class AgentChatClient:
                         msg_id = getattr(msg, "id", None)
 
                         if isinstance(msg, AIMessage):
-                            usage = getattr(msg, "usage_metadata", None)
-                            if usage and msg_id not in usage_message_ids:
-                                if msg_id:
-                                    usage_message_ids.add(msg_id)
-                                cumulative_usage["input_tokens"] += usage.get("input_tokens", 0) or 0
-                                cumulative_usage["output_tokens"] += usage.get("output_tokens", 0) or 0
-                                cumulative_usage["total_tokens"] += usage.get("total_tokens", 0) or 0
+                            _accumulate_usage(
+                                msg,
+                                msg_id=msg_id,
+                                usage_message_ids=usage_message_ids,
+                                cumulative_usage=cumulative_usage,
+                            )
 
                             if msg.tool_calls:
                                 tool_calls = []
@@ -262,7 +266,7 @@ class AgentChatClient:
                             if result_key in seen_tool_results:
                                 continue
                             seen_tool_results.add(result_key)
-                            tool_content = _extract_text(msg.content)
+                            tool_content = _stringify_content(msg.content)
                             yield StreamEvent(
                                 type="messages-tuple",
                                 data={
@@ -289,13 +293,12 @@ class AgentChatClient:
                     seen_ids.add(msg_id)
 
                 if isinstance(msg, AIMessage):
-                    usage = getattr(msg, "usage_metadata", None)
-                    if usage and msg_id not in usage_message_ids:
-                        if msg_id:
-                            usage_message_ids.add(msg_id)
-                        cumulative_usage["input_tokens"] += usage.get("input_tokens", 0) or 0
-                        cumulative_usage["output_tokens"] += usage.get("output_tokens", 0) or 0
-                        cumulative_usage["total_tokens"] += usage.get("total_tokens", 0) or 0
+                    _accumulate_usage(
+                        msg,
+                        msg_id=msg_id,
+                        usage_message_ids=usage_message_ids,
+                        cumulative_usage=cumulative_usage,
+                    )
 
             yield StreamEvent(
                 type="values",

@@ -79,7 +79,6 @@ app/
     checkpointer.py
     thread_store.py
   services/
-    chat_service.py
     rag_service.py
     ingest_service.py
   api/
