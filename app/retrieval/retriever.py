@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from textwrap import shorten
 from typing import Any
 
 from langchain_core.documents import Document
 
 from app.config.settings import settings
+from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
 from app.retrieval.vectorstore import get_vector_store
 
 logger = logging.getLogger(__name__)
@@ -34,26 +34,10 @@ class RetrievedChunk:
             content=doc.page_content,
             document_id=getattr(doc, "id", None),
             source=metadata.get("source", "unknown"),
-            page=_normalize_page(metadata.get("page")),
-            chunk_index=_normalize_chunk_index(metadata.get("chunk_index")),
+            page=normalize_page(metadata.get("page")),
+            chunk_index=normalize_chunk_index(metadata.get("chunk_index")),
             metadata=metadata,
         )
-
-
-def _normalize_page(page: Any) -> str | None:
-    if page in ("", None, "na"):
-        return None
-    return str(page)
-
-
-def _normalize_chunk_index(chunk_index: Any) -> int | None:
-    if chunk_index in (None, ""):
-        return None
-    return int(chunk_index)
-
-
-def _single_line_preview(text: str, *, width: int) -> str:
-    return shorten(text.replace("\n", " "), width=width, placeholder="...")
 
 
 def _normalize_search_type(search_type: str | None) -> str:
@@ -97,7 +81,7 @@ def retrieve_chunks(
         resolved_search_type,
         resolved_top_k,
         resolved_fetch_k,
-        _single_line_preview(query, width=_QUERY_PREVIEW_WIDTH),
+        single_line_preview(query, width=_QUERY_PREVIEW_WIDTH),
     )
 
     docs = _search_documents(
