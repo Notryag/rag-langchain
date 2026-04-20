@@ -1,31 +1,14 @@
 from __future__ import annotations
 
-from textwrap import shorten
 from typing import Any, Mapping
 
 from app.config.settings import settings
 from app.retrieval.citations import Citation, build_citation_label
+from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
 from app.retrieval.retriever import RetrievedChunk
 
 _CHUNK_PREVIEW_WIDTH = 1200
 _MIN_CONTENT_PREVIEW_WIDTH = 80
-
-
-def _normalize_page(page: Any) -> str | None:
-    if page in ("", None, "na"):
-        return None
-    return str(page)
-
-
-def _normalize_chunk_index(chunk_index: Any) -> int | None:
-    if chunk_index in (None, ""):
-        return None
-    return int(chunk_index)
-
-
-def _single_line_preview(text: str, *, width: int) -> str:
-    return shorten(text.replace("\n", " "), width=width, placeholder="...")
-
 
 def _compose_citation_label(*, source: str, page: str | None, chunk_index: int | None) -> str:
     return build_citation_label(
@@ -40,8 +23,8 @@ def _citation_parts(citation: Mapping[str, Any] | RetrievedChunk) -> tuple[str, 
         return citation.source, citation.page, citation.chunk_index
     return (
         str(citation.get("source", "unknown")),
-        _normalize_page(citation.get("page")),
-        _normalize_chunk_index(citation.get("chunk_index")),
+        normalize_page(citation.get("page")),
+        normalize_chunk_index(citation.get("chunk_index")),
     )
 
 
@@ -55,7 +38,7 @@ def format_citation_label(citation: Citation | RetrievedChunk) -> str:
 
 
 def format_chunk_for_context(chunk: RetrievedChunk) -> str:
-    content = _single_line_preview(chunk.content, width=_CHUNK_PREVIEW_WIDTH)
+    content = single_line_preview(chunk.content, width=_CHUNK_PREVIEW_WIDTH)
     return f"[{chunk.rank}] {format_citation_label(chunk)}\n{content}"
 
 
@@ -92,7 +75,7 @@ def _format_chunk_with_budget(chunk: RetrievedChunk, *, remaining_chars: int) ->
         return header.rstrip()
 
     content_budget = max(min(remaining_chars - len(header), _CHUNK_PREVIEW_WIDTH), _MIN_CONTENT_PREVIEW_WIDTH)
-    content = _single_line_preview(chunk.content, width=content_budget)
+    content = single_line_preview(chunk.content, width=content_budget)
     return f"{header}{content}"
 
 
