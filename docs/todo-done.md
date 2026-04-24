@@ -74,6 +74,10 @@
 - [x] 增加 metadata 过滤能力
 - [x] 评估是否需要 hybrid search
 - [x] 对不同文档类型调整 chunk 策略
+- [x] 做离线 hybrid search 原型
+- [x] 用 RRF 融合 dense 与 lexical 候选
+- [x] 对比 `similarity + reranker` 与 hybrid 原型的 retrieval eval 结果
+- [x] 将 hybrid search 作为可选检索模式接入主链路
 
 ### 上下文质量
 

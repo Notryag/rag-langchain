@@ -8,6 +8,7 @@ from langchain_core.documents import Document
 
 from app.config.settings import settings
 from app.retrieval.filters import MetadataFilter, normalize_metadata_filter
+from app.retrieval.hybrid import hybrid_search_documents
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
 from app.retrieval.vectorstore import get_vector_store
@@ -15,7 +16,7 @@ from app.retrieval.vectorstore import get_vector_store
 logger = logging.getLogger(__name__)
 
 _QUERY_PREVIEW_WIDTH = 120
-_SUPPORTED_SEARCH_TYPES = {"similarity", "mmr"}
+_SUPPORTED_SEARCH_TYPES = {"similarity", "mmr", "hybrid"}
 
 
 @dataclass(frozen=True)
@@ -68,11 +69,20 @@ def _search_documents(
             fetch_k=max(fetch_k, candidate_k),
             filter=metadata_filter,
         )
+    elif search_type == "hybrid":
+        return hybrid_search_documents(
+            query,
+            vector_store=vector_store,
+            top_k=top_k,
+            dense_k=max(fetch_k, top_k),
+            lexical_k=max(fetch_k, top_k),
+            metadata_filter=metadata_filter,
+        )
     else:
         docs = vector_store.similarity_search(query, k=candidate_k, filter=metadata_filter)
 
     if not reranker_enabled:
-        return docs
+        return docs[:top_k]
 
     return rerank_documents(query, docs, top_k=top_k)
 

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_SUPPORTED_RETRIEVAL_SEARCH_TYPES = {"similarity", "mmr"}
+_SUPPORTED_RETRIEVAL_SEARCH_TYPES = {"similarity", "mmr", "hybrid"}
 _SUPPORTED_RERANKER_STRATEGIES = {"embedding_lexical"}
 _SUPPORTED_LOG_LEVELS = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
 

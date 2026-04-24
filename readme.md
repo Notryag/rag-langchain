@@ -4,7 +4,7 @@
 
 ## 这个项目能做什么
 
-- 把本地文档（TXT/PDF）切分并写入 Chroma 向量库
+- 把本地文档（TXT/MD/PDF/DOCX/HTML）切分并写入 Chroma 向量库
 - 用 Agent + Tool 进行检索增强问答（RAG）
 - 在回答中输出引用来源
 - 支持 CLI 交互和 Streamlit 页面

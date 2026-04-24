@@ -39,7 +39,7 @@ uv run python -m <module>
 - `TOP_K`、`RETRIEVAL_FETCH_K`、`CHUNK_SIZE` 必须大于 `0`。
 - `RETRIEVAL_MAX_CONTEXT_CHARS` 必须大于 `0`，用于限制传给模型的检索上下文字符数。
 - `CHUNK_OVERLAP` 必须大于等于 `0`，且必须小于 `CHUNK_SIZE`。
-- `RETRIEVAL_SEARCH_TYPE` 当前只支持 `similarity` 和 `mmr`。
+- `RETRIEVAL_SEARCH_TYPE` 当前支持 `similarity`、`mmr` 和 `hybrid`。
 - `RETRIEVAL_FETCH_K` 必须大于等于 `TOP_K`。
 - `RERANKER_ENABLED` 是可选布尔开关，默认 `false`。
 - `RERANKER_STRATEGY` 当前只支持 `embedding_lexical`。
@@ -56,9 +56,11 @@ uv run python -m evaluation.evaluate_retrieval --limit 10
 uv run python -m evaluation.evaluate_retrieval --search-type similarity mmr --top-k 3 5 --fetch-k 8 12
 uv run python -m evaluation.evaluate_retrieval --show-passes
 uv run python -m evaluation.evaluate_retrieval --search-type similarity --top-k 3 --fetch-k 8 --reranker off on
+uv run python -m evaluation.evaluate_retrieval --search-type hybrid --top-k 3 --fetch-k 8 --reranker off on
 uv run python -m evaluation.evaluate_retrieval --source 扫地机器人100问2.txt
 uv run python -m evaluation.evaluate_retrieval --metadata-filter-json '{"source":"维护保养.txt"}'
 uv run python -m evaluation.evaluate_hybrid_need --show-failures
+uv run python -m evaluation.evaluate_hybrid_search --show-changes
 ```
 
 ### 采样回答

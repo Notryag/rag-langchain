@@ -121,6 +121,8 @@ CLI、Streamlit、evaluation 只消费这些结果，不再自己理解底层 ag
 - `app/retrieval/loaders.py`: 文档加载入口
 - `app/retrieval/splitter.py`: 按文档类型选择 chunk 切分策略
 - `app/retrieval/filters.py`: metadata 过滤参数规范化
+- `app/retrieval/lexical.py`: query 词面信号召回与排序
+- `app/retrieval/hybrid.py`: dense 与 lexical 候选融合
 - `app/retrieval/reranker.py`: 候选结果二次排序
 - `app/retrieval/`: 入库、向量库、检索与引用格式化
 
