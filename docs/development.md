@@ -44,6 +44,7 @@ uv run python -m <module>
 - `RERANKER_ENABLED` 是可选布尔开关，默认 `false`。
 - `RERANKER_STRATEGY` 当前只支持 `embedding_lexical`。
 - `LOG_LEVEL` 当前只支持 `CRITICAL`、`ERROR`、`WARNING`、`INFO`、`DEBUG`。
+- 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令
 

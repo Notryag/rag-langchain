@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SEPARATORS = ["\n\n", "\n", "。", "；", "，", " ", ""]
 _MARKDOWN_SEPARATORS = ["\n## ", "\n### ", "\n#### ", "\n\n", "\n", "。", "；", "，", " ", ""]
 _PDF_SEPARATORS = ["\n\n", "\n", "。", "；", "，", " ", ""]
+_HTML_SEPARATORS = ["\n\n", "\n", "。", "；", "，", " ", ""]
+_DOCX_SEPARATORS = ["\n\n", "\n", "。", "；", "，", " ", ""]
 
 
 def _document_type(doc: Document) -> str:
@@ -27,6 +29,10 @@ def _document_type(doc: Document) -> str:
         return "pdf"
     if suffix == ".md":
         return "markdown"
+    if suffix == ".docx":
+        return "docx"
+    if suffix in {".html", ".htm"}:
+        return "html"
     if suffix == ".txt":
         return "text"
     return "unknown"
@@ -47,6 +53,20 @@ def _splitter_for_document_type(document_type: str) -> RecursiveCharacterTextSpl
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             separators=_PDF_SEPARATORS,
+        )
+
+    if document_type == "html":
+        return RecursiveCharacterTextSplitter(
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+            separators=_HTML_SEPARATORS,
+        )
+
+    if document_type == "docx":
+        return RecursiveCharacterTextSplitter(
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+            separators=_DOCX_SEPARATORS,
         )
 
     return RecursiveCharacterTextSplitter(

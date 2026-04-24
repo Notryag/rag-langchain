@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.document_loaders import BSHTMLLoader, Docx2txtLoader, PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,14 @@ def load_documents(data_dir: str) -> list[Document]:
 
         if suffix == ".md":
             docs.extend(_with_document_type(TextLoader(str(path), encoding="utf-8").load(), "markdown"))
+            continue
+
+        if suffix == ".docx":
+            docs.extend(_with_document_type(Docx2txtLoader(str(path)).load(), "docx"))
+            continue
+
+        if suffix in {".html", ".htm"}:
+            docs.extend(_with_document_type(BSHTMLLoader(str(path), open_encoding="utf-8").load(), "html"))
 
     logger.info("原始文档加载完成。data_dir=%s 文档数=%s", root.resolve(), len(docs))
     return docs
