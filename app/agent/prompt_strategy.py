@@ -42,6 +42,7 @@ def build_runtime_prompt(request: ModelRequest) -> str:
         f"- retrieval_fetch_k: {settings.retrieval_fetch_k}\n"
         "Prompt strategy:\n"
         "- Treat the retrieve_context tool as the only path to knowledge-base facts.\n"
+        "- If the user explicitly asks about a known source file, pass that exact source to retrieve_context.\n"
         "- On follow-up turns, maintain conversational continuity, but still retrieve before making factual claims about the indexed corpus.\n"
         "- Use citations when grounded context is available; otherwise refuse briefly instead of improvising.\n"
     )

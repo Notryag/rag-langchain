@@ -27,6 +27,7 @@ CLI / Streamlit / Eval
 - 检索格式化阶段负责上下文去重、裁剪和输出长度控制，不把完整 chunk 原样灌给模型。
 - citation 解析与结构化单独放在 retrieval 模块内，避免 UI 和 service 自己拼 citation dict。
 - reranker 也属于 retrieval 层能力，负责对初筛候选进行二次排序，不进入 agent 决策层。
+- metadata 过滤属于 retrieval 层能力，当前通过 `source/page/chunk_index/content_hash` 等入库 metadata 约束候选范围。
 
 ## Prompt 策略
 
@@ -118,6 +119,7 @@ CLI、Streamlit、evaluation 只消费这些结果，不再自己理解底层 ag
 - `app/middleware/prompt_with_context.py`: 动态 prompt middleware
 - `app/tools/retrieve_context.py`: agent 可调用检索 tool
 - `app/retrieval/loaders.py`: 文档加载入口
+- `app/retrieval/filters.py`: metadata 过滤参数规范化
 - `app/retrieval/reranker.py`: 候选结果二次排序
 - `app/retrieval/`: 入库、向量库、检索与引用格式化
 

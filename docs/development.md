@@ -55,6 +55,8 @@ uv run python -m evaluation.evaluate_retrieval --limit 10
 uv run python -m evaluation.evaluate_retrieval --search-type similarity mmr --top-k 3 5 --fetch-k 8 12
 uv run python -m evaluation.evaluate_retrieval --show-passes
 uv run python -m evaluation.evaluate_retrieval --search-type similarity --top-k 3 --fetch-k 8 --reranker off on
+uv run python -m evaluation.evaluate_retrieval --source 扫地机器人100问2.txt
+uv run python -m evaluation.evaluate_retrieval --metadata-filter-json '{"source":"维护保养.txt"}'
 ```
 
 ### 采样回答

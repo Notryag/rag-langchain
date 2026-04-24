@@ -4,8 +4,10 @@ import argparse
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
+from typing import Any
 
 from app.config.logging_setup import setup_logging
+from app.retrieval.filters import MetadataFilter, merge_metadata_filters, parse_metadata_filter_json
 from app.retrieval.retriever import RetrievedChunk, retrieve_chunks
 from evaluation.dataset import DEFAULT_RETRIEVAL_EVAL_PATH, RetrievalEvalSample, load_retrieval_eval_samples
 
@@ -16,11 +18,13 @@ class RetrievalEvalConfig:
     top_k: int
     fetch_k: int
     reranker_enabled: bool
+    metadata_filter: MetadataFilter | None = None
 
     @property
     def label(self) -> str:
         reranker = "on" if self.reranker_enabled else "off"
-        return f"search_type={self.search_type} top_k={self.top_k} fetch_k={self.fetch_k} reranker={reranker}"
+        metadata = f" metadata_filter={self.metadata_filter}" if self.metadata_filter else ""
+        return f"search_type={self.search_type} top_k={self.top_k} fetch_k={self.fetch_k} reranker={reranker}{metadata}"
 
 
 @dataclass(frozen=True)
@@ -50,6 +54,7 @@ def _build_configs(
     top_ks: list[int],
     fetch_ks: list[int],
     reranker_modes: list[str],
+    metadata_filter: MetadataFilter | None,
 ) -> list[RetrievalEvalConfig]:
     return [
         RetrievalEvalConfig(
@@ -57,6 +62,7 @@ def _build_configs(
             top_k=top_k,
             fetch_k=max(fetch_k, top_k),
             reranker_enabled=_normalize_reranker_mode(reranker_mode),
+            metadata_filter=metadata_filter,
         )
         for search_type, top_k, fetch_k, reranker_mode in product(search_types, top_ks, fetch_ks, reranker_modes)
     ]
@@ -74,6 +80,7 @@ def evaluate_sample(sample: RetrievalEvalSample, config: RetrievalEvalConfig) ->
         search_type=config.search_type,
         fetch_k=config.fetch_k,
         reranker_enabled=config.reranker_enabled,
+        metadata_filter=config.metadata_filter,
     )
     if not sample.score_retrieval:
         return RetrievalEvalResult(
@@ -152,6 +159,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--search-type", nargs="+", default=["similarity"], help="Search types to compare.")
     parser.add_argument("--top-k", nargs="+", type=int, default=[3], help="Top-k values to compare.")
     parser.add_argument("--fetch-k", nargs="+", type=int, default=[8], help="Fetch-k values to compare.")
+    parser.add_argument("--source", nargs="+", default=None, help="Optional source metadata filter.")
+    parser.add_argument(
+        "--metadata-filter-json",
+        default=None,
+        help='Optional metadata filter JSON, for example: {"source":"维护保养.txt"}',
+    )
     parser.add_argument(
         "--reranker",
         nargs="+",
@@ -164,6 +177,12 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _build_metadata_filter(args: argparse.Namespace) -> MetadataFilter | None:
+    source_filter: dict[str, Any] | None = {"source": args.source} if args.source else None
+    json_filter = parse_metadata_filter_json(args.metadata_filter_json)
+    return merge_metadata_filters(source_filter, json_filter)
+
+
 def main() -> None:
     args = _parse_args()
     setup_logging()
@@ -172,7 +191,8 @@ def main() -> None:
     if args.limit is not None:
         samples = samples[: args.limit]
 
-    configs = _build_configs(args.search_type, args.top_k, args.fetch_k, args.reranker)
+    metadata_filter = _build_metadata_filter(args)
+    configs = _build_configs(args.search_type, args.top_k, args.fetch_k, args.reranker, metadata_filter)
     for config in configs:
         print(f"\n=== Retrieval Eval | {config.label} ===")
         results = [evaluate_sample(sample, config) for sample in samples]

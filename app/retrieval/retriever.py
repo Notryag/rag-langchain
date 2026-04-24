@@ -7,6 +7,7 @@ from typing import Any
 from langchain_core.documents import Document
 
 from app.config.settings import settings
+from app.retrieval.filters import MetadataFilter, normalize_metadata_filter
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
 from app.retrieval.vectorstore import get_vector_store
@@ -55,6 +56,7 @@ def _search_documents(
     search_type: str,
     fetch_k: int,
     reranker_enabled: bool,
+    metadata_filter: MetadataFilter | None,
 ) -> list[Document]:
     vector_store = get_vector_store()
     candidate_k = max(fetch_k, top_k) if reranker_enabled else top_k
@@ -64,9 +66,10 @@ def _search_documents(
             query,
             k=candidate_k,
             fetch_k=max(fetch_k, candidate_k),
+            filter=metadata_filter,
         )
     else:
-        docs = vector_store.similarity_search(query, k=candidate_k)
+        docs = vector_store.similarity_search(query, k=candidate_k, filter=metadata_filter)
 
     if not reranker_enabled:
         return docs
@@ -81,18 +84,21 @@ def retrieve_chunks(
     search_type: str | None = None,
     fetch_k: int | None = None,
     reranker_enabled: bool | None = None,
+    metadata_filter: MetadataFilter | None = None,
 ) -> list[RetrievedChunk]:
     resolved_top_k = top_k or settings.top_k
     resolved_search_type = _normalize_search_type(search_type)
     resolved_fetch_k = max(fetch_k or settings.retrieval_fetch_k, resolved_top_k)
     resolved_reranker_enabled = settings.reranker_enabled if reranker_enabled is None else reranker_enabled
+    resolved_metadata_filter = normalize_metadata_filter(metadata_filter)
 
     logger.info(
-        "执行检索。search_type=%s top_k=%s fetch_k=%s reranker_enabled=%s query_preview=%s",
+        "执行检索。search_type=%s top_k=%s fetch_k=%s reranker_enabled=%s metadata_filter=%s query_preview=%s",
         resolved_search_type,
         resolved_top_k,
         resolved_fetch_k,
         resolved_reranker_enabled,
+        resolved_metadata_filter or {},
         single_line_preview(query, width=_QUERY_PREVIEW_WIDTH),
     )
 
@@ -102,13 +108,15 @@ def retrieve_chunks(
         search_type=resolved_search_type,
         fetch_k=resolved_fetch_k,
         reranker_enabled=resolved_reranker_enabled,
+        metadata_filter=resolved_metadata_filter,
     )
 
     chunks = [RetrievedChunk.from_document(doc, rank=index) for index, doc in enumerate(docs, start=1)]
     logger.info(
-        "检索完成。search_type=%s reranker_enabled=%s hit_count=%s",
+        "检索完成。search_type=%s reranker_enabled=%s metadata_filter=%s hit_count=%s",
         resolved_search_type,
         resolved_reranker_enabled,
+        resolved_metadata_filter or {},
         len(chunks),
     )
     return chunks

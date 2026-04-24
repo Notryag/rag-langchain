@@ -26,7 +26,7 @@
 - [x] 建立回答结果采样脚本
 - [x] 对回答做人工评分或规则评分
 - [x] 至少区分正确、部分正确、无法回答但合理、幻觉四类结果
-- [ ] 沉淀 bad case 样本（已支持导出到 `data/eval/bad_cases.jsonl`，待实际跑评测生成样本）
+- [x] 沉淀 bad case 样本（已导出到 `data/eval/bad_cases.jsonl`）
 
 ### 可观测
 
@@ -69,7 +69,7 @@
 ### 召回质量
 
 - [x] 引入 reranker
-- [ ] 增加 metadata 过滤能力
+- [x] 增加 metadata 过滤能力
 - [ ] 评估是否需要 hybrid search
 - [ ] 对不同文档类型调整 chunk 策略
 
