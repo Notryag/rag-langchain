@@ -4,8 +4,10 @@
 
 - 项目现状: [project-status.md](project-status.md)
 - 架构说明: [architecture.md](architecture.md)
+- 入库策略: [ingestion.md](ingestion.md)
 - Hybrid Search 需求评估: [hybrid-search-evaluation.md](hybrid-search-evaluation.md)
 - 执行清单: [todo.md](todo.md)
+- 已完成清单归档: [todo-done.md](todo-done.md)
 
 ## 长期目标
 

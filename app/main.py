@@ -23,6 +23,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default="./data/raw",
         help="Directory containing raw documents to ingest.",
     )
+    ingest_parser.add_argument(
+        "--mode",
+        default="skip_existing",
+        choices=["skip_existing", "rebuild"],
+        help="Ingest mode: skip_existing keeps existing chunks, rebuild clears and recreates the collection.",
+    )
 
     streamlit_parser = subparsers.add_parser("streamlit", help="Start the Streamlit UI.")
     streamlit_parser.add_argument(
@@ -46,8 +52,8 @@ def _run_cli() -> int:
     return 0
 
 
-def _run_ingest(data_dir: str) -> int:
-    inserted = ingest_documents(data_dir)
+def _run_ingest(data_dir: str, *, mode: str) -> int:
+    inserted = ingest_documents(data_dir, mode=mode)
     print(f"ingested_chunks={inserted}")
     return 0
 
@@ -69,7 +75,7 @@ def main() -> int:
     if args.command == "cli":
         return _run_cli()
     if args.command == "ingest":
-        return _run_ingest(args.data_dir)
+        return _run_ingest(args.data_dir, mode=args.mode)
     if args.command == "streamlit":
         return _run_streamlit(
             server_port=args.server_port,

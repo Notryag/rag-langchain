@@ -88,6 +88,7 @@ uv run python -m evaluation.capture_trace "扫地机器人连不上WiFi怎么办
 ```powershell
 uv run python -m app.main cli
 uv run python -m app.main ingest --data-dir ./data/raw
+uv run python -m app.main ingest --data-dir ./data/raw --mode rebuild
 uv run python -m app.main streamlit
 ```
 

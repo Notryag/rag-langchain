@@ -87,10 +87,12 @@ docs/          # 架构、路线图、开发说明
 - 架构说明: [docs/architecture.md](docs/architecture.md)
 - 架构评审: [docs/architecture-review.md](docs/architecture-review.md)
 - 开发与运行约定: [docs/development.md](docs/development.md)
+- 入库策略: [docs/ingestion.md](docs/ingestion.md)
 - Hybrid Search 需求评估: [docs/hybrid-search-evaluation.md](docs/hybrid-search-evaluation.md)
 - 项目现状: [docs/project-status.md](docs/project-status.md)
 - 路线图: [docs/roadmap.md](docs/roadmap.md)
 - 待办清单: [docs/todo.md](docs/todo.md)
+- 已完成清单归档: [docs/todo-done.md](docs/todo-done.md)
 
 ## 适用场景
 

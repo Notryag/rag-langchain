@@ -37,23 +37,36 @@ def load_documents(data_dir: str) -> list[Document]:
 
         suffix = path.suffix.lower()
         if suffix == ".pdf":
-            docs.extend(_with_document_type(PyPDFLoader(str(path)).load(), "pdf"))
+            loaded_docs = _with_document_type(PyPDFLoader(str(path)).load(), "pdf")
+            docs.extend(loaded_docs)
+            logger.info("加载文档。path=%s document_type=pdf docs=%s", path.as_posix(), len(loaded_docs))
             continue
 
         if suffix == ".txt":
-            docs.extend(_with_document_type(TextLoader(str(path), encoding="utf-8").load(), "text"))
+            loaded_docs = _with_document_type(TextLoader(str(path), encoding="utf-8").load(), "text")
+            docs.extend(loaded_docs)
+            logger.info("加载文档。path=%s document_type=text docs=%s", path.as_posix(), len(loaded_docs))
             continue
 
         if suffix == ".md":
-            docs.extend(_with_document_type(TextLoader(str(path), encoding="utf-8").load(), "markdown"))
+            loaded_docs = _with_document_type(TextLoader(str(path), encoding="utf-8").load(), "markdown")
+            docs.extend(loaded_docs)
+            logger.info("加载文档。path=%s document_type=markdown docs=%s", path.as_posix(), len(loaded_docs))
             continue
 
         if suffix == ".docx":
-            docs.extend(_with_document_type(Docx2txtLoader(str(path)).load(), "docx"))
+            loaded_docs = _with_document_type(Docx2txtLoader(str(path)).load(), "docx")
+            docs.extend(loaded_docs)
+            logger.info("加载文档。path=%s document_type=docx docs=%s", path.as_posix(), len(loaded_docs))
             continue
 
         if suffix in {".html", ".htm"}:
-            docs.extend(_with_document_type(BSHTMLLoader(str(path), open_encoding="utf-8").load(), "html"))
+            loaded_docs = _with_document_type(BSHTMLLoader(str(path), open_encoding="utf-8").load(), "html")
+            docs.extend(loaded_docs)
+            logger.info("加载文档。path=%s document_type=html docs=%s", path.as_posix(), len(loaded_docs))
+            continue
+
+        logger.debug("跳过不支持的文件。path=%s suffix=%s", path.as_posix(), suffix)
 
     logger.info("原始文档加载完成。data_dir=%s 文档数=%s", root.resolve(), len(docs))
     return docs
