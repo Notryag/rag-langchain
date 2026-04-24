@@ -70,7 +70,7 @@
 
 - [x] 引入 reranker
 - [x] 增加 metadata 过滤能力
-- [ ] 评估是否需要 hybrid search
+- [x] 评估是否需要 hybrid search
 - [ ] 对不同文档类型调整 chunk 策略
 
 ### 上下文质量
