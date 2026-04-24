@@ -5,11 +5,10 @@ import logging
 from pathlib import Path
 
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config.logging_setup import setup_logging
-from app.config.settings import settings
 from app.retrieval.loaders import load_documents
+from app.retrieval.splitter import split_documents_by_type
 from app.retrieval.vectorstore import get_vector_store
 
 CHROMA_GET_BATCH_SIZE = 512
@@ -80,11 +79,7 @@ def ingest_documents(data_dir: str) -> int:
         logger.info("没有可入库的文档。data_dir=%s", Path(data_dir).resolve())
         return 0
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=settings.chunk_size,
-        chunk_overlap=settings.chunk_overlap,
-    )
-    split_docs = splitter.split_documents(raw_docs)
+    split_docs = split_documents_by_type(raw_docs)
     prepared_docs = _prepare_chunk_ids(split_docs, data_dir)
     logger.info(
         "切分并生成 chunk 完成。raw_docs=%s split_docs=%s unique_chunks=%s",
