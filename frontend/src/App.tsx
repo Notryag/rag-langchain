@@ -65,12 +65,13 @@ function App() {
     if (!text || pending) return;
 
     const assistantId = crypto.randomUUID();
+    const activeProfile = retrievalProfile ? { ...retrievalProfile } : undefined;
     setInput("");
     setPending(true);
     setMessages((current) => [
       ...current,
       { id: crypto.randomUUID(), role: "user", content: text },
-      { id: assistantId, role: "assistant", content: "正在生成..." },
+      { id: assistantId, role: "assistant", content: "正在生成...", retrievalProfile: activeProfile },
     ]);
 
     const statusLines: string[] = [];
@@ -82,7 +83,7 @@ function App() {
     try {
       await streamChat({
         message: text,
-        retrievalProfile: retrievalProfile ?? undefined,
+        retrievalProfile: activeProfile,
         threadId,
         onEvent: (eventData) => {
           handleStreamEvent(eventData, assistantId, statusLines, citations, toolTraces, (nextAnswer) => {

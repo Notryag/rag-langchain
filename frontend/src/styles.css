@@ -348,6 +348,7 @@ button {
 }
 
 .status-lines,
+.profile-snapshot,
 .citations,
 .tool-traces,
 .usage {
@@ -361,6 +362,21 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.profile-snapshot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-snapshot span {
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: #42526a;
+  overflow-wrap: anywhere;
 }
 
 .citation {

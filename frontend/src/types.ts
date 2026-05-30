@@ -49,6 +49,7 @@ export type ChatMessage = {
   content: string;
   statusLines?: string[];
   citations?: Citation[];
+  retrievalProfile?: RetrievalProfile;
   toolTraces?: ToolTrace[];
   usage?: Record<string, unknown> | null;
   elapsedMs?: number | null;
