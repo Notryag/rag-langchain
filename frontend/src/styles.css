@@ -233,12 +233,6 @@ button {
   accent-color: var(--accent);
 }
 
-.field-error {
-  margin: 0;
-  color: #fecaca;
-  font-size: 12px;
-}
-
 .tone-ok {
   color: #9ef0d7 !important;
 }

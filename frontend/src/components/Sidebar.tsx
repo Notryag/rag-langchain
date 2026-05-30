@@ -7,6 +7,7 @@ import RetrievalSettings from "./RetrievalSettings";
 type SidebarProps = {
   apiStatus: string;
   config: PublicConfig | null;
+  defaultRetrievalProfile: RetrievalProfile | null;
   pending: boolean;
   retrievalProfile: RetrievalProfile | null;
   threadId: string;
@@ -17,6 +18,7 @@ type SidebarProps = {
 function Sidebar({
   apiStatus,
   config,
+  defaultRetrievalProfile,
   pending,
   retrievalProfile,
   threadId,
@@ -75,6 +77,7 @@ function Sidebar({
       </section>
 
       <RetrievalSettings
+        defaultProfile={defaultRetrievalProfile}
         disabled={pending}
         profile={retrievalProfile}
         onChange={onRetrievalProfileChange}

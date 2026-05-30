@@ -1,6 +1,9 @@
+import { RotateCcw } from "lucide-react";
+
 import type { RetrievalProfile, SearchType } from "../types";
 
 type RetrievalSettingsProps = {
+  defaultProfile: RetrievalProfile | null;
   disabled: boolean;
   profile: RetrievalProfile | null;
   onChange: (profile: RetrievalProfile) => void;
@@ -8,7 +11,7 @@ type RetrievalSettingsProps = {
 
 const searchTypes: SearchType[] = ["similarity", "mmr", "hybrid"];
 
-function RetrievalSettings({ disabled, profile, onChange }: RetrievalSettingsProps) {
+function RetrievalSettings({ defaultProfile, disabled, profile, onChange }: RetrievalSettingsProps) {
   if (!profile) {
     return (
       <section className="panel">
@@ -20,21 +23,24 @@ function RetrievalSettings({ disabled, profile, onChange }: RetrievalSettingsPro
     );
   }
 
-  const fetchTooSmall = profile.fetch_k < profile.top_k;
-
   function patchProfile(patch: Partial<RetrievalProfile>) {
     if (!profile) return;
-    const next = { ...profile, ...patch };
-    if (patch.top_k !== undefined && next.fetch_k < patch.top_k) {
-      next.fetch_k = patch.top_k;
-    }
-    onChange(next);
+    onChange(normalizeProfile({ ...profile, ...patch }));
   }
 
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>检索设置</h2>
+        <button
+          className="icon-button"
+          disabled={disabled || !defaultProfile}
+          onClick={() => defaultProfile && onChange(defaultProfile)}
+          title="恢复默认检索设置"
+          type="button"
+        >
+          <RotateCcw size={16} />
+        </button>
       </div>
 
       <div className="field-stack">
@@ -88,10 +94,20 @@ function RetrievalSettings({ disabled, profile, onChange }: RetrievalSettingsPro
           <span>Reranker</span>
         </label>
 
-        {fetchTooSmall && <p className="field-error">Fetch K 需要大于等于 Top K</p>}
+        <p className="panel-note">Fetch K 会自动保持不小于 Top K</p>
       </div>
     </section>
   );
+}
+
+function normalizeProfile(profile: RetrievalProfile): RetrievalProfile {
+  const topK = Math.max(1, profile.top_k);
+  return {
+    ...profile,
+    top_k: topK,
+    fetch_k: Math.max(1, profile.fetch_k, topK),
+    max_context_chars: Math.max(1, profile.max_context_chars),
+  };
 }
 
 function NumberField({

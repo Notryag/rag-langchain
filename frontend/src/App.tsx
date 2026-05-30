@@ -14,6 +14,7 @@ const welcomeMessage: ChatMessage = {
 function App() {
   const [threadId, setThreadId] = useState("");
   const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [defaultRetrievalProfile, setDefaultRetrievalProfile] = useState<RetrievalProfile | null>(null);
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile | null>(null);
   const [apiStatus, setApiStatus] = useState("连接中");
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
@@ -36,9 +37,11 @@ function App() {
         loadConfig(),
         checkHealth(),
       ]);
+      const defaultProfile = configToProfile(newConfig);
       setThreadId(newThreadId);
       setConfig(newConfig);
-      setRetrievalProfile(configToProfile(newConfig));
+      setDefaultRetrievalProfile(defaultProfile);
+      setRetrievalProfile(defaultProfile);
       setApiStatus(healthy ? "可用" : "异常");
     } catch {
       setApiStatus("异常");
@@ -168,6 +171,7 @@ function App() {
       <Sidebar
         apiStatus={apiStatus}
         config={config}
+        defaultRetrievalProfile={defaultRetrievalProfile}
         pending={pending}
         retrievalProfile={retrievalProfile}
         threadId={threadId}
