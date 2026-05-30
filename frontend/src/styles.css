@@ -349,6 +349,7 @@ button {
 
 .status-lines,
 .citations,
+.tool-traces,
 .usage {
   margin-top: 10px;
   color: var(--muted);
@@ -369,6 +370,39 @@ button {
   background: #fff7ed;
   color: var(--warn);
   overflow-wrap: anywhere;
+}
+
+.tool-traces {
+  display: grid;
+  gap: 8px;
+}
+
+.tool-trace {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.tool-trace summary {
+  min-height: 34px;
+  padding: 8px 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tool-trace pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow: auto;
+  white-space: pre-wrap;
 }
 
 .composer {

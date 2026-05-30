@@ -28,6 +28,12 @@ export type RetrievalProfile = {
   max_context_chars: number;
 };
 
+export type ToolTrace = {
+  toolName?: string;
+  statusLine?: string;
+  content: string;
+};
+
 export type ChatResponse = {
   thread_id: string;
   answer: string;
@@ -43,6 +49,7 @@ export type ChatMessage = {
   content: string;
   statusLines?: string[];
   citations?: Citation[];
+  toolTraces?: ToolTrace[];
   usage?: Record<string, unknown> | null;
   elapsedMs?: number | null;
   error?: boolean;

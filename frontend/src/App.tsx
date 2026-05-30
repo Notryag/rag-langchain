@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { checkHealth, createThread, loadConfig, streamChat } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import Sidebar from "./components/Sidebar";
-import type { ChatMessage, Citation, PublicConfig, RetrievalProfile, StreamEvent } from "./types";
+import type { ChatMessage, Citation, PublicConfig, RetrievalProfile, StreamEvent, ToolTrace } from "./types";
 
 const welcomeMessage: ChatMessage = {
   id: "welcome",
@@ -75,6 +75,7 @@ function App() {
 
     const statusLines: string[] = [];
     const citations: Citation[] = [];
+    const toolTraces: ToolTrace[] = [];
     let answer = "";
     let failed = false;
 
@@ -84,7 +85,7 @@ function App() {
         retrievalProfile: retrievalProfile ?? undefined,
         threadId,
         onEvent: (eventData) => {
-          handleStreamEvent(eventData, assistantId, statusLines, citations, (nextAnswer) => {
+          handleStreamEvent(eventData, assistantId, statusLines, citations, toolTraces, (nextAnswer) => {
             answer = nextAnswer;
           });
         },
@@ -108,6 +109,7 @@ function App() {
     assistantId: string,
     statusLines: string[],
     citations: Citation[],
+    toolTraces: ToolTrace[],
     setAnswer: (answer: string) => void,
   ) {
     if (eventData.eventName === "answer") {
@@ -120,7 +122,18 @@ function App() {
     if (eventData.eventName === "tool_call" || eventData.eventName === "tool_result") {
       if (eventData.data.status_line) statusLines.push(eventData.data.status_line);
       if (eventData.data.citations?.length) citations.push(...eventData.data.citations);
-      updateAssistant(assistantId, { statusLines: [...statusLines], citations: [...citations] });
+      if (eventData.eventName === "tool_result" && eventData.data.content) {
+        toolTraces.push({
+          toolName: eventData.data.tool_name,
+          statusLine: eventData.data.status_line,
+          content: eventData.data.content,
+        });
+      }
+      updateAssistant(assistantId, {
+        statusLines: [...statusLines],
+        citations: [...citations],
+        toolTraces: [...toolTraces],
+      });
       return;
     }
 
@@ -131,6 +144,7 @@ function App() {
         content: eventData.data.answer,
         statusLines: eventData.data.status_lines,
         citations: eventData.data.citations,
+        toolTraces: [...toolTraces],
         usage: eventData.data.usage,
         elapsedMs: eventData.data.elapsed_ms,
       });

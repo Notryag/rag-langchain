@@ -19,6 +19,16 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             ))}
           </div>
         )}
+        {!!message.toolTraces?.length && (
+          <div className="tool-traces">
+            {message.toolTraces.map((trace, index) => (
+              <details className="tool-trace" key={`${trace.toolName || "tool"}-${index}`}>
+                <summary>{trace.toolName || trace.statusLine || "tool_result"}</summary>
+                <pre>{trace.content}</pre>
+              </details>
+            ))}
+          </div>
+        )}
         {(message.elapsedMs !== undefined || totalTokens !== undefined) && (
           <div className="usage">
             {message.elapsedMs !== undefined && message.elapsedMs !== null ? `${message.elapsedMs} ms` : ""}
