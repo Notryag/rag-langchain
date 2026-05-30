@@ -65,6 +65,7 @@ uv run python -m evaluation.evaluate_retrieval --search-type similarity --top-k 
 uv run python -m evaluation.evaluate_retrieval --search-type hybrid --top-k 3 --fetch-k 8 --reranker off on
 uv run python -m evaluation.evaluate_retrieval --source 扫地机器人100问2.txt
 uv run python -m evaluation.evaluate_retrieval --metadata-filter-json '{"source":"维护保养.txt"}'
+uv run python -m evaluation.evaluate_retrieval --limit 10 --manifest-output storage/exports/retrieval_eval_manifest.json
 uv run python -m evaluation.evaluate_hybrid_need --show-failures
 uv run python -m evaluation.evaluate_hybrid_search --show-changes
 ```

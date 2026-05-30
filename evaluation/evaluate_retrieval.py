@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from itertools import product
 from pathlib import Path
 from typing import Any
 
 from app.config.logging_setup import setup_logging
+from app.config.settings import settings
 from app.retrieval.filters import MetadataFilter, merge_metadata_filters, parse_metadata_filter_json
+from app.retrieval.profile import RetrievalProfile
 from app.retrieval.retriever import RetrievedChunk, retrieve_chunks
 from evaluation.dataset import DEFAULT_RETRIEVAL_EVAL_PATH, RetrievalEvalSample, load_retrieval_eval_samples
 
@@ -19,6 +23,16 @@ class RetrievalEvalConfig:
     fetch_k: int
     reranker_enabled: bool
     metadata_filter: MetadataFilter | None = None
+
+    @property
+    def profile(self) -> RetrievalProfile:
+        return RetrievalProfile(
+            search_type=self.search_type,
+            top_k=self.top_k,
+            fetch_k=self.fetch_k,
+            reranker_enabled=self.reranker_enabled,
+            max_context_chars=settings.retrieval_max_context_chars,
+        )
 
     @property
     def label(self) -> str:
@@ -76,10 +90,7 @@ def _match_keywords(sample: RetrievalEvalSample, chunks: list[RetrievedChunk]) -
 def evaluate_sample(sample: RetrievalEvalSample, config: RetrievalEvalConfig) -> RetrievalEvalResult:
     chunks = retrieve_chunks(
         sample.query,
-        top_k=config.top_k,
-        search_type=config.search_type,
-        fetch_k=config.fetch_k,
-        reranker_enabled=config.reranker_enabled,
+        profile=config.profile,
         metadata_filter=config.metadata_filter,
     )
     if not sample.score_retrieval:
@@ -174,6 +185,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--limit", type=int, default=None, help="Only evaluate the first N samples.")
     parser.add_argument("--show-passes", action="store_true", help="Print passing samples as well.")
+    parser.add_argument(
+        "--manifest-output",
+        default=None,
+        help="Optional path to write an eval run manifest JSON.",
+    )
     return parser.parse_args()
 
 
@@ -181,6 +197,41 @@ def _build_metadata_filter(args: argparse.Namespace) -> MetadataFilter | None:
     source_filter: dict[str, Any] | None = {"source": args.source} if args.source else None
     json_filter = parse_metadata_filter_json(args.metadata_filter_json)
     return merge_metadata_filters(source_filter, json_filter)
+
+
+def _write_manifest(
+    path: str | Path,
+    *,
+    args: argparse.Namespace,
+    configs: list[RetrievalEvalConfig],
+    summaries: list[dict[str, Any]],
+    sample_count: int,
+) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    created_at = datetime.now(UTC)
+    payload = {
+        "run_id": created_at.strftime("%Y%m%dT%H%M%SZ"),
+        "created_at": created_at.isoformat(),
+        "dataset": str(Path(args.dataset)),
+        "sample_count": sample_count,
+        "limit": args.limit,
+        "models": {
+            "chat_model": settings.chat_model,
+            "embedding_model": settings.embedding_model,
+        },
+        "configs": [
+            {
+                "label": config.label,
+                "profile": config.profile.to_dict(),
+                "metadata_filter": config.metadata_filter,
+                "summary": summary,
+            }
+            for config, summary in zip(configs, summaries, strict=True)
+        ],
+    }
+    with output_path.open("w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
 
 
 def main() -> None:
@@ -193,10 +244,12 @@ def main() -> None:
 
     metadata_filter = _build_metadata_filter(args)
     configs = _build_configs(args.search_type, args.top_k, args.fetch_k, args.reranker, metadata_filter)
+    summaries: list[dict[str, Any]] = []
     for config in configs:
         print(f"\n=== Retrieval Eval | {config.label} ===")
         results = [evaluate_sample(sample, config) for sample in samples]
         summary = _summarize(results)
+        summaries.append(summary)
         print(
             "summary total={total} scored={scored} skipped={skipped} "
             "source_hit={source_hit} source_hit_rate={source_hit_rate:.2%} "
@@ -207,6 +260,16 @@ def main() -> None:
             if result.passed and not args.show_passes:
                 continue
             _print_result(result)
+
+    if args.manifest_output:
+        _write_manifest(
+            args.manifest_output,
+            args=args,
+            configs=configs,
+            summaries=summaries,
+            sample_count=len(samples),
+        )
+        print(f"manifest_written={Path(args.manifest_output).as_posix()}")
 
 
 if __name__ == "__main__":

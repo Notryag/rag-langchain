@@ -4,6 +4,7 @@ from langchain_core.tools import tool
 
 from app.config.settings import settings
 from app.retrieval.formatter import format_retrieved_chunks
+from app.retrieval.profile import RetrievalProfile
 from app.retrieval.retriever import retrieve_chunks
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,11 @@ def retrieve_context(query: str, source: str | None = None) -> str:
         metadata_filter or {},
     )
     try:
-        chunks = retrieve_chunks(query, metadata_filter=metadata_filter)
+        profile = RetrievalProfile.from_settings()
+        chunks = retrieve_chunks(query, profile=profile, metadata_filter=metadata_filter)
         logger.info("工具执行完成：retrieve_context。hit_count=%s", len(chunks))
         logger.debug("检索到的文档详情：%s", [chunk.content for chunk in chunks])
-        return format_retrieved_chunks(chunks)
+        return format_retrieved_chunks(chunks, max_context_chars=profile.max_context_chars)
     except Exception:
         logger.exception("工具执行失败：retrieve_context")
         raise

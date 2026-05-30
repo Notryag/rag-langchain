@@ -6,17 +6,16 @@ from typing import Any
 
 from langchain_core.documents import Document
 
-from app.config.settings import settings
 from app.retrieval.filters import MetadataFilter, normalize_metadata_filter
 from app.retrieval.hybrid import hybrid_search_documents
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
+from app.retrieval.profile import RetrievalProfile
 from app.retrieval.vectorstore import get_vector_store
 
 logger = logging.getLogger(__name__)
 
 _QUERY_PREVIEW_WIDTH = 120
-_SUPPORTED_SEARCH_TYPES = {"similarity", "mmr", "hybrid"}
 
 
 @dataclass(frozen=True)
@@ -41,13 +40,6 @@ class RetrievedChunk:
             chunk_index=normalize_chunk_index(metadata.get("chunk_index")),
             metadata=metadata,
         )
-
-
-def _normalize_search_type(search_type: str | None) -> str:
-    normalized = (search_type or settings.retrieval_search_type).lower()
-    if normalized not in _SUPPORTED_SEARCH_TYPES:
-        raise ValueError(f"Unsupported retrieval search type: {normalized}")
-    return normalized
 
 
 def _search_documents(
@@ -90,42 +82,45 @@ def _search_documents(
 def retrieve_chunks(
     query: str,
     *,
+    profile: RetrievalProfile | None = None,
     top_k: int | None = None,
     search_type: str | None = None,
     fetch_k: int | None = None,
     reranker_enabled: bool | None = None,
     metadata_filter: MetadataFilter | None = None,
 ) -> list[RetrievedChunk]:
-    resolved_top_k = top_k or settings.top_k
-    resolved_search_type = _normalize_search_type(search_type)
-    resolved_fetch_k = max(fetch_k or settings.retrieval_fetch_k, resolved_top_k)
-    resolved_reranker_enabled = settings.reranker_enabled if reranker_enabled is None else reranker_enabled
+    resolved_profile = (profile or RetrievalProfile.from_settings()).with_overrides(
+        top_k=top_k,
+        search_type=search_type,
+        fetch_k=fetch_k,
+        reranker_enabled=reranker_enabled,
+    )
     resolved_metadata_filter = normalize_metadata_filter(metadata_filter)
 
     logger.info(
         "执行检索。search_type=%s top_k=%s fetch_k=%s reranker_enabled=%s metadata_filter=%s query_preview=%s",
-        resolved_search_type,
-        resolved_top_k,
-        resolved_fetch_k,
-        resolved_reranker_enabled,
+        resolved_profile.search_type,
+        resolved_profile.top_k,
+        resolved_profile.fetch_k,
+        resolved_profile.reranker_enabled,
         resolved_metadata_filter or {},
         single_line_preview(query, width=_QUERY_PREVIEW_WIDTH),
     )
 
     docs = _search_documents(
         query,
-        top_k=resolved_top_k,
-        search_type=resolved_search_type,
-        fetch_k=resolved_fetch_k,
-        reranker_enabled=resolved_reranker_enabled,
+        top_k=resolved_profile.top_k,
+        search_type=resolved_profile.search_type,
+        fetch_k=resolved_profile.fetch_k,
+        reranker_enabled=resolved_profile.reranker_enabled,
         metadata_filter=resolved_metadata_filter,
     )
 
     chunks = [RetrievedChunk.from_document(doc, rank=index) for index, doc in enumerate(docs, start=1)]
     logger.info(
         "检索完成。search_type=%s reranker_enabled=%s metadata_filter=%s hit_count=%s",
-        resolved_search_type,
-        resolved_reranker_enabled,
+        resolved_profile.search_type,
+        resolved_profile.reranker_enabled,
         resolved_metadata_filter or {},
         len(chunks),
     )

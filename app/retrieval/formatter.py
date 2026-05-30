@@ -79,11 +79,11 @@ def _format_chunk_with_budget(chunk: RetrievedChunk, *, remaining_chars: int) ->
     return f"{header}{content}"
 
 
-def format_retrieved_chunks(chunks: list[RetrievedChunk]) -> str:
+def format_retrieved_chunks(chunks: list[RetrievedChunk], *, max_context_chars: int | None = None) -> str:
     if not chunks:
         return "No relevant context found."
 
-    max_context_chars = settings.retrieval_max_context_chars
+    resolved_max_context_chars = max_context_chars or settings.retrieval_max_context_chars
     unique_chunks, deduped_count = _dedupe_chunks(chunks)
 
     formatted_chunks: list[str] = []
@@ -92,7 +92,7 @@ def format_retrieved_chunks(chunks: list[RetrievedChunk]) -> str:
 
     for chunk in unique_chunks:
         separator = "\n\n" if formatted_chunks else ""
-        remaining_chars = max_context_chars - consumed_chars - len(separator)
+        remaining_chars = resolved_max_context_chars - consumed_chars - len(separator)
         if remaining_chars <= 0:
             truncated_count += 1
             continue

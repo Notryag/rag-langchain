@@ -63,6 +63,10 @@
 - 引入 `RetrievalProfile`（top_k/search_type/fetch_k/max_chars）。
 - `rag_service.ask/stream` 支持传入 profile，默认再回落到 settings。
 
+进展：
+- 已新增 `app/retrieval/profile.py`，retriever、retrieve_context tool 与 retrieval eval 已开始使用统一 profile。
+- retrieval eval 支持通过 `--manifest-output` 输出 run manifest，记录模型、profile、metadata filter 与 summary。
+
 ### 4) 依赖方向可进一步收紧（中优先级）
 
 现状：目前 `services` 直接理解底层 stream 事件细节并做拼装。
