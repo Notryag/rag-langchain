@@ -48,6 +48,12 @@ uv run python -m <module>
 
 ## 常用评测命令
 
+### API smoke tests
+
+```powershell
+uv run python -m unittest tests.test_api
+```
+
 ### 检索评测
 
 ```powershell
