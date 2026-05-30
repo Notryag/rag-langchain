@@ -18,6 +18,16 @@ export type PublicConfig = {
   collection_name: string;
 };
 
+export type SearchType = "similarity" | "mmr" | "hybrid";
+
+export type RetrievalProfile = {
+  search_type: SearchType;
+  top_k: number;
+  fetch_k: number;
+  reranker_enabled: boolean;
+  max_context_chars: number;
+};
+
 export type ChatResponse = {
   thread_id: string;
   answer: string;

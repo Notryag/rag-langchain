@@ -1,17 +1,28 @@
 import { Bot, PanelLeft, Plus } from "lucide-react";
 import { useMemo } from "react";
 
-import type { PublicConfig } from "../types";
+import type { PublicConfig, RetrievalProfile } from "../types";
+import RetrievalSettings from "./RetrievalSettings";
 
 type SidebarProps = {
   apiStatus: string;
   config: PublicConfig | null;
   pending: boolean;
+  retrievalProfile: RetrievalProfile | null;
   threadId: string;
+  onRetrievalProfileChange: (profile: RetrievalProfile) => void;
   onResetThread: () => void;
 };
 
-function Sidebar({ apiStatus, config, pending, threadId, onResetThread }: SidebarProps) {
+function Sidebar({
+  apiStatus,
+  config,
+  pending,
+  retrievalProfile,
+  threadId,
+  onRetrievalProfileChange,
+  onResetThread,
+}: SidebarProps) {
   const configRows = useMemo(() => {
     if (!config) return [["模型", "-"]];
     return [
@@ -62,6 +73,12 @@ function Sidebar({ apiStatus, config, pending, threadId, onResetThread }: Sideba
           ))}
         </dl>
       </section>
+
+      <RetrievalSettings
+        disabled={pending}
+        profile={retrievalProfile}
+        onChange={onRetrievalProfileChange}
+      />
     </aside>
   );
 }

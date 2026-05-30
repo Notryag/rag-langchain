@@ -34,6 +34,8 @@ body {
 }
 
 button,
+input,
+select,
 textarea {
   font: inherit;
 }
@@ -166,6 +168,75 @@ button {
   color: #ffffff;
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.panel-note {
+  margin: 0;
+  color: #b8c4d3;
+  font-size: 13px;
+}
+
+.field-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.field,
+.toggle-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field span,
+.toggle-field span {
+  color: #9fb0c4;
+  font-size: 12px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  padding: 0 10px;
+  outline: none;
+}
+
+.field select option {
+  color: #17202a;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #9ef0d7;
+  box-shadow: 0 0 0 3px rgba(158, 240, 215, 0.12);
+}
+
+.toggle-field {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.toggle-field input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.field-error {
+  margin: 0;
+  color: #fecaca;
+  font-size: 12px;
 }
 
 .tone-ok {
@@ -338,6 +409,8 @@ textarea:focus {
 .send-button:disabled,
 .secondary-button:disabled,
 .icon-button:disabled,
+input:disabled,
+select:disabled,
 textarea:disabled {
   cursor: not-allowed;
   opacity: 0.55;

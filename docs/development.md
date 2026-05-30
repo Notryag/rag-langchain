@@ -174,6 +174,8 @@ VITE_API_BASE_URL=https://your-api.example.com
 
 不传时使用 `.env` / `settings` 中的默认检索配置。
 
+React Web 控制台侧栏提供对应的检索设置面板，发送消息时会随请求带上当前 profile。
+
 ## 注意事项
 
 - `evaluate_retrieval` 依赖本地向量库和 embedding 检索链路。

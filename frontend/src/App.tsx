@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { checkHealth, createThread, loadConfig, streamChat } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import Sidebar from "./components/Sidebar";
-import type { ChatMessage, Citation, PublicConfig, StreamEvent } from "./types";
+import type { ChatMessage, Citation, PublicConfig, RetrievalProfile, StreamEvent } from "./types";
 
 const welcomeMessage: ChatMessage = {
   id: "welcome",
@@ -14,6 +14,7 @@ const welcomeMessage: ChatMessage = {
 function App() {
   const [threadId, setThreadId] = useState("");
   const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile | null>(null);
   const [apiStatus, setApiStatus] = useState("连接中");
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState("");
@@ -37,6 +38,7 @@ function App() {
       ]);
       setThreadId(newThreadId);
       setConfig(newConfig);
+      setRetrievalProfile(configToProfile(newConfig));
       setApiStatus(healthy ? "可用" : "异常");
     } catch {
       setApiStatus("异常");
@@ -79,6 +81,7 @@ function App() {
     try {
       await streamChat({
         message: text,
+        retrievalProfile: retrievalProfile ?? undefined,
         threadId,
         onEvent: (eventData) => {
           handleStreamEvent(eventData, assistantId, statusLines, citations, (nextAnswer) => {
@@ -151,7 +154,9 @@ function App() {
         apiStatus={apiStatus}
         config={config}
         pending={pending}
+        retrievalProfile={retrievalProfile}
         threadId={threadId}
+        onRetrievalProfileChange={setRetrievalProfile}
         onResetThread={resetThread}
       />
       <ChatPanel
@@ -165,6 +170,16 @@ function App() {
       />
     </main>
   );
+}
+
+function configToProfile(config: PublicConfig): RetrievalProfile {
+  return {
+    search_type: config.retrieval_search_type as RetrievalProfile["search_type"],
+    top_k: config.top_k,
+    fetch_k: config.retrieval_fetch_k,
+    reranker_enabled: config.reranker_enabled,
+    max_context_chars: config.retrieval_max_context_chars,
+  };
 }
 
 export default App;

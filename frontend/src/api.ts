@@ -1,4 +1,4 @@
-import type { PublicConfig, StreamEvent } from "./types";
+import type { PublicConfig, RetrievalProfile, StreamEvent } from "./types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
@@ -38,16 +38,19 @@ export async function createThread(): Promise<string> {
 
 export async function streamChat({
   message,
+  retrievalProfile,
   threadId,
   onEvent,
 }: {
   message: string;
+  retrievalProfile?: RetrievalProfile;
   threadId: string;
   onEvent: (event: StreamEvent) => void;
 }) {
   const response = await postJson("/api/chat/stream", {
     message,
     thread_id: threadId,
+    retrieval_profile: retrievalProfile,
   });
 
   const reader = response.body?.getReader();
