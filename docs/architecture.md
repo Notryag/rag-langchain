@@ -7,7 +7,7 @@
 当前主链路建议按下面的方式理解:
 
 ```text
-CLI / Streamlit / Eval
+CLI / Streamlit / FastAPI API / Eval
         |
     services/
         |
@@ -20,6 +20,8 @@ CLI / Streamlit / Eval
 核心原则:
 
 - UI 层只负责交互和展示，不负责拼业务流程。
+- `frontend/` 只负责 React 页面状态与展示，所有问答能力通过 FastAPI API 进入 service。
+- `app/api/` 只负责 HTTP 协议、SSE 流式输出和响应序列化，不承载 RAG 业务判断。
 - `services/` 负责编排一次问答的输入、流式事件、结果聚合。
 - `agent/` 负责模型装配、prompt 策略、middleware。
 - `tools/` 负责把底层能力暴露给 agent 调用。
@@ -95,7 +97,7 @@ agent 不应该负责:
 
 - 直接执行向量检索细节
 - 直接管理向量库初始化和缓存
-- 直接处理 CLI / Streamlit 的展示事件
+- 直接处理 CLI / Streamlit / FastAPI / React 的展示事件
 
 ## Service 与 UI 边界
 
@@ -107,11 +109,14 @@ agent 不应该负责:
 - 聚合底层流事件
 - 提供统一的 `ask` / `stream` 输出结构
 
-CLI、Streamlit、evaluation 只消费这些结果，不再自己理解底层 agent 协议。
+CLI、Streamlit、FastAPI API、React 前端和 evaluation 只消费这些结果，不再自己理解底层 agent 协议。
 
 ## 当前文件映射
 
 - `app/main.py`: 统一入口
+- `app/api/main.py`: FastAPI 应用装配与 React 构建产物托管
+- `app/api/routes.py`: HTTP API 路由、SSE 输出与响应序列化
+- `frontend/`: React + Vite + TypeScript 前端
 - `app/services/rag_service.py`: 主链路编排
 - `app/agent/create_agent.py`: agent 装配入口
 - `app/agent/prompts.py`: 静态 prompt
@@ -133,4 +138,4 @@ CLI、Streamlit、evaluation 只消费这些结果，不再自己理解底层 ag
 - 新增业务能力优先落到 `services/`
 - 新增检索能力优先落到 `retrieval/`
 - 新增 agent 行为优先通过 prompt / middleware / tool 装配实现
-- 不要把业务判断重新散回 CLI、Streamlit 或单个 tool
+- 不要把业务判断重新散回 CLI、Streamlit、FastAPI、React 或单个 tool

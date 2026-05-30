@@ -13,6 +13,7 @@
 - Agent 构建与流式对话
 - CLI 交互
 - Streamlit 演示界面
+- FastAPI API 与 React Web 控制台
 
 这意味着项目当前的主要问题已经不是“能不能跑起来”，而是“怎么稳定变好、怎么长期维护”。
 
@@ -27,7 +28,9 @@
 - `app/agent/create_agent.py`: Agent 构建入口
 - `app/services/chat_client.py`: 聊天请求与流式事件编排
 - `app/cli/main.py`: 命令行交互入口
-- `app/streamlit_app.py`: Web 端演示界面
+- `app/streamlit_app.py`: Streamlit 演示界面
+- `app/api/`: FastAPI API 与 React 构建产物托管
+- `frontend/`: React + Vite + TypeScript Web 控制台
 - `evaluation/`: 顶层离线评测与 trace 工具目录
 
 ## 当前优点
