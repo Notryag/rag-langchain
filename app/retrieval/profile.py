@@ -43,6 +43,17 @@ class RetrievalProfile:
             max_context_chars=settings.retrieval_max_context_chars,
         )
 
+    @classmethod
+    def from_mapping(cls, payload: dict[str, Any]) -> "RetrievalProfile":
+        base = cls.from_settings()
+        return base.with_overrides(
+            search_type=payload.get("search_type"),
+            top_k=payload.get("top_k"),
+            fetch_k=payload.get("fetch_k"),
+            reranker_enabled=payload.get("reranker_enabled"),
+            max_context_chars=payload.get("max_context_chars"),
+        )
+
     def with_overrides(
         self,
         *,

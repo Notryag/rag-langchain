@@ -43,9 +43,10 @@ class ApiSmokeTests(unittest.TestCase):
 
     def test_chat_stream_sse_contract(self) -> None:
         class FakeRagService:
-            def stream(self, user_input: str, *, thread_id: str | None = None):
+            def stream(self, user_input: str, *, thread_id: str | None = None, retrieval_profile=None):
                 self.last_user_input = user_input
                 self.last_thread_id = thread_id
+                self.last_retrieval_profile = retrieval_profile
                 yield RagStreamEvent(
                     type="tool_call",
                     tool_name="retrieve_context",
@@ -64,7 +65,17 @@ class ApiSmokeTests(unittest.TestCase):
         try:
             response = self.client.post(
                 "/api/chat/stream",
-                json={"message": "  测试问题  ", "thread_id": "web_test"},
+                json={
+                    "message": "  测试问题  ",
+                    "thread_id": "web_test",
+                    "retrieval_profile": {
+                        "search_type": "mmr",
+                        "top_k": 4,
+                        "fetch_k": 10,
+                        "reranker_enabled": True,
+                        "max_context_chars": 1200,
+                    },
+                },
             )
         finally:
             routes.get_rag_service = original_get_rag_service
@@ -76,6 +87,23 @@ class ApiSmokeTests(unittest.TestCase):
         self.assertIn('"thread_id": "web_test"', response.text)
         self.assertEqual(fake_service.last_user_input, "测试问题")
         self.assertEqual(fake_service.last_thread_id, "web_test")
+        self.assertEqual(fake_service.last_retrieval_profile.search_type, "mmr")
+        self.assertEqual(fake_service.last_retrieval_profile.top_k, 4)
+
+    def test_chat_rejects_invalid_retrieval_profile(self) -> None:
+        response = self.client.post(
+            "/api/chat/stream",
+            json={
+                "message": "测试问题",
+                "retrieval_profile": {
+                    "search_type": "unknown",
+                    "top_k": 3,
+                    "fetch_k": 8,
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
 
 
 if __name__ == "__main__":

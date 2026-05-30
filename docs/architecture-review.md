@@ -65,6 +65,7 @@
 
 进展：
 - 已新增 `app/retrieval/profile.py`，retriever、retrieve_context tool 与 retrieval eval 已开始使用统一 profile。
+- FastAPI `ChatRequest` 已支持可选 `retrieval_profile`，并通过 LangChain `ToolRuntime` 传递到 `retrieve_context`。
 - retrieval eval 支持通过 `--manifest-output` 输出 run manifest，记录模型、profile、metadata filter 与 summary。
 
 ### 4) 依赖方向可进一步收紧（中优先级）

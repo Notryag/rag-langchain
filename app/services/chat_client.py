@@ -11,6 +11,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 
 from app.agent.create_agent import build_agent
 from app.retrieval.citations import extract_citations_from_text
+from app.retrieval.profile import RetrievalProfile
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +41,15 @@ def new_thread_id(prefix: str = "chat") -> str:
     return f"{prefix}_{uuid4().hex}"
 
 
-def _build_request_config(thread_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def _build_request_config(
+    thread_id: str,
+    *,
+    retrieval_profile: RetrievalProfile | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     config = {"configurable": {"thread_id": thread_id}}
-    context = {"thread_id": thread_id}
+    context: dict[str, Any] = {"thread_id": thread_id}
+    if retrieval_profile is not None:
+        context["retrieval_profile"] = retrieval_profile.to_dict()
     return config, context
 
 
@@ -100,11 +107,17 @@ class AgentChatClient:
     def agent(self):
         return self._agent
 
-    def ask(self, user_input: str, thread_id: str) -> ChatResult:
+    def ask(
+        self,
+        user_input: str,
+        thread_id: str,
+        *,
+        retrieval_profile: RetrievalProfile | None = None,
+    ) -> ChatResult:
         user_input = _normalize_user_input(user_input)
         logger.info("收到聊天请求。thread_id=%s chars=%s", thread_id, len(user_input))
         started_at = time.perf_counter()
-        config, context = _build_request_config(thread_id)
+        config, context = _build_request_config(thread_id, retrieval_profile=retrieval_profile)
         result = self._agent.invoke(
             {"messages": [{"role": "user", "content": user_input}]},
             config=config,
@@ -165,6 +178,7 @@ class AgentChatClient:
         message: str,
         *,
         thread_id: str | None = None,
+        retrieval_profile: RetrievalProfile | None = None,
         **kwargs,
     ) -> Generator[StreamEvent, None, None]:
         """Stream a conversation turn, yielding events incrementally.
@@ -185,7 +199,7 @@ class AgentChatClient:
         logger.info("开始流式聊天。thread_id=%s chars=%s", thread_id, len(message))
 
         state: dict[str, Any] = {"messages": [HumanMessage(content=message)]}
-        config, context = _build_request_config(thread_id)
+        config, context = _build_request_config(thread_id, retrieval_profile=retrieval_profile)
 
         seen_ids = self._get_existing_message_ids(config)
         seen_tool_calls: set[str] = set()

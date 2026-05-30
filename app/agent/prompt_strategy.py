@@ -4,7 +4,7 @@ from typing import Any
 
 from langchain.agents.middleware import ModelRequest
 
-from app.config.settings import settings
+from app.retrieval.profile import RetrievalProfile
 
 
 def _message_type(message: Any) -> str | None:
@@ -24,12 +24,22 @@ def _resolve_thread_id(request: ModelRequest) -> str:
     return "unknown"
 
 
+def _resolve_retrieval_profile(request: ModelRequest) -> RetrievalProfile:
+    runtime = getattr(request, "runtime", None)
+    context = getattr(runtime, "context", None) or {}
+    payload = context.get("retrieval_profile")
+    if isinstance(payload, dict):
+        return RetrievalProfile.from_mapping(payload)
+    return RetrievalProfile.from_settings()
+
+
 def build_runtime_prompt(request: ModelRequest) -> str:
     messages = list(request.state.get("messages", []))
     user_turns = _count_messages(messages, "human")
     tool_messages = _count_messages(messages, "tool")
     prior_turns = max(user_turns - 1, 0)
     conversation_mode = "follow_up" if prior_turns > 0 else "first_turn"
+    profile = _resolve_retrieval_profile(request)
 
     return (
         "Runtime context:\n"
@@ -37,9 +47,11 @@ def build_runtime_prompt(request: ModelRequest) -> str:
         f"- conversation_mode: {conversation_mode}\n"
         f"- prior_user_turns: {prior_turns}\n"
         f"- observed_tool_messages: {tool_messages}\n"
-        f"- retrieval_search_type: {settings.retrieval_search_type}\n"
-        f"- retrieval_top_k: {settings.top_k}\n"
-        f"- retrieval_fetch_k: {settings.retrieval_fetch_k}\n"
+        f"- retrieval_search_type: {profile.search_type}\n"
+        f"- retrieval_top_k: {profile.top_k}\n"
+        f"- retrieval_fetch_k: {profile.fetch_k}\n"
+        f"- retrieval_reranker_enabled: {profile.reranker_enabled}\n"
+        f"- retrieval_max_context_chars: {profile.max_context_chars}\n"
         "Prompt strategy:\n"
         "- Treat the retrieve_context tool as the only path to knowledge-base facts.\n"
         "- If the user explicitly asks about a known source file, pass that exact source to retrieve_context.\n"

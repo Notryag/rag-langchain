@@ -98,6 +98,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         response = get_rag_service().ask(
             request.message.strip(),
             thread_id=request.thread_id,
+            retrieval_profile=request.retrieval_profile.to_profile() if request.retrieval_profile else None,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -111,6 +112,7 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
             for event in get_rag_service().stream(
                 request.message.strip(),
                 thread_id=request.thread_id,
+                retrieval_profile=request.retrieval_profile.to_profile() if request.retrieval_profile else None,
             ):
                 serialized = _serialize_stream_event(event)
                 if serialized is None:

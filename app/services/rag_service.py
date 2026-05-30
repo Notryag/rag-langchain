@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import Any, Generator
 
 from app.retrieval.citations import Citation, citation_key
+from app.retrieval.profile import RetrievalProfile
 from app.services.chat_client import get_chat_client, new_thread_id
 from app.services.rag_types import RagResponse, RagStreamEvent
 
@@ -17,9 +18,19 @@ class RagService:
     def agent(self):
         return self._client.agent
 
-    def ask(self, user_input: str, *, thread_id: str | None = None) -> RagResponse:
+    def ask(
+        self,
+        user_input: str,
+        *,
+        thread_id: str | None = None,
+        retrieval_profile: RetrievalProfile | None = None,
+    ) -> RagResponse:
         resolved_thread_id = thread_id or new_thread_id()
-        result = self._client.ask(user_input, resolved_thread_id)
+        result = self._client.ask(
+            user_input,
+            resolved_thread_id,
+            retrieval_profile=retrieval_profile,
+        )
         return RagResponse(
             thread_id=resolved_thread_id,
             answer=result.answer,
@@ -32,6 +43,7 @@ class RagService:
         user_input: str,
         *,
         thread_id: str | None = None,
+        retrieval_profile: RetrievalProfile | None = None,
     ) -> Generator[RagStreamEvent, None, None]:
         resolved_thread_id = thread_id or new_thread_id()
         started_at = time.perf_counter()
@@ -42,7 +54,11 @@ class RagService:
         seen_citations: set[tuple[Any, ...]] = set()
         usage: dict[str, Any] | None = None
 
-        for event in self._client.stream(user_input, thread_id=resolved_thread_id):
+        for event in self._client.stream(
+            user_input,
+            thread_id=resolved_thread_id,
+            retrieval_profile=retrieval_profile,
+        ):
             if event.type == "messages-tuple":
                 event_type = event.data.get("type")
                 if event_type == "ai":

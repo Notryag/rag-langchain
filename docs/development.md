@@ -154,6 +154,26 @@ VITE_API_BASE_URL=https://your-api.example.com
 
 本地开发不需要设置该变量，Vite 会继续代理 `/api` 到 `http://127.0.0.1:8000`。
 
+## API 检索参数
+
+`POST /api/chat` 与 `POST /api/chat/stream` 支持可选 `retrieval_profile`，用于单次请求覆盖默认检索策略:
+
+```json
+{
+  "message": "扫地机器人连不上 WiFi 怎么办？",
+  "thread_id": "web_xxx",
+  "retrieval_profile": {
+    "search_type": "mmr",
+    "top_k": 4,
+    "fetch_k": 10,
+    "reranker_enabled": true,
+    "max_context_chars": 3000
+  }
+}
+```
+
+不传时使用 `.env` / `settings` 中的默认检索配置。
+
 ## 注意事项
 
 - `evaluate_retrieval` 依赖本地向量库和 embedding 检索链路。

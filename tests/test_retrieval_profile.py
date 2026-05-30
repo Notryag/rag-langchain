@@ -5,6 +5,7 @@ import unittest
 from app.retrieval.formatter import format_retrieved_chunks
 from app.retrieval.profile import RetrievalProfile
 from app.retrieval.retriever import RetrievedChunk
+from app.tools.retrieve_context import _profile_from_runtime
 
 
 class RetrievalProfileTests(unittest.TestCase):
@@ -57,6 +58,26 @@ class RetrievalProfileTests(unittest.TestCase):
 
         self.assertLessEqual(len(formatted), 140)
         self.assertIn("source=source.txt", formatted)
+
+    def test_tool_profile_uses_runtime_context(self) -> None:
+        class Runtime:
+            context = {
+                "retrieval_profile": {
+                    "search_type": "hybrid",
+                    "top_k": 2,
+                    "fetch_k": 6,
+                    "reranker_enabled": True,
+                    "max_context_chars": 900,
+                }
+            }
+
+        profile = _profile_from_runtime(Runtime())
+
+        self.assertEqual(profile.search_type, "hybrid")
+        self.assertEqual(profile.top_k, 2)
+        self.assertEqual(profile.fetch_k, 6)
+        self.assertTrue(profile.reranker_enabled)
+        self.assertEqual(profile.max_context_chars, 900)
 
 
 if __name__ == "__main__":
