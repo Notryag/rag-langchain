@@ -1,7 +1,8 @@
-import { Bot, PanelLeft, Plus, RotateCcw, Send, Trash2 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { checkHealth, createThread, loadConfig, streamChat } from "./api";
+import ChatPanel from "./components/ChatPanel";
+import Sidebar from "./components/Sidebar";
 import type { ChatMessage, Citation, PublicConfig, StreamEvent } from "./types";
 
 const welcomeMessage: ChatMessage = {
@@ -26,20 +27,6 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
-
-  const configRows = useMemo(() => {
-    if (!config) return [["模型", "-"]];
-    return [
-      ["模型", config.chat_model],
-      ["Embedding", config.embedding_model],
-      ["集合", config.collection_name],
-      ["检索", config.retrieval_search_type],
-      ["Top K", String(config.top_k)],
-      ["Fetch K", String(config.retrieval_fetch_k)],
-      ["Reranker", config.reranker_enabled ? "on" : "off"],
-      ["Context", `${config.retrieval_max_context_chars} chars`],
-    ];
-  }, [config]);
 
   async function boot() {
     try {
@@ -160,123 +147,23 @@ function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar" aria-label="控制台信息">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <Bot size={24} />
-          </span>
-          <div>
-            <h1>LangChain RAG</h1>
-            <p>本地知识库问答</p>
-          </div>
-        </div>
-
-        <section className="panel">
-          <div className="panel-head">
-            <h2>会话</h2>
-            <button className="icon-button" onClick={resetThread} disabled={pending} title="新建会话">
-              <Plus size={18} />
-            </button>
-          </div>
-          <dl className="meta-list">
-            <MetaRow label="线程" value={threadId || "-"} />
-            <MetaRow label="状态" value={apiStatus} tone={apiStatus === "可用" ? "ok" : "bad"} />
-          </dl>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head">
-            <h2>检索配置</h2>
-            <PanelLeft size={16} aria-hidden="true" />
-          </div>
-          <dl className="meta-list">
-            {configRows.map(([label, value]) => (
-              <MetaRow key={label} label={label} value={value} />
-            ))}
-          </dl>
-        </section>
-      </aside>
-
-      <section className="chat-surface" aria-label="聊天">
-        <header className="chat-header">
-          <div>
-            <p className="eyebrow">RAG Chat</p>
-            <h2>扫地机器人知识助手</h2>
-          </div>
-          <button className="secondary-button" onClick={clearMessages} disabled={pending}>
-            <Trash2 size={16} />
-            清空
-          </button>
-        </header>
-
-        <div className="messages" aria-live="polite">
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <form className="composer" onSubmit={submitMessage}>
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
-              }
-            }}
-            rows={2}
-            placeholder="输入问题，例如：扫地机器人连不上 WiFi 怎么办？"
-            disabled={pending}
-            required
-          />
-          <button className="send-button" disabled={pending || !input.trim()} title="发送">
-            {pending ? <RotateCcw size={20} className="spin" /> : <Send size={20} />}
-          </button>
-        </form>
-      </section>
+      <Sidebar
+        apiStatus={apiStatus}
+        config={config}
+        pending={pending}
+        threadId={threadId}
+        onResetThread={resetThread}
+      />
+      <ChatPanel
+        input={input}
+        messages={messages}
+        messagesEndRef={messagesEndRef}
+        pending={pending}
+        onClear={clearMessages}
+        onInputChange={setInput}
+        onSubmit={submitMessage}
+      />
     </main>
-  );
-}
-
-function MetaRow({ label, value, tone }: { label: string; value: string; tone?: "ok" | "bad" }) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd className={tone ? `tone-${tone}` : undefined}>{value}</dd>
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: ChatMessage }) {
-  const totalTokens = message.usage?.total_tokens;
-  return (
-    <article className={`message ${message.role}`}>
-      <div className="avatar" aria-hidden="true">
-        {message.role === "user" ? "你" : "AI"}
-      </div>
-      <div className={`bubble ${message.error ? "error" : ""}`}>
-        <p>{message.content}</p>
-        {!!message.statusLines?.length && <div className="status-lines">{message.statusLines.join(" | ")}</div>}
-        {!!message.citations?.length && (
-          <div className="citations">
-            {message.citations.map((citation, index) => (
-              <span className="citation" key={`${citation.label || citation.source}-${index}`}>
-                {citation.label || citation.source || "引用"}
-              </span>
-            ))}
-          </div>
-        )}
-        {(message.elapsedMs !== undefined || totalTokens !== undefined) && (
-          <div className="usage">
-            {message.elapsedMs !== undefined && message.elapsedMs !== null ? `${message.elapsedMs} ms` : ""}
-            {message.elapsedMs !== undefined && totalTokens !== undefined ? " | " : ""}
-            {totalTokens !== undefined ? `tokens=${String(totalTokens)}` : ""}
-          </div>
-        )}
-      </div>
-    </article>
   );
 }
 
