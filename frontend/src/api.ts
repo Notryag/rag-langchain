@@ -1,7 +1,13 @@
 import type { PublicConfig, StreamEvent } from "./types";
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+function apiUrl(path: string) {
+  return `${apiBaseUrl}${path}`;
+}
+
 async function postJson(url: string, body: unknown = {}) {
-  const response = await fetch(url, {
+  const response = await fetch(apiUrl(url), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -14,12 +20,12 @@ async function postJson(url: string, body: unknown = {}) {
 }
 
 export async function checkHealth() {
-  const response = await fetch("/api/health");
+  const response = await fetch(apiUrl("/api/health"));
   return response.ok;
 }
 
 export async function loadConfig(): Promise<PublicConfig> {
-  const response = await fetch("/api/config");
+  const response = await fetch(apiUrl("/api/config"));
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }

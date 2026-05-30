@@ -77,6 +77,12 @@ npm run dev
 
 开发服务默认打开 `http://127.0.0.1:5173`，并代理 `/api` 到 FastAPI。
 
+GitHub Pages 预览:
+
+- 推送到 `master`/`main` 后，`.github/workflows/frontend-pages.yml` 会构建并发布 `frontend/`。
+- Pages 只托管 React 静态页面；完整问答需要单独部署 FastAPI。
+- 如果已有公开 API 地址，可在 GitHub 仓库变量中设置 `VITE_API_BASE_URL`。
+
 ## 常用命令
 
 ```bash

@@ -141,6 +141,18 @@ npm run build
 
 构建产物位于 `frontend/dist/`。当该目录存在时，FastAPI Web 入口会优先托管 React 构建产物。
 
+## GitHub Pages 预览
+
+仓库内置 `.github/workflows/frontend-pages.yml`，推送到 `master` 或 `main` 后会构建 `frontend/` 并发布到 GitHub Pages。
+
+Pages 只适合预览 React 静态界面。完整 RAG 问答需要 FastAPI 后端运行在可访问的服务上。如果已经部署了后端，可在 GitHub 仓库变量中设置:
+
+```text
+VITE_API_BASE_URL=https://your-api.example.com
+```
+
+本地开发不需要设置该变量，Vite 会继续代理 `/api` 到 `http://127.0.0.1:8000`。
+
 ## 注意事项
 
 - `evaluate_retrieval` 依赖本地向量库和 embedding 检索链路。
