@@ -18,6 +18,10 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
 # Local vector store data
 storage/chroma/
 storage/exports/

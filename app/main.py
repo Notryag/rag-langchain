@@ -9,6 +9,7 @@ from app.retrieval.ingest import ingest_documents
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STREAMLIT_ENTRY = PROJECT_ROOT / "streamlit_app.py"
+API_APP = "app.api.main:app"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional Streamlit server address override.",
     )
 
+    web_parser = subparsers.add_parser("web", help="Start the FastAPI web UI and API.")
+    web_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="FastAPI server host.",
+    )
+    web_parser.add_argument(
+        "--port",
+        default="8000",
+        help="FastAPI server port.",
+    )
+    web_parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable uvicorn reload for local development.",
+    )
+
     return parser
 
 
@@ -68,6 +86,23 @@ def _run_streamlit(*, server_port: str | None, server_address: str | None) -> in
     return completed.returncode
 
 
+def _run_web(*, host: str, port: str, reload: bool) -> int:
+    command = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        API_APP,
+        "--host",
+        host,
+        "--port",
+        port,
+    ]
+    if reload:
+        command.append("--reload")
+    completed = subprocess.run(command, check=False)
+    return completed.returncode
+
+
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
@@ -80,6 +115,12 @@ def main() -> int:
         return _run_streamlit(
             server_port=args.server_port,
             server_address=args.server_address,
+        )
+    if args.command == "web":
+        return _run_web(
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
         )
 
     parser.error(f"Unsupported command: {args.command}")

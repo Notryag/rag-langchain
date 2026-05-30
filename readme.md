@@ -7,7 +7,7 @@
 - 把本地文档（TXT/MD/PDF/DOCX/HTML）切分并写入 Chroma 向量库
 - 用 Agent + Tool 进行检索增强问答（RAG）
 - 在回答中输出引用来源
-- 支持 CLI 交互和 Streamlit 页面
+- 支持 CLI 交互、Streamlit 页面和 FastAPI Web 控制台
 - 提供基础离线评测脚本（retrieval / answer）
 
 ## 5 分钟快速开始
@@ -55,6 +55,28 @@ Web:
 uv run python -m app.main streamlit
 ```
 
+FastAPI Web:
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+uv run python -m app.main web
+```
+
+启动后打开 `http://127.0.0.1:8000`，FastAPI 会托管 React 构建产物。
+
+React 前端开发:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+开发服务默认打开 `http://127.0.0.1:5173`，并代理 `/api` 到 FastAPI。
+
 ## 常用命令
 
 ```bash
@@ -76,7 +98,9 @@ app/
   retrieval/   # 入库、向量库、检索、引用格式化
   tools/       # 暴露给 Agent 的工具
   services/    # 业务编排（UI / CLI 共用）
+  api/         # FastAPI 接口与 Web 静态资源托管
   cli/         # 命令行入口
+frontend/      # React + Vite + TypeScript 前端
 evaluation/    # 离线评测脚本
 data/          # 原始数据与评测数据
 docs/          # 架构、路线图、开发说明

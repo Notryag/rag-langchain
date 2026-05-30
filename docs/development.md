@@ -92,6 +92,7 @@ uv run python -m app.main cli
 uv run python -m app.main ingest --data-dir ./data/raw
 uv run python -m app.main ingest --data-dir ./data/raw --mode rebuild
 uv run python -m app.main streamlit
+uv run python -m app.main web
 ```
 
 如果需要自定义 Streamlit 地址或端口:
@@ -99,6 +100,40 @@ uv run python -m app.main streamlit
 ```powershell
 uv run python -m app.main streamlit --server-address 0.0.0.0 --server-port 8501
 ```
+
+如果需要自定义 FastAPI Web 地址或端口:
+
+```powershell
+uv run python -m app.main web --host 0.0.0.0 --port 8000
+uv run python -m app.main web --reload
+```
+
+## React 前端
+
+前端位于 `frontend/`，使用 React + Vite + TypeScript。开发时先启动 FastAPI:
+
+```powershell
+uv run python -m app.main web
+```
+
+另开终端启动 Vite:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Vite 默认地址为 `http://127.0.0.1:5173`，`/api` 会代理到 `http://127.0.0.1:8000`。
+
+生产构建:
+
+```powershell
+cd frontend
+npm run build
+```
+
+构建产物位于 `frontend/dist/`。当该目录存在时，FastAPI Web 入口会优先托管 React 构建产物。
 
 ## 注意事项
 
