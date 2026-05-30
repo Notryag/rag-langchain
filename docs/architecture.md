@@ -108,6 +108,7 @@ agent 不应该负责:
 - 发起一次问答
 - 聚合底层流事件
 - 提供统一的 `ask` / `stream` 输出结构
+- 通过 `app/services/rag_types.py` 暴露稳定的 response 与 stream event 类型
 
 CLI、Streamlit、FastAPI API、React 前端和 evaluation 只消费这些结果，不再自己理解底层 agent 协议。
 
@@ -118,6 +119,7 @@ CLI、Streamlit、FastAPI API、React 前端和 evaluation 只消费这些结果
 - `app/api/routes.py`: HTTP API 路由、SSE 输出与响应序列化
 - `frontend/`: React + Vite + TypeScript 前端
 - `app/services/rag_service.py`: 主链路编排
+- `app/services/rag_types.py`: service 层 response 与 stream event 协议
 - `app/agent/create_agent.py`: agent 装配入口
 - `app/agent/prompts.py`: 静态 prompt
 - `app/agent/prompt_strategy.py`: 动态 prompt 策略

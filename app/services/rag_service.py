@@ -1,33 +1,14 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Generator
 
 from app.retrieval.citations import Citation, citation_key
 from app.services.chat_client import get_chat_client, new_thread_id
+from app.services.rag_types import RagResponse, RagStreamEvent
 
 
-@dataclass(frozen=True)
-class RagResponse:
-    thread_id: str
-    answer: str
-    status_lines: list[str] = field(default_factory=list)
-    citations: list[Citation] = field(default_factory=list)
-    usage: dict[str, Any] | None = None
-    elapsed_ms: int | None = None
-
-
-@dataclass(frozen=True)
-class RagStreamEvent:
-    type: str
-    content: str = ""
-    answer: str = ""
-    status_line: str | None = None
-    tool_name: str | None = None
-    citations: list[Citation] = field(default_factory=list)
-    result: RagResponse | None = None
 class RagService:
     def __init__(self) -> None:
         self._client = get_chat_client()

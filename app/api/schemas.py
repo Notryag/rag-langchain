@@ -37,3 +37,19 @@ class ChatResponse(BaseModel):
     citations: list[dict[str, Any]]
     usage: dict[str, Any] | None
     elapsed_ms: int | None
+
+
+class ChatStreamAnswerData(BaseModel):
+    content: str
+    answer: str
+
+
+class ChatStreamToolData(BaseModel):
+    status_line: str | None
+    tool_name: str | None
+    content: str
+    citations: list[dict[str, Any]]
+
+
+class ChatStreamErrorData(BaseModel):
+    message: str

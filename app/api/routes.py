@@ -6,12 +6,22 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.api.schemas import ChatRequest, ChatResponse, HealthResponse, PublicConfigResponse, ThreadResponse
+from app.api.schemas import (
+    ChatRequest,
+    ChatResponse,
+    ChatStreamAnswerData,
+    ChatStreamErrorData,
+    ChatStreamToolData,
+    HealthResponse,
+    PublicConfigResponse,
+    ThreadResponse,
+)
 from app.config.settings import settings
 from app.retrieval.citations import Citation
 from app.retrieval.formatter import format_citation_label
 from app.services.chat_client import new_thread_id
-from app.services.rag_service import RagResponse, get_rag_service
+from app.services.rag_service import get_rag_service
+from app.services.rag_types import RagResponse, RagStreamEvent
 
 router = APIRouter(prefix="/api")
 
@@ -35,6 +45,26 @@ def _serialize_response(response: RagResponse) -> ChatResponse:
 
 def _sse_payload(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _serialize_stream_event(event: RagStreamEvent) -> tuple[str, dict[str, Any]] | None:
+    if event.type == "answer":
+        payload = ChatStreamAnswerData(content=event.content, answer=event.answer)
+        return "answer", payload.model_dump()
+
+    if event.type in {"tool_call", "tool_result"}:
+        payload = ChatStreamToolData(
+            status_line=event.status_line,
+            tool_name=event.tool_name,
+            content=event.content,
+            citations=[_serialize_citation(citation) for citation in event.citations],
+        )
+        return event.type, payload.model_dump()
+
+    if event.type == "complete" and event.result is not None:
+        return "complete", _serialize_response(event.result).model_dump()
+
+    return None
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -82,31 +112,12 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
                 request.message.strip(),
                 thread_id=request.thread_id,
             ):
-                if event.type == "answer":
-                    yield _sse_payload(
-                        "answer",
-                        {
-                            "content": event.content,
-                            "answer": event.answer,
-                        },
-                    )
+                serialized = _serialize_stream_event(event)
+                if serialized is None:
                     continue
-
-                if event.type in {"tool_call", "tool_result"}:
-                    yield _sse_payload(
-                        event.type,
-                        {
-                            "status_line": event.status_line,
-                            "tool_name": event.tool_name,
-                            "content": event.content,
-                            "citations": [_serialize_citation(citation) for citation in event.citations],
-                        },
-                    )
-                    continue
-
-                if event.type == "complete" and event.result is not None:
-                    yield _sse_payload("complete", _serialize_response(event.result).model_dump())
+                event_name, payload = serialized
+                yield _sse_payload(event_name, payload)
         except Exception as exc:
-            yield _sse_payload("error", {"message": str(exc)})
+            yield _sse_payload("error", ChatStreamErrorData(message=str(exc)).model_dump())
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

@@ -47,6 +47,10 @@
 - 建立统一事件模型（如 `Pydantic` discriminated union），明确 `tool_call/tool_result/answer/complete/error`。
 - 在 service 层完成“协议适配”，UI 仅读取稳定字段。
 
+进展：
+- 已新增 `app/services/rag_types.py`，将 service 对外的 `RagResponse` / `RagStreamEvent` 从实现文件中抽出。
+- FastAPI SSE 已集中通过 API schema 序列化，并补充了不调用模型的 stream smoke test。
+
 ### 3) 检索配置与运行策略耦合在全局 settings（中优先级）
 
 现状：tool 和 retriever 强依赖全局 `settings`。
