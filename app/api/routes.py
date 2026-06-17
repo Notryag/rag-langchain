@@ -12,6 +12,8 @@ from app.api.schemas import (
     ChatStreamAnswerData,
     ChatStreamErrorData,
     ChatStreamToolData,
+    FeedbackRequest,
+    FeedbackResponse,
     HealthResponse,
     PublicConfigResponse,
     ThreadResponse,
@@ -19,6 +21,7 @@ from app.api.schemas import (
 from app.config.settings import settings
 from app.retrieval.citations import Citation
 from app.retrieval.formatter import format_citation_label
+from app.services.feedback_service import get_feedback_service
 from app.services.chat_client import new_thread_id
 from app.services.rag_service import get_rag_service
 from app.services.rag_types import RagResponse, RagStreamEvent
@@ -90,6 +93,24 @@ def public_config() -> PublicConfigResponse:
 @router.post("/threads", response_model=ThreadResponse)
 def create_thread() -> ThreadResponse:
     return ThreadResponse(thread_id=new_thread_id("web"))
+
+
+@router.post("/feedback", response_model=FeedbackResponse)
+def feedback(request: FeedbackRequest) -> FeedbackResponse:
+    try:
+        record = get_feedback_service().record(
+            thread_id=request.thread_id.strip(),
+            message_id=request.message_id.strip(),
+            rating=request.rating,
+            question=request.question.strip() if request.question else None,
+            answer=request.answer.strip() if request.answer else None,
+            comment=request.comment.strip() if request.comment else None,
+            citations=request.citations,
+            metadata=request.metadata,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return FeedbackResponse(feedback_id=record.feedback_id, status="recorded")
 
 
 @router.post("/chat", response_model=ChatResponse)

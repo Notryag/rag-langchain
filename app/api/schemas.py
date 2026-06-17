@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -33,6 +33,22 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=8000)
     thread_id: str | None = Field(default=None, max_length=128)
     retrieval_profile: RetrievalProfileRequest | None = None
+
+
+class FeedbackRequest(BaseModel):
+    thread_id: str = Field(..., min_length=1, max_length=128)
+    message_id: str = Field(..., min_length=1, max_length=128)
+    rating: Literal["up", "down"]
+    question: str | None = Field(default=None, max_length=8000)
+    answer: str | None = Field(default=None, max_length=20000)
+    comment: str | None = Field(default=None, max_length=2000)
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class FeedbackResponse(BaseModel):
+    feedback_id: str
+    status: str
 
 
 class ThreadResponse(BaseModel):

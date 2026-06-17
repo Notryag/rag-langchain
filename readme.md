@@ -35,6 +35,7 @@ CHAT_MODEL=gpt-4.1-mini
 EMBEDDING_MODEL=text-embedding-3-small
 CHECKPOINTER_TYPE=sqlite
 CHECKPOINTER_SQLITE_PATH=./storage/checkpoints.sqlite3
+FEEDBACK_LOG_PATH=./storage/feedback.jsonl
 ```
 
 ### 3) 导入本地知识库

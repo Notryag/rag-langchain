@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-import { checkHealth, createThread, loadConfig, streamChat } from "./api";
+import { checkHealth, createThread, loadConfig, streamChat, submitFeedback } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import Sidebar from "./components/Sidebar";
-import type { ChatMessage, Citation, PublicConfig, RetrievalProfile, StreamEvent, ToolTrace } from "./types";
+import type { ChatMessage, Citation, FeedbackRating, PublicConfig, RetrievalProfile, StreamEvent, ToolTrace } from "./types";
 
 const welcomeMessage: ChatMessage = {
   id: "welcome",
@@ -74,7 +74,7 @@ function App() {
     setMessages((current) => [
       ...current,
       { id: crypto.randomUUID(), role: "user", content: text },
-      { id: assistantId, role: "assistant", content: "正在生成...", retrievalProfile: activeProfile },
+      { id: assistantId, role: "assistant", content: "正在生成...", question: text, retrievalProfile: activeProfile },
     ]);
 
     const statusLines: string[] = [];
@@ -166,6 +166,30 @@ function App() {
     );
   }
 
+  async function handleFeedback(message: ChatMessage, rating: FeedbackRating) {
+    if (message.feedbackPending || message.role !== "assistant" || message.id === "welcome") return;
+
+    updateAssistant(message.id, { feedbackPending: true });
+    try {
+      await submitFeedback({
+        threadId,
+        messageId: message.id,
+        rating,
+        question: message.question,
+        answer: message.content,
+        citations: message.citations,
+        metadata: {
+          retrieval_profile: message.retrievalProfile,
+          elapsed_ms: message.elapsedMs,
+          usage: message.usage,
+        },
+      });
+      updateAssistant(message.id, { feedbackRating: rating, feedbackPending: false });
+    } catch {
+      updateAssistant(message.id, { feedbackPending: false });
+    }
+  }
+
   return (
     <main className="app-shell">
       <Sidebar
@@ -184,6 +208,7 @@ function App() {
         messagesEndRef={messagesEndRef}
         pending={pending}
         onClear={clearMessages}
+        onFeedback={handleFeedback}
         onInputChange={setInput}
         onSubmit={submitMessage}
       />

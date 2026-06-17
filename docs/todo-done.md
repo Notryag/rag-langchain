@@ -45,6 +45,7 @@
 - [x] 让 CLI、Streamlit 调同一 service 入口
 - [x] 避免 UI 层直接拼装业务流程
 - [x] 增加 FastAPI API 层，让 Web / API 复用同一 service
+- [x] 增加用户反馈闭环，将回答反馈记录为 JSONL 供后续评测回放
 
 ### Agent 与 Middleware
 

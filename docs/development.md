@@ -46,6 +46,7 @@ uv run python -m <module>
 - `LOG_LEVEL` 当前只支持 `CRITICAL`、`ERROR`、`WARNING`、`INFO`、`DEBUG`。
 - `CHECKPOINTER_TYPE` 当前支持 `sqlite` 和 `memory`，默认 `sqlite`，用于保存多轮会话状态。
 - `CHECKPOINTER_SQLITE_PATH` 默认 `./storage/checkpoints.sqlite3`，仅在 `CHECKPOINTER_TYPE=sqlite` 时使用。
+- `FEEDBACK_LOG_PATH` 默认 `./storage/feedback.jsonl`，用于保存 Web/API 提交的回答反馈。
 - 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令
@@ -178,6 +179,25 @@ VITE_API_BASE_URL=https://your-api.example.com
 不传时使用 `.env` / `settings` 中的默认检索配置。
 
 React Web 控制台侧栏提供对应的检索设置面板，发送消息时会随请求带上当前 profile。
+
+## 用户反馈
+
+React Web 控制台会在助手回答下方显示有帮助 / 没帮助按钮。提交后，FastAPI 会将反馈追加写入 `FEEDBACK_LOG_PATH` 指向的 JSONL 文件，字段包括 `thread_id`、`message_id`、`rating`、问题、回答、引用和检索参数快照。
+
+也可以直接调用 API:
+
+```json
+POST /api/feedback
+{
+  "thread_id": "web_xxx",
+  "message_id": "assistant_message_id",
+  "rating": "down",
+  "question": "扫地机器人连不上 WiFi 怎么办？",
+  "answer": "检查路由器频段...",
+  "citations": [{"source": "故障排除.txt"}],
+  "metadata": {"search_type": "hybrid"}
+}
+```
 
 ## 注意事项
 

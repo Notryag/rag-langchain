@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -33,6 +34,55 @@ class ApiSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["thread_id"].startswith("web_"))
+
+    def test_feedback_records_payload(self) -> None:
+        class FakeFeedbackService:
+            def record(self, **kwargs):
+                self.last_kwargs = kwargs
+                return SimpleNamespace(feedback_id="feedback_1")
+
+        fake_service = FakeFeedbackService()
+        original_get_feedback_service = routes.get_feedback_service
+        routes.get_feedback_service = lambda: fake_service
+        try:
+            response = self.client.post(
+                "/api/feedback",
+                json={
+                    "thread_id": "web_test",
+                    "message_id": "message_1",
+                    "rating": "down",
+                    "question": " 测试问题 ",
+                    "answer": " 测试回答 ",
+                    "comment": " 引用不准确 ",
+                    "citations": [{"source": "source.txt"}],
+                    "metadata": {"search_type": "hybrid"},
+                },
+            )
+        finally:
+            routes.get_feedback_service = original_get_feedback_service
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"feedback_id": "feedback_1", "status": "recorded"})
+        self.assertEqual(fake_service.last_kwargs["thread_id"], "web_test")
+        self.assertEqual(fake_service.last_kwargs["message_id"], "message_1")
+        self.assertEqual(fake_service.last_kwargs["rating"], "down")
+        self.assertEqual(fake_service.last_kwargs["question"], "测试问题")
+        self.assertEqual(fake_service.last_kwargs["answer"], "测试回答")
+        self.assertEqual(fake_service.last_kwargs["comment"], "引用不准确")
+        self.assertEqual(fake_service.last_kwargs["citations"], [{"source": "source.txt"}])
+        self.assertEqual(fake_service.last_kwargs["metadata"], {"search_type": "hybrid"})
+
+    def test_feedback_rejects_invalid_rating(self) -> None:
+        response = self.client.post(
+            "/api/feedback",
+            json={
+                "thread_id": "web_test",
+                "message_id": "message_1",
+                "rating": "maybe",
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
 
     def test_react_index(self) -> None:
         response = self.client.get("/")

@@ -27,6 +27,7 @@ storage/chroma/
 storage/exports/
 storage/*.sqlite
 storage/*.sqlite3
+storage/*.jsonl
 logs/
 
 # OS files

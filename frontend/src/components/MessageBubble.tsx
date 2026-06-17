@@ -1,8 +1,18 @@
-import type { ChatMessage } from "../types";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+import type { ChatMessage, FeedbackRating } from "../types";
+
+function MessageBubble({
+  message,
+  onFeedback,
+}: {
+  message: ChatMessage;
+  onFeedback: (message: ChatMessage, rating: FeedbackRating) => void;
+}) {
   const totalTokens = message.usage?.total_tokens;
   const profile = message.retrievalProfile;
+  const canSendFeedback =
+    message.role === "assistant" && message.id !== "welcome" && !message.error && message.elapsedMs !== undefined;
   return (
     <article className={`message ${message.role}`}>
       <div className="avatar" aria-hidden="true">
@@ -44,6 +54,28 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             {message.elapsedMs !== undefined && message.elapsedMs !== null ? `${message.elapsedMs} ms` : ""}
             {message.elapsedMs !== undefined && totalTokens !== undefined ? " | " : ""}
             {totalTokens !== undefined ? `tokens=${String(totalTokens)}` : ""}
+          </div>
+        )}
+        {canSendFeedback && (
+          <div className="feedback-actions" aria-label="回答反馈">
+            <button
+              className={message.feedbackRating === "up" ? "selected" : ""}
+              disabled={message.feedbackPending}
+              onClick={() => onFeedback(message, "up")}
+              title="有帮助"
+              type="button"
+            >
+              <ThumbsUp size={15} />
+            </button>
+            <button
+              className={message.feedbackRating === "down" ? "selected" : ""}
+              disabled={message.feedbackPending}
+              onClick={() => onFeedback(message, "down")}
+              title="没帮助"
+              type="button"
+            >
+              <ThumbsDown size={15} />
+            </button>
           </div>
         )}
       </div>

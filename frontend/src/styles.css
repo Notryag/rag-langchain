@@ -119,6 +119,7 @@ button {
 }
 
 .icon-button,
+.feedback-actions button,
 .secondary-button,
 .send-button {
   display: inline-flex;
@@ -387,6 +388,30 @@ button {
   gap: 8px;
 }
 
+.feedback-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.feedback-actions button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  color: var(--muted);
+}
+
+.feedback-actions button:hover {
+  background: #eef3f8;
+}
+
+.feedback-actions button.selected {
+  border-color: var(--accent);
+  background: #e6f6f2;
+  color: var(--accent);
+}
+
 .tool-trace {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -452,6 +477,7 @@ textarea:focus {
 
 .send-button:disabled,
 .secondary-button:disabled,
+.feedback-actions button:disabled,
 .icon-button:disabled,
 input:disabled,
 select:disabled,

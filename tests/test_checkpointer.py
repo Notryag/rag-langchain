@@ -35,6 +35,7 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
         log_file_name="app.log",
         checkpointer_type=checkpointer_type,
         checkpointer_sqlite_path=sqlite_path,
+        feedback_log_path="./storage/feedback.jsonl",
     )
 
 

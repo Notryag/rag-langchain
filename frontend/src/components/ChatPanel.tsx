@@ -1,7 +1,7 @@
 import { RotateCcw, Send, Trash2 } from "lucide-react";
 import type { FormEvent, RefObject } from "react";
 
-import type { ChatMessage } from "../types";
+import type { ChatMessage, FeedbackRating } from "../types";
 import MessageBubble from "./MessageBubble";
 
 type ChatPanelProps = {
@@ -10,6 +10,7 @@ type ChatPanelProps = {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   pending: boolean;
   onClear: () => void;
+  onFeedback: (message: ChatMessage, rating: FeedbackRating) => void;
   onInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
@@ -20,6 +21,7 @@ function ChatPanel({
   messagesEndRef,
   pending,
   onClear,
+  onFeedback,
   onInputChange,
   onSubmit,
 }: ChatPanelProps) {
@@ -38,7 +40,7 @@ function ChatPanel({
 
       <div className="messages" aria-live="polite">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble key={message.id} message={message} onFeedback={onFeedback} />
         ))}
         <div ref={messagesEndRef} />
       </div>

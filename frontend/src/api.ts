@@ -1,4 +1,4 @@
-import type { PublicConfig, RetrievalProfile, StreamEvent } from "./types";
+import type { Citation, FeedbackRating, PublicConfig, RetrievalProfile, StreamEvent } from "./types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
@@ -65,6 +65,35 @@ export async function streamChat({
     buffer += decoder.decode(value, { stream: true });
     buffer = parseSse(buffer, onEvent);
   }
+}
+
+export async function submitFeedback({
+  threadId,
+  messageId,
+  rating,
+  question,
+  answer,
+  citations,
+  metadata,
+}: {
+  threadId: string;
+  messageId: string;
+  rating: FeedbackRating;
+  question?: string;
+  answer?: string;
+  citations?: Citation[];
+  metadata?: Record<string, unknown>;
+}) {
+  const response = await postJson("/api/feedback", {
+    thread_id: threadId,
+    message_id: messageId,
+    rating,
+    question,
+    answer,
+    citations,
+    metadata,
+  });
+  return response.json();
 }
 
 function parseSse(buffer: string, onEvent: (event: StreamEvent) => void) {

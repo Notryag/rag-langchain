@@ -70,6 +70,7 @@ class Settings:
     log_file_name: str
     checkpointer_type: str
     checkpointer_sqlite_path: str
+    feedback_log_path: str
 
     def __post_init__(self) -> None:
         if self.retrieval_search_type not in _SUPPORTED_RETRIEVAL_SEARCH_TYPES:
@@ -121,6 +122,7 @@ class Settings:
             "LOG_DIR": self.log_dir,
             "LOG_FILE_NAME": self.log_file_name,
             "CHECKPOINTER_TYPE": self.checkpointer_type,
+            "FEEDBACK_LOG_PATH": self.feedback_log_path,
         }
         for field_name, field_value in required_string_fields.items():
             if not field_value.strip():
@@ -151,6 +153,7 @@ class Settings:
             log_file_name=(os.getenv("LOG_FILE_NAME") or "app.log").strip(),
             checkpointer_type=(os.getenv("CHECKPOINTER_TYPE") or "sqlite").strip().lower(),
             checkpointer_sqlite_path=(os.getenv("CHECKPOINTER_SQLITE_PATH") or "./storage/checkpoints.sqlite3").strip(),
+            feedback_log_path=(os.getenv("FEEDBACK_LOG_PATH") or "./storage/feedback.jsonl").strip(),
         )
 
 

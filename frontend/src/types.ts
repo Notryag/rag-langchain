@@ -28,6 +28,8 @@ export type RetrievalProfile = {
   max_context_chars: number;
 };
 
+export type FeedbackRating = "up" | "down";
+
 export type ToolTrace = {
   toolName?: string;
   statusLine?: string;
@@ -47,12 +49,15 @@ export type ChatMessage = {
   id: string;
   role: "assistant" | "user";
   content: string;
+  question?: string;
   statusLines?: string[];
   citations?: Citation[];
   retrievalProfile?: RetrievalProfile;
   toolTraces?: ToolTrace[];
   usage?: Record<string, unknown> | null;
   elapsedMs?: number | null;
+  feedbackRating?: FeedbackRating;
+  feedbackPending?: boolean;
   error?: boolean;
 };
 
