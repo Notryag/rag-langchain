@@ -4,6 +4,7 @@
 
 - 项目现状: [project-status.md](project-status.md)
 - 架构说明: [architecture.md](architecture.md)
+- 多租户企业知识库 RAG 规划: [multitenant-rag.md](multitenant-rag.md)
 - 入库策略: [ingestion.md](ingestion.md)
 - Hybrid Search 需求评估: [hybrid-search-evaluation.md](hybrid-search-evaluation.md)
 - 执行清单: [todo.md](todo.md)
@@ -11,7 +12,9 @@
 
 ## 长期目标
 
-长期目标不是做一个“能回答问题”的 demo，而是做成一个可持续迭代的垂直知识助手底座。
+长期目标不是做一个“能回答问题”的 demo，而是演进为一个多租户企业知识库 RAG 系统。
+
+新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前路线图保留质量闭环和检索迭代要求，但后续工程建设会优先围绕用户、知识库、文档、pgvector、聊天记录和权限隔离展开。
 
 ### 目标一: 可验证的 RAG 系统
 
@@ -38,10 +41,11 @@
 - 模型、向量库、重排器可以逐步替换
 - 配置、日志、运行入口更规范
 
-### 目标三: 面向垂直场景的产品雏形
+### 目标三: 面向企业知识库的产品雏形
 
-结合当前知识库内容，更适合演进成下面这些方向:
+结合当前知识库内容和后端能力，更适合演进成下面这些方向:
 
+- 多用户企业知识库
 - 产品说明书问答
 - 售后支持问答
 - 故障排查助手
@@ -157,15 +161,16 @@ evaluation/
 
 ## 中期计划
 
-当 P0 和 P1 完成后，再进入中期建设。
+当前 P0/P1/P2 的本地 RAG 能力已经基本具备，下一阶段进入多租户产品化建设。
 
 建议方向:
 
-- 增加 API 服务层
-- 会话状态持久化，替换 `InMemorySaver`
-- 文档管理能力: 增量入库、删除、重建索引
-- 反馈闭环: 用户标记有帮助 / 无帮助
-- 后台监控: 请求量、命中率、失败率、token 使用
+- 数据库地基: SQLAlchemy / Alembic / PostgreSQL / pgvector
+- 用户认证: 注册、登录、JWT、当前用户依赖
+- 知识库 CRUD: 所有数据按当前用户隔离
+- 文档管理: 上传、状态追踪、解析、切片、向量化
+- 问答: 基于 `user_id + kb_id` 的权限过滤检索、引用返回、聊天记录保存
+- 异步处理: Celery + Redis 处理文档任务
 
 ## 当前不建议优先做的事
 

@@ -1,0 +1,163 @@
+"""init multitenant tables
+
+Revision ID: 20260617_0001
+Revises:
+Create Date: 2026-06-17
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+from pgvector.sqlalchemy import Vector
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+revision: str = "20260617_0001"
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
+    document_status = postgresql.ENUM(
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        name="document_status",
+        create_type=False,
+    )
+    chat_role = postgresql.ENUM("user", "assistant", "system", name="chat_role", create_type=False)
+    document_status.create(op.get_bind(), checkfirst=True)
+    chat_role.create(op.get_bind(), checkfirst=True)
+
+    op.create_table(
+        "users",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("username", sa.String(length=64), nullable=False),
+        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("password_hash", sa.String(length=255), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_users_username", "users", ["username"], unique=True)
+    op.create_index("ix_users_email", "users", ["email"], unique=True)
+
+    op.create_table(
+        "knowledge_bases",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_knowledge_bases_user_id", "knowledge_bases", ["user_id"])
+
+    op.create_table(
+        "documents",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("kb_id", sa.BigInteger(), nullable=False),
+        sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column("filename", sa.String(length=255), nullable=False),
+        sa.Column("content_type", sa.String(length=128), nullable=True),
+        sa.Column("file_path", sa.String(length=1024), nullable=False),
+        sa.Column("status", document_status, nullable=False),
+        sa.Column("error_message", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.ForeignKeyConstraint(["kb_id"], ["knowledge_bases.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_documents_kb_id", "documents", ["kb_id"])
+    op.create_index("ix_documents_user_id", "documents", ["user_id"])
+    op.create_index("ix_documents_status", "documents", ["status"])
+
+    op.create_table(
+        "document_chunks",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("document_id", sa.BigInteger(), nullable=False),
+        sa.Column("kb_id", sa.BigInteger(), nullable=False),
+        sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column("chunk_index", sa.Integer(), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("embedding", Vector(1536), nullable=True),
+        sa.Column("metadata", sa.JSON(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.ForeignKeyConstraint(["document_id"], ["documents.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["kb_id"], ["knowledge_bases.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_document_chunks_document_id", "document_chunks", ["document_id"])
+    op.create_index("ix_document_chunks_kb_id", "document_chunks", ["kb_id"])
+    op.create_index("ix_document_chunks_user_id", "document_chunks", ["user_id"])
+    op.create_index("ix_document_chunks_tenant_scope", "document_chunks", ["user_id", "kb_id", "document_id"])
+    op.create_index(
+        "ix_document_chunks_embedding",
+        "document_chunks",
+        ["embedding"],
+        postgresql_using="ivfflat",
+        postgresql_ops={"embedding": "vector_cosine_ops"},
+    )
+
+    op.create_table(
+        "chat_sessions",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column("kb_id", sa.BigInteger(), nullable=False),
+        sa.Column("title", sa.String(length=255), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.ForeignKeyConstraint(["kb_id"], ["knowledge_bases.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_chat_sessions_kb_id", "chat_sessions", ["kb_id"])
+    op.create_index("ix_chat_sessions_user_id", "chat_sessions", ["user_id"])
+
+    op.create_table(
+        "chat_messages",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("session_id", sa.BigInteger(), nullable=False),
+        sa.Column("role", chat_role, nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("references", sa.JSON(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.ForeignKeyConstraint(["session_id"], ["chat_sessions.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_chat_messages_session_id", "chat_messages", ["session_id"])
+
+
+def downgrade() -> None:
+    op.drop_index("ix_chat_messages_session_id", table_name="chat_messages")
+    op.drop_table("chat_messages")
+    op.drop_index("ix_chat_sessions_user_id", table_name="chat_sessions")
+    op.drop_index("ix_chat_sessions_kb_id", table_name="chat_sessions")
+    op.drop_table("chat_sessions")
+    op.drop_index("ix_document_chunks_embedding", table_name="document_chunks")
+    op.drop_index("ix_document_chunks_tenant_scope", table_name="document_chunks")
+    op.drop_index("ix_document_chunks_user_id", table_name="document_chunks")
+    op.drop_index("ix_document_chunks_kb_id", table_name="document_chunks")
+    op.drop_index("ix_document_chunks_document_id", table_name="document_chunks")
+    op.drop_table("document_chunks")
+    op.drop_index("ix_documents_status", table_name="documents")
+    op.drop_index("ix_documents_user_id", table_name="documents")
+    op.drop_index("ix_documents_kb_id", table_name="documents")
+    op.drop_table("documents")
+    op.drop_index("ix_knowledge_bases_user_id", table_name="knowledge_bases")
+    op.drop_table("knowledge_bases")
+    op.drop_index("ix_users_email", table_name="users")
+    op.drop_index("ix_users_username", table_name="users")
+    op.drop_table("users")
+    sa.Enum(name="chat_role").drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name="document_status").drop(op.get_bind(), checkfirst=True)

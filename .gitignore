@@ -25,6 +25,7 @@ frontend/dist/
 # Local vector store data
 storage/chroma/
 storage/exports/
+storage/uploads/
 storage/*.sqlite
 storage/*.sqlite3
 storage/*.jsonl

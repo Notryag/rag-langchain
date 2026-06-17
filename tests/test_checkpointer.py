@@ -36,6 +36,14 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
         checkpointer_type=checkpointer_type,
         checkpointer_sqlite_path=sqlite_path,
         feedback_log_path="./storage/feedback.jsonl",
+        database_url="postgresql+psycopg://rag:rag@localhost:5432/rag",
+        redis_url="redis://localhost:6379/0",
+        celery_broker_url="redis://localhost:6379/1",
+        celery_result_backend="redis://localhost:6379/2",
+        jwt_secret_key="test-secret",
+        jwt_algorithm="HS256",
+        access_token_expire_minutes=60,
+        upload_dir="./storage/uploads",
     )
 
 

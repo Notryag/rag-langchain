@@ -113,11 +113,28 @@ agent 不应该负责:
 
 CLI、Streamlit、FastAPI API、React 前端和 evaluation 只消费这些结果，不再自己理解底层 agent 协议。
 
+## 多租户演进
+
+项目下一阶段会从单用户本地 RAG 演进为多租户企业知识库 RAG。详细目标、表结构、API 设计和批次计划见 [multitenant-rag.md](multitenant-rag.md)。
+
+第一批改造先引入数据库地基，并保持与现有 Chroma 主链路并存:
+
+- `app/db/`: SQLAlchemy Base、session provider 和 ORM 模型
+- `migrations/`: Alembic migration 环境
+- PostgreSQL + pgvector: 后续承载业务数据和向量检索
+- Redis + Celery: 后续承载异步文档处理
+
+迁移期间仍需遵守当前边界: API 只做协议，service 做业务编排，retrieval 做检索能力，权限过滤必须进入数据库查询条件。
+
 ## 当前文件映射
 
 - `app/main.py`: 统一入口
 - `app/api/main.py`: FastAPI 应用装配与 React 构建产物托管
 - `app/api/routes.py`: HTTP API 路由、SSE 输出与响应序列化
+- `app/db/base.py`: SQLAlchemy declarative base
+- `app/db/session.py`: SQLAlchemy engine 和 session provider
+- `app/db/models/`: 多租户核心 ORM 模型
+- `migrations/`: Alembic migration 环境
 - `frontend/`: React + Vite + TypeScript 前端
 - `app/services/rag_service.py`: 主链路编排
 - `app/services/rag_types.py`: service 层 response 与 stream event 协议

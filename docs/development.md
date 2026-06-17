@@ -47,9 +47,29 @@ uv run python -m <module>
 - `CHECKPOINTER_TYPE` 当前支持 `sqlite` 和 `memory`，默认 `sqlite`，用于保存多轮会话状态。
 - `CHECKPOINTER_SQLITE_PATH` 默认 `./storage/checkpoints.sqlite3`，仅在 `CHECKPOINTER_TYPE=sqlite` 时使用。
 - `FEEDBACK_LOG_PATH` 默认 `./storage/feedback.jsonl`，用于保存 Web/API 提交的回答反馈。
+- `DATABASE_URL` 默认 `postgresql+psycopg://rag:rag@localhost:5432/rag`，用于多租户业务数据和后续 pgvector 检索。
+- `REDIS_URL` 默认 `redis://localhost:6379/0`。
+- `CELERY_BROKER_URL` 默认 `redis://localhost:6379/1`。
+- `CELERY_RESULT_BACKEND` 默认 `redis://localhost:6379/2`。
+- `JWT_SECRET_KEY` 默认值仅适合本地开发，生产环境必须替换。
+- `ACCESS_TOKEN_EXPIRE_MINUTES` 默认 `60`。
+- `UPLOAD_DIR` 默认 `./storage/uploads`，用于保存上传原始文件。
 - 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令
+
+### 数据库服务
+
+```powershell
+docker compose up -d
+uv run alembic upgrade head
+```
+
+当前 Alembic migration 环境已经接入 SQLAlchemy metadata。新增或修改 ORM 模型后，使用:
+
+```powershell
+uv run alembic revision --autogenerate -m "message"
+```
 
 ### API smoke tests
 

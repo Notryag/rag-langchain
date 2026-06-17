@@ -4,26 +4,92 @@
 
 当前阶段重点:
 
-1. 保持 evaluation 先行，避免无基线调参
-2. 推进 API、持久化、反馈闭环等产品化能力
-3. 扩充评测集后继续观察 `hybrid` 的稳定性
+1. 从单用户本地 RAG 演进为多租户企业知识库 RAG
+2. 保持权限隔离优先，避免跨用户检索泄露
+3. 分批迁移，先建立数据库和认证地基，再迁移入库与问答链路
 
-## 中期任务
+总体规划见 [multitenant-rag.md](multitenant-rag.md)。
 
-当前中期任务已完成，下一阶段建议先扩充评测集，再基于 bad case 决定检索或回答链路优化方向。
+## Batch 1: 数据库与工程地基
+
+- [x] 引入 SQLAlchemy / Alembic / PostgreSQL / pgvector / Redis / Celery 依赖
+- [x] 增加数据库、Redis、Celery、JWT、上传目录配置
+- [x] 增加 SQLAlchemy Base 和 session provider
+- [x] 增加核心模型: users / knowledge_bases / documents / document_chunks / chat_sessions / chat_messages
+- [x] 增加 Alembic 基础配置
+- [x] 增加 Docker Compose 的 PostgreSQL + Redis
+- [x] 增加模型层测试
+
+## Batch 2: 用户认证
+
+- [ ] 增加密码哈希工具
+- [ ] 增加用户注册 service
+- [ ] 增加用户登录 service
+- [ ] 增加 JWT access token 生成与解析
+- [ ] 增加 `get_current_user` 鉴权依赖
+- [ ] 增加 `/api/v1/auth/register`
+- [ ] 增加 `/api/v1/auth/login`
+- [ ] 增加 `/api/v1/auth/me`
+- [ ] 增加认证测试
+
+## Batch 3: 知识库 CRUD
+
+- [ ] 增加知识库 schema
+- [ ] 增加知识库 service
+- [ ] 增加 `/api/v1/kbs` CRUD 路由
+- [ ] 所有知识库查询限制当前用户
+- [ ] 增加知识库权限测试
+
+## Batch 4: 文档上传与状态
+
+- [ ] 增加文档 schema
+- [ ] 增加上传文件保存逻辑
+- [ ] 上传后创建 document 记录
+- [ ] 支持 document 状态流转
+- [ ] 增加同步解析入口
+- [ ] 增加文档上传与状态测试
+
+## Batch 5: pgvector 入库与检索
+
+- [ ] 将新文档切片写入 `document_chunks`
+- [ ] 将 embedding 写入 pgvector 字段
+- [ ] 检索时按 `user_id + kb_id` 过滤
+- [ ] 返回结构化 references
+- [ ] 增加权限过滤检索测试
+
+## Batch 6: 多租户问答和聊天记录
+
+- [ ] 增加 `/api/v1/kbs/{kb_id}/chat`
+- [ ] 支持 chat_session 创建和复用
+- [ ] 保存用户消息
+- [ ] 保存助手消息和 references
+- [ ] 问答响应返回 answer / references / session_id
+- [ ] 增加聊天记录查询接口
+- [ ] 增加问答和聊天记录测试
+
+## Batch 7: 异步文档处理
+
+- [ ] 增加 Celery app
+- [ ] 增加文档处理 task
+- [ ] 上传文档后投递异步任务
+- [ ] 任务失败时写入 `failed` 和 `error_message`
+- [ ] 增加任务幂等策略
 
 ## 当前不做
 
 下面这些事情当前不建议优先推进:
 
+- [ ] 组织 / 团队 / RBAC / ACL
 - [ ] 同时支持很多向量库
-- [ ] 过早做复杂 memory
-- [ ] 在没有评测前频繁调 prompt
-- [ ] 一次性把理想目录全部铺开
-- [ ] 在主链路还没稳定前增加太多 tool
+- [ ] 复杂长期 memory
+- [ ] 在权限过滤未稳定前做大规模检索优化
+- [ ] 在多租户主链路没跑通前做复杂前端后台
 
 ## 建议执行顺序
 
-1. 扩充 retrieval / answer eval 样本
-2. 回看反馈日志，将高价值 bad case 转入评测集
-3. 基于评测结果继续优化 hybrid / reranker / prompt 策略
+1. Batch 2 用户认证
+2. Batch 3 知识库 CRUD
+3. Batch 4 文档上传与状态
+4. Batch 5 pgvector 入库与检索
+5. Batch 6 多租户问答和聊天记录
+6. Batch 7 异步文档处理

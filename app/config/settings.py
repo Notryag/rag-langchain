@@ -71,6 +71,14 @@ class Settings:
     checkpointer_type: str
     checkpointer_sqlite_path: str
     feedback_log_path: str
+    database_url: str
+    redis_url: str
+    celery_broker_url: str
+    celery_result_backend: str
+    jwt_secret_key: str
+    jwt_algorithm: str
+    access_token_expire_minutes: int
+    upload_dir: str
 
     def __post_init__(self) -> None:
         if self.retrieval_search_type not in _SUPPORTED_RETRIEVAL_SEARCH_TYPES:
@@ -96,6 +104,7 @@ class Settings:
             "RETRIEVAL_FETCH_K": self.retrieval_fetch_k,
             "RETRIEVAL_MAX_CONTEXT_CHARS": self.retrieval_max_context_chars,
             "CHUNK_SIZE": self.chunk_size,
+            "ACCESS_TOKEN_EXPIRE_MINUTES": self.access_token_expire_minutes,
         }
         for field_name, field_value in positive_fields.items():
             if field_value <= 0:
@@ -123,6 +132,13 @@ class Settings:
             "LOG_FILE_NAME": self.log_file_name,
             "CHECKPOINTER_TYPE": self.checkpointer_type,
             "FEEDBACK_LOG_PATH": self.feedback_log_path,
+            "DATABASE_URL": self.database_url,
+            "REDIS_URL": self.redis_url,
+            "CELERY_BROKER_URL": self.celery_broker_url,
+            "CELERY_RESULT_BACKEND": self.celery_result_backend,
+            "JWT_SECRET_KEY": self.jwt_secret_key,
+            "JWT_ALGORITHM": self.jwt_algorithm,
+            "UPLOAD_DIR": self.upload_dir,
         }
         for field_name, field_value in required_string_fields.items():
             if not field_value.strip():
@@ -154,6 +170,17 @@ class Settings:
             checkpointer_type=(os.getenv("CHECKPOINTER_TYPE") or "sqlite").strip().lower(),
             checkpointer_sqlite_path=(os.getenv("CHECKPOINTER_SQLITE_PATH") or "./storage/checkpoints.sqlite3").strip(),
             feedback_log_path=(os.getenv("FEEDBACK_LOG_PATH") or "./storage/feedback.jsonl").strip(),
+            database_url=(
+                os.getenv("DATABASE_URL")
+                or "postgresql+psycopg://rag:rag@localhost:5432/rag"
+            ).strip(),
+            redis_url=(os.getenv("REDIS_URL") or "redis://localhost:6379/0").strip(),
+            celery_broker_url=(os.getenv("CELERY_BROKER_URL") or "redis://localhost:6379/1").strip(),
+            celery_result_backend=(os.getenv("CELERY_RESULT_BACKEND") or "redis://localhost:6379/2").strip(),
+            jwt_secret_key=(os.getenv("JWT_SECRET_KEY") or "change-me-in-production").strip(),
+            jwt_algorithm=(os.getenv("JWT_ALGORITHM") or "HS256").strip(),
+            access_token_expire_minutes=_get_int_env("ACCESS_TOKEN_EXPIRE_MINUTES", 60),
+            upload_dir=(os.getenv("UPLOAD_DIR") or "./storage/uploads").strip(),
         )
 
 

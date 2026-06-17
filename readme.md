@@ -36,6 +36,8 @@ EMBEDDING_MODEL=text-embedding-3-small
 CHECKPOINTER_TYPE=sqlite
 CHECKPOINTER_SQLITE_PATH=./storage/checkpoints.sqlite3
 FEEDBACK_LOG_PATH=./storage/feedback.jsonl
+DATABASE_URL=postgresql+psycopg://rag:rag@localhost:5432/rag
+REDIS_URL=redis://localhost:6379/0
 ```
 
 ### 3) 导入本地知识库
@@ -98,6 +100,12 @@ uv run python -m app.main delete-source 维护保养.txt
 # 查看基础运行指标
 curl http://127.0.0.1:8000/api/metrics
 
+# 启动 PostgreSQL + Redis
+docker compose up -d
+
+# 执行数据库迁移
+uv run alembic upgrade head
+
 # 采样生成回答
 uv run python -m evaluation.generate_answers --limit 10
 
@@ -124,6 +132,7 @@ docs/          # 架构、路线图、开发说明
 ## 文档导航
 
 - 架构说明: [docs/architecture.md](docs/architecture.md)
+- 多租户企业知识库 RAG 规划: [docs/multitenant-rag.md](docs/multitenant-rag.md)
 - 架构评审: [docs/architecture-review.md](docs/architecture-review.md)
 - 开发与运行约定: [docs/development.md](docs/development.md)
 - 入库策略: [docs/ingestion.md](docs/ingestion.md)
