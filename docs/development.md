@@ -235,6 +235,29 @@ GET  /api/v1/auth/me
 Authorization: Bearer <access_token>
 ```
 
+## 多租户知识库 API
+
+知识库接口:
+
+```text
+POST   /api/v1/kbs
+GET    /api/v1/kbs
+GET    /api/v1/kbs/{kb_id}
+PUT    /api/v1/kbs/{kb_id}
+DELETE /api/v1/kbs/{kb_id}
+```
+
+所有接口都依赖当前登录用户，只能访问当前用户自己的知识库。
+
+创建请求:
+
+```json
+{
+  "name": "产品知识库",
+  "description": "产品说明、售后和故障排查资料"
+}
+```
+
 ## 用户反馈
 
 React Web 控制台会在助手回答下方显示有帮助 / 没帮助按钮。提交后，FastAPI 会将反馈追加写入 `FEEDBACK_LOG_PATH` 指向的 JSONL 文件，字段包括 `thread_id`、`message_id`、`rating`、问题、回答、引用和检索参数快照。

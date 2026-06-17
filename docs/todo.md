@@ -34,11 +34,11 @@
 
 ## Batch 3: 知识库 CRUD
 
-- [ ] 增加知识库 schema
-- [ ] 增加知识库 service
-- [ ] 增加 `/api/v1/kbs` CRUD 路由
-- [ ] 所有知识库查询限制当前用户
-- [ ] 增加知识库权限测试
+- [x] 增加知识库 schema
+- [x] 增加知识库 service
+- [x] 增加 `/api/v1/kbs` CRUD 路由
+- [x] 所有知识库查询限制当前用户
+- [x] 增加知识库权限测试
 
 ## Batch 4: 文档上传与状态
 
@@ -87,8 +87,7 @@
 
 ## 建议执行顺序
 
-1. Batch 3 知识库 CRUD
-2. Batch 4 文档上传与状态
-3. Batch 5 pgvector 入库与检索
-4. Batch 6 多租户问答和聊天记录
-5. Batch 7 异步文档处理
+1. Batch 4 文档上传与状态
+2. Batch 5 pgvector 入库与检索
+3. Batch 6 多租户问答和聊天记录
+4. Batch 7 异步文档处理
