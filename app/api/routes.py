@@ -15,6 +15,7 @@ from app.api.schemas import (
     FeedbackRequest,
     FeedbackResponse,
     HealthResponse,
+    MetricsResponse,
     PublicConfigResponse,
     ThreadResponse,
 )
@@ -23,6 +24,7 @@ from app.retrieval.citations import Citation
 from app.retrieval.formatter import format_citation_label
 from app.services.feedback_service import get_feedback_service
 from app.services.chat_client import new_thread_id
+from app.services.metrics_service import get_metrics_service
 from app.services.rag_service import get_rag_service
 from app.services.rag_types import RagResponse, RagStreamEvent
 
@@ -90,6 +92,11 @@ def public_config() -> PublicConfigResponse:
     )
 
 
+@router.get("/metrics", response_model=MetricsResponse)
+def metrics() -> MetricsResponse:
+    return MetricsResponse(**get_metrics_service().snapshot_dict())
+
+
 @router.post("/threads", response_model=ThreadResponse)
 def create_thread() -> ThreadResponse:
     return ThreadResponse(thread_id=new_thread_id("web"))
@@ -108,6 +115,7 @@ def feedback(request: FeedbackRequest) -> FeedbackResponse:
             citations=request.citations,
             metadata=request.metadata,
         )
+        get_metrics_service().record_feedback(request.rating)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return FeedbackResponse(feedback_id=record.feedback_id, status="recorded")
@@ -121,7 +129,9 @@ def chat(request: ChatRequest) -> ChatResponse:
             thread_id=request.thread_id,
             retrieval_profile=request.retrieval_profile.to_profile() if request.retrieval_profile else None,
         )
+        get_metrics_service().record_chat(elapsed_ms=response.elapsed_ms)
     except Exception as exc:
+        get_metrics_service().record_chat_error()
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return _serialize_response(response)
 
@@ -129,6 +139,7 @@ def chat(request: ChatRequest) -> ChatResponse:
 @router.post("/chat/stream")
 def chat_stream(request: ChatRequest) -> StreamingResponse:
     def event_generator():
+        completed = False
         try:
             for event in get_rag_service().stream(
                 request.message.strip(),
@@ -139,8 +150,13 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
                 if serialized is None:
                     continue
                 event_name, payload = serialized
+                if event_name == "complete" and event.result is not None:
+                    get_metrics_service().record_chat(elapsed_ms=event.result.elapsed_ms, stream=True)
+                    completed = True
                 yield _sse_payload(event_name, payload)
         except Exception as exc:
+            if not completed:
+                get_metrics_service().record_chat_error()
             yield _sse_payload("error", ChatStreamErrorData(message=str(exc)).model_dump())
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

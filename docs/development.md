@@ -199,6 +199,28 @@ POST /api/feedback
 }
 ```
 
+## 运行指标
+
+FastAPI 提供基础进程内指标:
+
+```powershell
+curl http://127.0.0.1:8000/api/metrics
+```
+
+当前包含:
+
+- `chat_requests_total`
+- `chat_stream_requests_total`
+- `chat_errors_total`
+- `feedback_total`
+- `feedback_up_total`
+- `feedback_down_total`
+- `average_chat_elapsed_ms`
+- `last_chat_elapsed_ms`
+- `uptime_seconds`
+
+这些指标随进程重启清零，适合本地调试和轻量部署观测。需要长期趋势或告警时，再接入 Prometheus / OpenTelemetry 等外部系统。
+
 ## 注意事项
 
 - `evaluate_retrieval` 依赖本地向量库和 embedding 检索链路。

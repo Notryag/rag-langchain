@@ -29,6 +29,19 @@ class ApiSmokeTests(unittest.TestCase):
         self.assertIn("embedding_model", payload)
         self.assertIn("retrieval_search_type", payload)
 
+    def test_metrics(self) -> None:
+        response = self.client.get("/api/metrics")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("started_at", payload)
+        self.assertIn("uptime_seconds", payload)
+        self.assertIn("chat_requests_total", payload)
+        self.assertIn("chat_stream_requests_total", payload)
+        self.assertIn("chat_errors_total", payload)
+        self.assertIn("feedback_total", payload)
+        self.assertIn("average_chat_elapsed_ms", payload)
+
     def test_create_thread(self) -> None:
         response = self.client.post("/api/threads")
 

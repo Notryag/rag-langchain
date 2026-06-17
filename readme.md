@@ -95,6 +95,9 @@ uv run python -m evaluation.evaluate_retrieval --limit 10
 # 删除单个文档索引
 uv run python -m app.main delete-source 维护保养.txt
 
+# 查看基础运行指标
+curl http://127.0.0.1:8000/api/metrics
+
 # 采样生成回答
 uv run python -m evaluation.generate_answers --limit 10
 

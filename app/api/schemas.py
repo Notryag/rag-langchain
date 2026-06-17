@@ -71,6 +71,19 @@ class PublicConfigResponse(BaseModel):
     collection_name: str
 
 
+class MetricsResponse(BaseModel):
+    started_at: str
+    uptime_seconds: int
+    chat_requests_total: int
+    chat_stream_requests_total: int
+    chat_errors_total: int
+    feedback_total: int
+    feedback_up_total: int
+    feedback_down_total: int
+    average_chat_elapsed_ms: float | None
+    last_chat_elapsed_ms: int | None
+
+
 class ChatResponse(BaseModel):
     thread_id: str
     answer: str
