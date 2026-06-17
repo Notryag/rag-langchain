@@ -22,15 +22,15 @@
 
 ## Batch 2: 用户认证
 
-- [ ] 增加密码哈希工具
-- [ ] 增加用户注册 service
-- [ ] 增加用户登录 service
-- [ ] 增加 JWT access token 生成与解析
-- [ ] 增加 `get_current_user` 鉴权依赖
-- [ ] 增加 `/api/v1/auth/register`
-- [ ] 增加 `/api/v1/auth/login`
-- [ ] 增加 `/api/v1/auth/me`
-- [ ] 增加认证测试
+- [x] 增加密码哈希工具
+- [x] 增加用户注册 service
+- [x] 增加用户登录 service
+- [x] 增加 JWT access token 生成与解析
+- [x] 增加 `get_current_user` 鉴权依赖
+- [x] 增加 `/api/v1/auth/register`
+- [x] 增加 `/api/v1/auth/login`
+- [x] 增加 `/api/v1/auth/me`
+- [x] 增加认证测试
 
 ## Batch 3: 知识库 CRUD
 
@@ -87,9 +87,8 @@
 
 ## 建议执行顺序
 
-1. Batch 2 用户认证
-2. Batch 3 知识库 CRUD
-3. Batch 4 文档上传与状态
-4. Batch 5 pgvector 入库与检索
-5. Batch 6 多租户问答和聊天记录
-6. Batch 7 异步文档处理
+1. Batch 3 知识库 CRUD
+2. Batch 4 文档上传与状态
+3. Batch 5 pgvector 入库与检索
+4. Batch 6 多租户问答和聊天记录
+5. Batch 7 异步文档处理

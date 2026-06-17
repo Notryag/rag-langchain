@@ -200,6 +200,41 @@ VITE_API_BASE_URL=https://your-api.example.com
 
 React Web 控制台侧栏提供对应的检索设置面板，发送消息时会随请求带上当前 profile。
 
+## 多租户认证 API
+
+新的产品化接口从 `/api/v1` 开始。认证接口:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+注册请求:
+
+```json
+{
+  "username": "alice",
+  "email": "alice@example.com",
+  "password": "password-123"
+}
+```
+
+登录请求:
+
+```json
+{
+  "username_or_email": "alice",
+  "password": "password-123"
+}
+```
+
+登录响应会返回 `access_token`。后续 `/api/v1` 业务接口通过 Bearer Token 鉴权:
+
+```text
+Authorization: Bearer <access_token>
+```
+
 ## 用户反馈
 
 React Web 控制台会在助手回答下方显示有帮助 / 没帮助按钮。提交后，FastAPI 会将反馈追加写入 `FEEDBACK_LOG_PATH` 指向的 JSONL 文件，字段包括 `thread_id`、`message_id`、`rating`、问题、回答、引用和检索参数快照。

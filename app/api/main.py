@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router as api_router
+from app.api.v1.auth import router as auth_router
 from app.config.logging_setup import setup_logging
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(auth_router)
 
 
 @app.get("/", include_in_schema=False)
