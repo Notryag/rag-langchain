@@ -11,6 +11,7 @@ load_dotenv()
 _SUPPORTED_RETRIEVAL_SEARCH_TYPES = {"similarity", "mmr", "hybrid"}
 _SUPPORTED_RERANKER_STRATEGIES = {"embedding_lexical"}
 _SUPPORTED_LOG_LEVELS = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
+_SUPPORTED_CHECKPOINTER_TYPES = {"memory", "sqlite"}
 
 
 def _get_required_env(name: str) -> str:
@@ -67,6 +68,8 @@ class Settings:
     log_dir: str
     log_level: str
     log_file_name: str
+    checkpointer_type: str
+    checkpointer_sqlite_path: str
 
     def __post_init__(self) -> None:
         if self.retrieval_search_type not in _SUPPORTED_RETRIEVAL_SEARCH_TYPES:
@@ -82,6 +85,10 @@ class Settings:
         if self.log_level not in _SUPPORTED_LOG_LEVELS:
             supported = ", ".join(sorted(_SUPPORTED_LOG_LEVELS))
             raise ValueError(f"LOG_LEVEL must be one of [{supported}], got: {self.log_level}")
+
+        if self.checkpointer_type not in _SUPPORTED_CHECKPOINTER_TYPES:
+            supported = ", ".join(sorted(_SUPPORTED_CHECKPOINTER_TYPES))
+            raise ValueError(f"CHECKPOINTER_TYPE must be one of [{supported}], got: {self.checkpointer_type}")
 
         positive_fields = {
             "TOP_K": self.top_k,
@@ -113,10 +120,14 @@ class Settings:
             "COLLECTION_NAME": self.collection_name,
             "LOG_DIR": self.log_dir,
             "LOG_FILE_NAME": self.log_file_name,
+            "CHECKPOINTER_TYPE": self.checkpointer_type,
         }
         for field_name, field_value in required_string_fields.items():
             if not field_value.strip():
                 raise ValueError(f"{field_name} must not be empty")
+
+        if self.checkpointer_type == "sqlite" and not self.checkpointer_sqlite_path.strip():
+            raise ValueError("CHECKPOINTER_SQLITE_PATH must not be empty when CHECKPOINTER_TYPE=sqlite")
 
     @classmethod
     def load(cls) -> "Settings":
@@ -138,6 +149,8 @@ class Settings:
             log_dir=(os.getenv("LOG_DIR") or "./logs").strip(),
             log_level=(os.getenv("LOG_LEVEL") or "INFO").strip().upper(),
             log_file_name=(os.getenv("LOG_FILE_NAME") or "app.log").strip(),
+            checkpointer_type=(os.getenv("CHECKPOINTER_TYPE") or "sqlite").strip().lower(),
+            checkpointer_sqlite_path=(os.getenv("CHECKPOINTER_SQLITE_PATH") or "./storage/checkpoints.sqlite3").strip(),
         )
 
 

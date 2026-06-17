@@ -25,6 +25,8 @@ frontend/dist/
 # Local vector store data
 storage/chroma/
 storage/exports/
+storage/*.sqlite
+storage/*.sqlite3
 logs/
 
 # OS files

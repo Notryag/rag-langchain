@@ -58,9 +58,30 @@ uv run python -m app.main ingest --data-dir ./data/raw --mode rebuild
 - metadata 结构变化后需要统一刷新
 - 需要确保评测基于当前原始数据的完整快照
 
+## 删除单个文档索引
+
+如果只想移除某个原始文档已经写入 Chroma 的 chunks，可以按 `source` 删除:
+
+```powershell
+uv run python -m app.main delete-source 维护保养.txt
+uv run python -m app.main delete-source subdir/example.md --data-dir ./data/raw
+```
+
+策略:
+
+- `source` 会按 `--data-dir` 规范化，和入库时写入的 metadata `source` 保持一致。
+- 命令只删除向量库中该 `source` 对应的 chunks，不会删除本地原始文件。
+- 如果删除后要重新写入该文档，可以再次运行默认增量入库。
+- 如果已经删除或重命名了大量原始文档，仍建议使用 `--mode rebuild` 生成完整快照。
+
+适用场景:
+
+- 单个文档下线
+- 单个文档内容需要先移除再重新入库
+- 调试某个 source 的检索效果
+
 ## 当前边界
 
-- 当前没有单文档删除命令。
 - 当前没有文档级 manifest 或版本记录。
 - 当前日志会记录 `run_id`、入库模式、raw/split/unique/new chunk 数量、按 source 的统计和耗时。
 - 如果需要严格追踪每次入库差异，下一步应补充入库摘要文件或 manifest。

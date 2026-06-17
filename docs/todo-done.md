@@ -44,6 +44,7 @@
 - [x] 把检索与回答主流程收敛到 service 层
 - [x] 让 CLI、Streamlit 调同一 service 入口
 - [x] 避免 UI 层直接拼装业务流程
+- [x] 增加 FastAPI API 层，让 Web / API 复用同一 service
 
 ### Agent 与 Middleware
 
@@ -59,6 +60,7 @@
 - [x] 缓存 embeddings 实例
 - [x] 缓存 vector store 实例
 - [x] 统一入口文件，减少重复启动路径
+- [x] 增加 SQLite 会话状态持久化，并支持通过配置切回内存 checkpointer
 
 ### 文档结构
 
@@ -92,3 +94,4 @@
 - [x] 支持更多文档类型，例如 docx、html
 - [x] 明确增量入库与重建索引策略
 - [x] 为入库过程补充更细粒度日志
+- [x] 增加按 source 删除已入库文档 chunks 的命令

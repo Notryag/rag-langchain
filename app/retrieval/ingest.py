@@ -32,6 +32,13 @@ def _normalize_source(source: str | None, data_root: Path) -> str:
         return source_path.as_posix()
 
 
+def _normalize_source_filter(source: str, data_dir: str) -> str:
+    source_path = Path(source)
+    if not source_path.is_absolute():
+        source_path = Path(data_dir) / source_path
+    return _normalize_source(source_path.as_posix(), Path(data_dir))
+
+
 def _prepare_chunk_ids(split_docs: list[Document], data_dir: str) -> list[Document]:
     data_root = Path(data_dir)
     chunk_indexes: dict[tuple[str, str], int] = {}
@@ -77,6 +84,18 @@ def _get_existing_ids(vector_store, ids: list[str]) -> set[str]:
         existing_ids.update(result.get("ids", []))
 
     return existing_ids
+
+
+def _get_ids_by_source(vector_store, source: str) -> list[str]:
+    result = vector_store.get(where={"source": source}, include=[])
+    return list(result.get("ids", []))
+
+
+def _delete_ids(vector_store, ids: list[str]) -> None:
+    for start in range(0, len(ids), CHROMA_GET_BATCH_SIZE):
+        batch_ids = ids[start : start + CHROMA_GET_BATCH_SIZE]
+        if batch_ids:
+            vector_store.delete(ids=batch_ids)
 
 
 def _count_by_source(docs: list[Document]) -> dict[str, int]:
@@ -161,6 +180,39 @@ def ingest_documents(data_dir: str, *, mode: IngestMode = "skip_existing") -> in
         elapsed_ms,
     )
     return len(new_docs)
+
+
+def delete_documents_by_source(source: str, *, data_dir: str = "./data/raw") -> int:
+    setup_logging()
+    stripped_source = source.strip()
+    if not stripped_source:
+        raise ValueError("source must not be empty")
+
+    normalized_source = _normalize_source_filter(stripped_source, data_dir)
+    started_at = time.perf_counter()
+    run_id = uuid4().hex[:8]
+    vector_store = get_vector_store()
+    ids = _get_ids_by_source(vector_store, normalized_source)
+    if not ids:
+        elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+        logger.info(
+            "没有找到可删除的文档 chunk。run_id=%s source=%s elapsed_ms=%s",
+            run_id,
+            normalized_source,
+            elapsed_ms,
+        )
+        return 0
+
+    _delete_ids(vector_store, ids)
+    elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+    logger.info(
+        "文档删除完成。run_id=%s source=%s deleted_chunks=%s elapsed_ms=%s",
+        run_id,
+        normalized_source,
+        len(ids),
+        elapsed_ms,
+    )
+    return len(ids)
 
 
 if __name__ == "__main__":

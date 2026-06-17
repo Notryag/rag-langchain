@@ -44,6 +44,8 @@ uv run python -m <module>
 - `RERANKER_ENABLED` 是可选布尔开关，默认 `false`。
 - `RERANKER_STRATEGY` 当前只支持 `embedding_lexical`。
 - `LOG_LEVEL` 当前只支持 `CRITICAL`、`ERROR`、`WARNING`、`INFO`、`DEBUG`。
+- `CHECKPOINTER_TYPE` 当前支持 `sqlite` 和 `memory`，默认 `sqlite`，用于保存多轮会话状态。
+- `CHECKPOINTER_SQLITE_PATH` 默认 `./storage/checkpoints.sqlite3`，仅在 `CHECKPOINTER_TYPE=sqlite` 时使用。
 - 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令
@@ -98,6 +100,7 @@ uv run python -m evaluation.capture_trace "扫地机器人连不上WiFi怎么办
 uv run python -m app.main cli
 uv run python -m app.main ingest --data-dir ./data/raw
 uv run python -m app.main ingest --data-dir ./data/raw --mode rebuild
+uv run python -m app.main delete-source 维护保养.txt
 uv run python -m app.main streamlit
 uv run python -m app.main web
 ```

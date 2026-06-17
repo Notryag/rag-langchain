@@ -2,12 +2,12 @@ import logging
 
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import InMemorySaver
 
 from app.config.logging_setup import setup_logging
 from app.config.settings import settings
 from app.middleware.prompt_with_context import prompt_with_context
 from app.agent.prompts import BASE_SYSTEM_PROMPT
+from app.memory.checkpointer import build_checkpointer
 from app.tools.retrieve_context import retrieve_context
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def build_agent():
         model=model,
         tools=tools,
         middleware=middleware,
-        checkpointer=InMemorySaver(),
+        checkpointer=build_checkpointer(),
         system_prompt=BASE_SYSTEM_PROMPT,
     )
     logger.info(

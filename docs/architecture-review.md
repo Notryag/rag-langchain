@@ -35,6 +35,10 @@
 - 抽象 `CheckpointerProvider`，把 `InMemorySaver` 变为 dev 默认实现。
 - 增加 `sqlite` 或 `postgres` 持久化实现，并由配置切换。
 
+进展：
+- 已新增 `app/memory/checkpointer.py`，通过 `CHECKPOINTER_TYPE=sqlite|memory` 统一创建 checkpointer。
+- 默认使用 SQLite 持久化到 `CHECKPOINTER_SQLITE_PATH`，服务重启后可按同一 `thread_id` 恢复 LangGraph 会话状态。
+
 ### 2) 事件协议缺少强类型约束（高优先级）
 
 现状：`chat_client -> rag_service -> UI` 之间大量使用 `dict[str, Any]`。

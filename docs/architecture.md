@@ -24,6 +24,7 @@ CLI / Streamlit / FastAPI API / Eval
 - `app/api/` 只负责 HTTP 协议、SSE 流式输出和响应序列化，不承载 RAG 业务判断。
 - `services/` 负责编排一次问答的输入、流式事件、结果聚合。
 - `agent/` 负责模型装配、prompt 策略、middleware。
+- `memory/` 负责会话状态 checkpointer 的创建与持久化策略。
 - `tools/` 负责把底层能力暴露给 agent 调用。
 - `retrieval/` 负责向量库、检索、入库、引用格式化这些纯检索能力。
 - 检索格式化阶段负责上下文去重、裁剪和输出长度控制，不把完整 chunk 原样灌给模型。
@@ -124,6 +125,7 @@ CLI、Streamlit、FastAPI API、React 前端和 evaluation 只消费这些结果
 - `app/agent/prompts.py`: 静态 prompt
 - `app/agent/prompt_strategy.py`: 动态 prompt 策略
 - `app/middleware/prompt_with_context.py`: 动态 prompt middleware
+- `app/memory/checkpointer.py`: LangGraph 会话状态 checkpointer provider
 - `app/tools/retrieve_context.py`: agent 可调用检索 tool
 - `app/retrieval/loaders.py`: 文档加载入口
 - `app/retrieval/splitter.py`: 按文档类型选择 chunk 切分策略

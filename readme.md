@@ -33,6 +33,8 @@ OPENAI_API_KEY=your_key
 ```env
 CHAT_MODEL=gpt-4.1-mini
 EMBEDDING_MODEL=text-embedding-3-small
+CHECKPOINTER_TYPE=sqlite
+CHECKPOINTER_SQLITE_PATH=./storage/checkpoints.sqlite3
 ```
 
 ### 3) 导入本地知识库
@@ -88,6 +90,9 @@ GitHub Pages 预览:
 ```bash
 # 检索评测
 uv run python -m evaluation.evaluate_retrieval --limit 10
+
+# 删除单个文档索引
+uv run python -m app.main delete-source 维护保养.txt
 
 # 采样生成回答
 uv run python -m evaluation.generate_answers --limit 10

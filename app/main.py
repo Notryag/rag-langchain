@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from app.retrieval.ingest import ingest_documents
+from app.retrieval.ingest import delete_documents_by_source, ingest_documents
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STREAMLIT_ENTRY = PROJECT_ROOT / "streamlit_app.py"
@@ -29,6 +29,17 @@ def _build_parser() -> argparse.ArgumentParser:
         default="skip_existing",
         choices=["skip_existing", "rebuild"],
         help="Ingest mode: skip_existing keeps existing chunks, rebuild clears and recreates the collection.",
+    )
+
+    delete_parser = subparsers.add_parser("delete-source", help="Delete indexed chunks for one source document.")
+    delete_parser.add_argument(
+        "source",
+        help="Source metadata value or path relative to --data-dir, for example 维护保养.txt.",
+    )
+    delete_parser.add_argument(
+        "--data-dir",
+        default="./data/raw",
+        help="Directory used to normalize relative source paths.",
     )
 
     streamlit_parser = subparsers.add_parser("streamlit", help="Start the Streamlit UI.")
@@ -76,6 +87,12 @@ def _run_ingest(data_dir: str, *, mode: str) -> int:
     return 0
 
 
+def _run_delete_source(source: str, *, data_dir: str) -> int:
+    deleted = delete_documents_by_source(source, data_dir=data_dir)
+    print(f"deleted_chunks={deleted}")
+    return 0
+
+
 def _run_streamlit(*, server_port: str | None, server_address: str | None) -> int:
     command = [sys.executable, "-m", "streamlit", "run", str(STREAMLIT_ENTRY)]
     if server_port:
@@ -111,6 +128,8 @@ def main() -> int:
         return _run_cli()
     if args.command == "ingest":
         return _run_ingest(args.data_dir, mode=args.mode)
+    if args.command == "delete-source":
+        return _run_delete_source(args.source, data_dir=args.data_dir)
     if args.command == "streamlit":
         return _run_streamlit(
             server_port=args.server_port,
