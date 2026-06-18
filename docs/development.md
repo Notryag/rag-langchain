@@ -258,6 +258,29 @@ DELETE /api/v1/kbs/{kb_id}
 }
 ```
 
+## 多租户文档 API
+
+文档接口:
+
+```text
+POST   /api/v1/kbs/{kb_id}/documents
+GET    /api/v1/kbs/{kb_id}/documents
+GET    /api/v1/documents/{document_id}
+DELETE /api/v1/documents/{document_id}
+POST   /api/v1/documents/{document_id}/process
+```
+
+上传接口使用 `multipart/form-data`，字段名为 `file`。上传成功后只保存原始文件并创建 `documents` 记录，初始状态为 `pending`。
+
+同步处理入口会加载原始文件并更新状态:
+
+```text
+pending -> processing -> completed
+pending -> processing -> failed
+```
+
+当前同步处理只完成解析和状态追踪，切片、embedding 和 pgvector 入库放在后续 Batch 5。
+
 ## 用户反馈
 
 React Web 控制台会在助手回答下方显示有帮助 / 没帮助按钮。提交后，FastAPI 会将反馈追加写入 `FEEDBACK_LOG_PATH` 指向的 JSONL 文件，字段包括 `thread_id`、`message_id`、`rating`、问题、回答、引用和检索参数快照。

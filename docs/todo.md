@@ -42,12 +42,12 @@
 
 ## Batch 4: 文档上传与状态
 
-- [ ] 增加文档 schema
-- [ ] 增加上传文件保存逻辑
-- [ ] 上传后创建 document 记录
-- [ ] 支持 document 状态流转
-- [ ] 增加同步解析入口
-- [ ] 增加文档上传与状态测试
+- [x] 增加文档 schema
+- [x] 增加上传文件保存逻辑
+- [x] 上传后创建 document 记录
+- [x] 支持 document 状态流转
+- [x] 增加同步解析入口
+- [x] 增加文档上传与状态测试
 
 ## Batch 5: pgvector 入库与检索
 
@@ -87,7 +87,6 @@
 
 ## 建议执行顺序
 
-1. Batch 4 文档上传与状态
-2. Batch 5 pgvector 入库与检索
-3. Batch 6 多租户问答和聊天记录
-4. Batch 7 异步文档处理
+1. Batch 5 pgvector 入库与检索
+2. Batch 6 多租户问答和聊天记录
+3. Batch 7 异步文档处理

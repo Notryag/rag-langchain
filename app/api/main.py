@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router as api_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.documents import router as document_router
 from app.api.v1.knowledge_bases import router as knowledge_base_router
 from app.config.logging_setup import setup_logging
 
@@ -36,6 +37,7 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(knowledge_base_router)
+app.include_router(document_router)
 
 
 @app.get("/", include_in_schema=False)
