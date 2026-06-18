@@ -290,6 +290,36 @@ document_chunks.kb_id = requested_kb_id
 
 检索结果会转换为结构化 references，供后续问答接口保存到 `chat_messages.references`。
 
+## 多租户问答 API
+
+问答和聊天记录接口:
+
+```text
+POST /api/v1/kbs/{kb_id}/chat
+GET  /api/v1/chat-sessions
+GET  /api/v1/chat-sessions/{session_id}/messages
+```
+
+问答请求:
+
+```json
+{
+  "question": "这个系统怎么计费？",
+  "session_id": 1
+}
+```
+
+`session_id` 可选。不传时创建新会话，传入时只允许复用当前用户自己的会话，且会话必须属于当前 `kb_id`。
+
+问答流程:
+
+1. 校验当前用户有权访问知识库。
+2. 保存用户问题到 `chat_messages`。
+3. 使用 pgvector 在 `user_id + kb_id` 范围内检索 chunks。
+4. 调用模型生成回答。
+5. 保存助手回答和结构化 references。
+6. 返回 `answer / references / session_id`。
+
 ## 用户反馈
 
 React Web 控制台会在助手回答下方显示有帮助 / 没帮助按钮。提交后，FastAPI 会将反馈追加写入 `FEEDBACK_LOG_PATH` 指向的 JSONL 文件，字段包括 `thread_id`、`message_id`、`rating`、问题、回答、引用和检索参数快照。

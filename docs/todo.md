@@ -59,13 +59,13 @@
 
 ## Batch 6: 多租户问答和聊天记录
 
-- [ ] 增加 `/api/v1/kbs/{kb_id}/chat`
-- [ ] 支持 chat_session 创建和复用
-- [ ] 保存用户消息
-- [ ] 保存助手消息和 references
-- [ ] 问答响应返回 answer / references / session_id
-- [ ] 增加聊天记录查询接口
-- [ ] 增加问答和聊天记录测试
+- [x] 增加 `/api/v1/kbs/{kb_id}/chat`
+- [x] 支持 chat_session 创建和复用
+- [x] 保存用户消息
+- [x] 保存助手消息和 references
+- [x] 问答响应返回 answer / references / session_id
+- [x] 增加聊天记录查询接口
+- [x] 增加问答和聊天记录测试
 
 ## Batch 7: 异步文档处理
 
@@ -87,5 +87,4 @@
 
 ## 建议执行顺序
 
-1. Batch 6 多租户问答和聊天记录
-2. Batch 7 异步文档处理
+1. Batch 7 异步文档处理
