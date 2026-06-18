@@ -39,6 +39,10 @@ class DocumentApiTests(unittest.TestCase):
         self.current_user = SimpleNamespace(id=1, username="alice", email="alice@example.com")
         app.dependency_overrides[auth_routes.get_current_user] = lambda: self.current_user
         app.dependency_overrides[document_routes.get_db_session] = lambda: object()
+        self.dispatched_document_ids: list[int] = []
+        app.dependency_overrides[document_routes.get_document_task_dispatcher] = (
+            lambda: self.dispatched_document_ids.append
+        )
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
@@ -67,6 +71,7 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.kb_id, 2)
         self.assertEqual(fake_service.content, b"hello")
+        self.assertEqual(self.dispatched_document_ids, [3])
 
     def test_upload_document_rejects_missing_kb(self) -> None:
         class FakeDocumentService:
@@ -81,6 +86,7 @@ class DocumentApiTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.dispatched_document_ids, [])
 
     def test_list_documents(self) -> None:
         class FakeDocumentService:

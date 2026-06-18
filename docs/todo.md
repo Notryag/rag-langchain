@@ -69,11 +69,11 @@
 
 ## Batch 7: 异步文档处理
 
-- [ ] 增加 Celery app
-- [ ] 增加文档处理 task
-- [ ] 上传文档后投递异步任务
-- [ ] 任务失败时写入 `failed` 和 `error_message`
-- [ ] 增加任务幂等策略
+- [x] 增加 Celery app
+- [x] 增加文档处理 task
+- [x] 上传文档后投递异步任务
+- [x] 任务失败时写入 `failed` 和 `error_message`
+- [x] 增加任务幂等策略
 
 ## 当前不做
 
@@ -87,4 +87,6 @@
 
 ## 建议执行顺序
 
-1. Batch 7 异步文档处理
+1. 在真实 PostgreSQL + Redis 环境跑通端到端上传、异步处理和问答
+2. 增加 API 集成测试或 docker compose smoke test
+3. 进入第二阶段增强: 限流、统一异常、操作日志、缓存和 SSE

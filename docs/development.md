@@ -71,6 +71,16 @@ uv run alembic upgrade head
 uv run alembic revision --autogenerate -m "message"
 ```
 
+### Celery Worker
+
+启动 Redis 后，可以启动文档处理 worker:
+
+```powershell
+uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
+```
+
+上传文档成功后，API 会尝试投递 `documents.process` 任务。若 Redis / broker 暂不可用，上传记录仍会保留为 `pending`，可以稍后通过同步处理入口重试。
+
 ### API smoke tests
 
 ```powershell
@@ -270,7 +280,7 @@ DELETE /api/v1/documents/{document_id}
 POST   /api/v1/documents/{document_id}/process
 ```
 
-上传接口使用 `multipart/form-data`，字段名为 `file`。上传成功后只保存原始文件并创建 `documents` 记录，初始状态为 `pending`。
+上传接口使用 `multipart/form-data`，字段名为 `file`。上传成功后保存原始文件、创建 `documents` 记录，初始状态为 `pending`，并尝试投递 Celery 异步处理任务。
 
 同步处理入口会加载原始文件并更新状态:
 
@@ -280,6 +290,8 @@ pending -> processing -> failed
 ```
 
 当前同步处理会完成解析、切片、embedding 和 pgvector 入库。处理成功后状态变为 `completed`，失败时变为 `failed` 并写入 `error_message`。
+
+Celery 任务复用同一套同步处理逻辑，因此失败状态和幂等策略与同步入口一致。每次处理会先删除该 document 已有 chunks，再重新写入新 chunks，避免任务重试造成重复入库。
 
 pgvector 检索模块会在 SQL 层按 `user_id + kb_id` 过滤:
 

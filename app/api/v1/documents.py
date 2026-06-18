@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -9,8 +11,10 @@ from app.db.session import get_db_session
 from app.schemas.document import DocumentProcessResponse, DocumentRead
 from app.services.document_service import DocumentNotFoundError, DocumentService, get_document_service
 from app.services.kb_service import KnowledgeBaseNotFoundError
+from app.workers.tasks import get_document_task_dispatcher
 
 router = APIRouter(tags=["documents"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/api/v1/kbs/{kb_id}/documents", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
@@ -20,6 +24,7 @@ async def upload_document(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
+    dispatch_document_processing=Depends(get_document_task_dispatcher),
 ) -> DocumentRead:
     content = await file.read()
     try:
@@ -33,6 +38,11 @@ async def upload_document(
         )
     except KnowledgeBaseNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    try:
+        dispatch_document_processing(document.id)
+    except Exception:
+        logger.exception("文档异步处理任务投递失败。document_id=%s", document.id)
     return DocumentRead.model_validate(document)
 
 
