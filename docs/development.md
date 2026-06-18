@@ -279,7 +279,16 @@ pending -> processing -> completed
 pending -> processing -> failed
 ```
 
-当前同步处理只完成解析和状态追踪，切片、embedding 和 pgvector 入库放在后续 Batch 5。
+当前同步处理会完成解析、切片、embedding 和 pgvector 入库。处理成功后状态变为 `completed`，失败时变为 `failed` 并写入 `error_message`。
+
+pgvector 检索模块会在 SQL 层按 `user_id + kb_id` 过滤:
+
+```text
+document_chunks.user_id = current_user.id
+document_chunks.kb_id = requested_kb_id
+```
+
+检索结果会转换为结构化 references，供后续问答接口保存到 `chat_messages.references`。
 
 ## 用户反馈
 

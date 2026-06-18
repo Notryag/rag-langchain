@@ -25,3 +25,4 @@ class DocumentRead(BaseModel):
 class DocumentProcessResponse(BaseModel):
     document: DocumentRead
     parsed_units: int
+    chunk_count: int

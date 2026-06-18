@@ -145,6 +145,7 @@ class DocumentApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["parsed_units"], 1)
+        self.assertEqual(response.json()["chunk_count"], 1)
         self.assertEqual(response.json()["document"]["status"], "completed")
         self.assertEqual(fake_service.user_id, 1)
 

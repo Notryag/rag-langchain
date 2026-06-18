@@ -51,11 +51,11 @@
 
 ## Batch 5: pgvector 入库与检索
 
-- [ ] 将新文档切片写入 `document_chunks`
-- [ ] 将 embedding 写入 pgvector 字段
-- [ ] 检索时按 `user_id + kb_id` 过滤
-- [ ] 返回结构化 references
-- [ ] 增加权限过滤检索测试
+- [x] 将新文档切片写入 `document_chunks`
+- [x] 将 embedding 写入 pgvector 字段
+- [x] 检索时按 `user_id + kb_id` 过滤
+- [x] 返回结构化 references
+- [x] 增加权限过滤检索测试
 
 ## Batch 6: 多租户问答和聊天记录
 
@@ -87,6 +87,5 @@
 
 ## 建议执行顺序
 
-1. Batch 5 pgvector 入库与检索
-2. Batch 6 多租户问答和聊天记录
-3. Batch 7 异步文档处理
+1. Batch 6 多租户问答和聊天记录
+2. Batch 7 异步文档处理

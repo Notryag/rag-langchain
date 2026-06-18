@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.db.models.document import Document, DocumentStatus
 from app.retrieval.parser import parse_document_file
+from app.retrieval.pgvector_store import ingest_document_chunks
 from app.services.kb_service import KnowledgeBaseService
 
 
@@ -85,6 +86,7 @@ class DocumentService:
 
         try:
             parsed_docs = parse_document_file(document.file_path)
+            chunk_count = ingest_document_chunks(session, document=document, parsed_docs=parsed_docs)
         except Exception as exc:
             document.status = DocumentStatus.FAILED
             document.error_message = str(exc)
@@ -96,7 +98,7 @@ class DocumentService:
         document.error_message = None
         session.commit()
         session.refresh(document)
-        return document, len(parsed_docs)
+        return document, chunk_count
 
     def mark_failed(self, session: Session, *, user_id: int, document_id: int, error_message: str) -> Document:
         document = self.get_for_user(session, user_id=user_id, document_id=document_id)

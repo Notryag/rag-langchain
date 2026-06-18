@@ -86,7 +86,7 @@ def process_document(
     document_service: DocumentService = Depends(get_document_service),
 ) -> DocumentProcessResponse:
     try:
-        document, parsed_units = document_service.process_sync(
+        document, chunk_count = document_service.process_sync(
             session,
             user_id=current_user.id,
             document_id=document_id,
@@ -95,4 +95,8 @@ def process_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    return DocumentProcessResponse(document=DocumentRead.model_validate(document), parsed_units=parsed_units)
+    return DocumentProcessResponse(
+        document=DocumentRead.model_validate(document),
+        parsed_units=chunk_count,
+        chunk_count=chunk_count,
+    )
