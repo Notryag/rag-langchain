@@ -8,7 +8,7 @@
 /api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + Agent + CLI + Streamlit` 链路已经删除，不再作为运行时路径或新功能落点。
+旧 `/api + Chroma + CLI + Streamlit` 链路已经删除。Agent 已恢复到当前 `/api/v1 + pgvector` 主线，`retrieve_context` tool 直接使用 PostgreSQL/pgvector，并带 `user_id + kb_id` 权限过滤。
 
 ## 已落地能力
 

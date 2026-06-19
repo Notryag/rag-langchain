@@ -2,7 +2,7 @@
 
 多租户企业知识库 RAG 后端。当前主线是 FastAPI + SQLAlchemy 2.0 + PostgreSQL + pgvector + Redis + Celery + JWT。
 
-旧 `/api + Chroma + Agent + CLI + Streamlit` 链路已经删除。新增能力默认进入 `/api/v1`、`app/services/`、`app/retrieval/` 和数据库模型。
+旧 `/api + Chroma + CLI + Streamlit` 链路已经删除。当前问答主线是 `/api/v1 + Agent + pgvector`: Agent 通过 `retrieve_context` tool 调用当前 PostgreSQL/pgvector 检索，并保留多租户权限过滤。
 
 ## 当前能力
 
@@ -39,19 +39,21 @@ API 默认地址: `http://127.0.0.1:8000`
 OPENAI_API_KEY=your_key
 OPENAI_BASE_URL=
 CHAT_MODEL=gpt-4.1-mini
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSION=1536
+EMBEDDING_MODEL=bge-m3
+EMBEDDING_DIMENSION=1024
 DATABASE_URL=postgresql+psycopg://rag:rag@localhost:5432/rag
 REDIS_URL=redis://localhost:6379/0
 JWT_SECRET_KEY=change-me-in-production
 UPLOAD_DIR=./storage/uploads
 ```
 
-如果使用本地 `bge-m3`，通常需要:
+当前主线默认使用 `bge-m3`，embedding 表结构按 `vector(1024)` 设计。如果切换到其他 embedding 模型，必须同步修改:
 
 ```env
 EMBEDDING_DIMENSION=1024
 ```
+
+已经建过旧维度表时，本项目不保留旧 embedding 数据兼容；请重建数据库或清空并重建 `document_chunks` 后重新处理文档，避免混用不同维度的向量。
 
 容器访问宿主机 Ollama 时使用:
 
@@ -120,7 +122,7 @@ app/
   workers/      Celery app 和文档任务
 evaluation/     pgvector retrieval / answer eval 与 baseline
 frontend/       React + Vite 前端
-migrations/     Alembic migrations
+migrations/     Alembic migrations; 开发阶段以当前初始 schema 为准
 scripts/        smoke 脚本
 tests/          单元测试与 API 测试
 docs/           架构、运行、规划、待办

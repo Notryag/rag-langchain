@@ -38,7 +38,7 @@ uv run python -m <module>
 - `OPENAI_API_KEY` 是必填项，即使接本地兼容服务也需要显式提供一个非空值。
 - `OPENAI_BASE_URL` 是可选项；走官方 OpenAI 可留空，走兼容网关或本地模型服务时填写。
 - `CHAT_MODEL`、`EMBEDDING_MODEL`、`LOG_DIR`、`LOG_FILE_NAME` 都有默认值，但不允许为空字符串。
-- `EMBEDDING_DIMENSION` 默认 `1536`，必须和当前 embedding 模型输出维度一致；例如 `text-embedding-3-small` 是 `1536`，`bge-m3` 通常是 `1024`。
+- `EMBEDDING_MODEL` 默认 `bge-m3`，`EMBEDDING_DIMENSION` 默认 `1024`，必须和当前 embedding 模型输出维度一致；例如 `text-embedding-3-small` 是 `1536`。
 - `TOP_K`、`RETRIEVAL_FETCH_K`、`CHUNK_SIZE` 必须大于 `0`。
 - `RETRIEVAL_MAX_CONTEXT_CHARS` 必须大于 `0`，用于限制传给模型的检索上下文字符数。
 - `CHUNK_OVERLAP` 必须大于等于 `0`，且必须小于 `CHUNK_SIZE`。
@@ -114,7 +114,7 @@ uv run python scripts/smoke_multitenant.py
 OPENAI_BASE_URL=http://host.docker.internal:11434/v1
 ```
 
-方式二：本机进程调试。先启动依赖和数据库迁移:
+方式二：本机进程调试。先启动依赖并创建当前开发 schema:
 
 ```powershell
 docker compose up -d postgres redis
@@ -134,7 +134,7 @@ uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
 uv run python scripts/smoke_multitenant.py
 ```
 
-如果使用本地 `bge-m3` embedding，请确保 `.env` 或当前 shell 中设置:
+当前主线默认按本地或兼容服务的 `bge-m3` embedding 设计，请确保 `.env` 或当前 shell 中设置:
 
 ```env
 EMBEDDING_DIMENSION=1024
@@ -148,7 +148,7 @@ Docker Compose 的 `api` / `worker` 服务会读取 `.env` 中的模型配置，
 uv run alembic upgrade head
 ```
 
-如果数据库中已经存在旧维度的 pgvector 列，Compose 环境也需要重新运行迁移，必要时清理本地 `postgres_data` volume 后重建开发环境。
+如果数据库中已经存在旧维度的 pgvector 列，开发环境不做历史兼容迁移；直接清理本地 `postgres_data` volume 或重建数据库，然后重新执行 `uv run alembic upgrade head`。
 
 运行 baseline 前可以先检查 pgvector 维度配置:
 
@@ -196,7 +196,13 @@ uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrie
 
 如果 baseline 中途失败，`baseline_manifest.json` 会标记 `status=failed` 并记录失败命令。常见原因是 `EMBEDDING_DIMENSION` 与实际 embedding 模型输出维度不一致，或缺少模型 API Key。
 
-维度不一致时会看到 `Embedding dimension mismatch: EMBEDDING_DIMENSION=..., actual=...`。处理方式是让 `.env` 中的 `EMBEDDING_DIMENSION` 与当前 embedding 模型输出一致，并重建 pgvector 表/迁移与已有 embeddings；不要混用不同维度的 embedding 数据。
+维度不一致时会看到 `Embedding dimension mismatch: EMBEDDING_DIMENSION=..., actual=...`。处理方式是让 `.env` 中的 `EMBEDDING_DIMENSION` 与当前 embedding 模型输出一致，并重建数据库与已有 embeddings；不要混用不同维度的 embedding 数据。本项目开发阶段不维护旧 `vector(1536)` 迁移，旧库可以直接重建后重新上传/处理文档。
+
+## 日志边界
+
+运行日志统一由 `app.config.logging_setup.setup_logging()` 配置，FastAPI lifespan 会在进程启动时初始化。Agent、tool、retrieval、worker 代码只使用 `logging.getLogger(__name__)` 获取 logger，不单独配置 handler。
+
+`operation_logs` 是数据库业务审计表，用于记录注册、登录、知识库、文档、问答等用户操作；它不是运行日志系统，也不替代文件日志。
 
 如果只想先验证 retrieval baseline 路径，可临时在 PowerShell 中设置:
 
@@ -225,7 +231,7 @@ uv run python -m evaluation.evaluate_answers --bad-cases-out data/eval/bad_cases
 ### 抓取单次 Trace
 
 ```powershell
-旧 Agent trace 入口已删除。请通过 pgvector baseline 和 chat run 记录排查问答。
+当前 `/api/v1/chat/stream` 会输出 Agent tool trace。排查问答时先看 SSE 中的 `tool_call` / `tool_result`，再结合 pgvector baseline 和 chat run 记录。
 ```
 
 ## 统一入口

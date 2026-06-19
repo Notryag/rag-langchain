@@ -15,7 +15,7 @@ HTTP /api/v1
   -> Redis / Celery
 ```
 
-旧 `/api + Chroma + Agent + CLI + Streamlit` 已删除。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答主线为 `/api/v1 + Agent + pgvector`。
 
 ## 分层边界
 

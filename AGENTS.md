@@ -15,7 +15,8 @@
 - 新业务流程优先放 `app/services/`
 - 新检索能力优先放 `app/retrieval/`
 - HTTP 能力优先放 `app/api/v1/`
-- 旧 `app/agent/`、`app/tools/`、`app/cli/` 与 Streamlit 链路已删除，不要恢复为新主线
+- 旧 `app/cli/` 与 Streamlit 链路已删除，不要恢复为新主线
+- `app/agent/` 与 `app/tools/` 属于当前 `/api/v1 + pgvector` 问答主线；tool 必须走 `app/retrieval/pgvector_store.py` 并保留多租户过滤，不要恢复旧 Chroma vectorstore
 
 ## 运行约定
 

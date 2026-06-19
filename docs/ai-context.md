@@ -21,7 +21,9 @@
 /api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + Agent + CLI + Streamlit` 已删除。不要再从 `app/agent/`、`app/tools/`、`app/cli/`、`app/retrieval/vectorstore.py`、`app/retrieval/ingest.py`、`app/services/rag_service.py` 查找运行时路径。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答运行时路径是 `/api/v1/chat -> app/services/chat_service.py -> app/services/rag_service.py -> app/agent -> app/tools/retrieve_context.py -> app/retrieval/pgvector_store.py`。
+
+注意: `app/agent/` 和 `app/tools/` 已恢复为当前主线的一部分，但 tool 必须走 pgvector 和多租户过滤；不要恢复旧 Chroma vectorstore。
 
 ## 按任务渐进读取
 
@@ -144,7 +146,7 @@ app/
   workers/      Celery app 和文档任务
 evaluation/     pgvector retrieval / answer eval 与 baseline
 frontend/       React + Vite 前端
-migrations/     Alembic migrations
+migrations/     Alembic migrations; 开发阶段压成当前初始 schema，不维护旧库兼容迁移
 scripts/        smoke 脚本
 tests/          单元测试与 API 测试
 docs/           架构、运行、规划、待办

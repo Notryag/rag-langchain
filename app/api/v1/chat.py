@@ -81,6 +81,28 @@ def chat_stream(
                     yield _sse_payload("answer_delta", {"content": event.content, "answer": event.answer})
                     continue
 
+                if event.type == "tool_call":
+                    yield _sse_payload(
+                        "tool_call",
+                        {
+                            "status_line": event.status_line,
+                            "tool_name": event.tool_name,
+                        },
+                    )
+                    continue
+
+                if event.type == "tool_result":
+                    yield _sse_payload(
+                        "tool_result",
+                        {
+                            "status_line": event.status_line,
+                            "tool_name": event.tool_name,
+                            "content": event.content,
+                            "citations": event.citations or [],
+                        },
+                    )
+                    continue
+
                 if event.type == "complete" and event.result is not None:
                     answer = event.result
                     operation_log_service.record(

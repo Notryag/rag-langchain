@@ -10,7 +10,7 @@
 /api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + Agent + CLI + Streamlit` 已删除。现在最短板不是后端接口，而是前端还停留在临时调试形态: 需要手动配置 `VITE_API_TOKEN` 和 `VITE_KB_ID` 才能聊天。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前最短板是前端还没有充分展示 Agent 的 `tool_call` / `tool_result` 和检索到的 chunks。
 
 ## 当前优先级
 
