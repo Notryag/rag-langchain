@@ -16,6 +16,7 @@ from app.config.settings import settings
 class CachedChatAnswer:
     answer: str
     references: list[dict[str, Any]]
+    usage: dict[str, Any] | None = None
 
 
 class InMemoryHotQuestionCache:
@@ -55,12 +56,19 @@ class RedisHotQuestionCache:
             if raw_value is None:
                 return self._fallback.get(key=key)
             payload = json.loads(raw_value)
-            return CachedChatAnswer(answer=payload["answer"], references=payload["references"])
+            return CachedChatAnswer(
+                answer=payload["answer"],
+                references=payload["references"],
+                usage=payload.get("usage"),
+            )
         except (RedisError, json.JSONDecodeError, KeyError, TypeError):
             return self._fallback.get(key=key)
 
     def set(self, *, key: str, scope_key: str, value: CachedChatAnswer, ttl_seconds: int) -> None:
-        payload = json.dumps({"answer": value.answer, "references": value.references}, ensure_ascii=False)
+        payload = json.dumps(
+            {"answer": value.answer, "references": value.references, "usage": value.usage},
+            ensure_ascii=False,
+        )
         try:
             pipe = self._redis.pipeline()
             pipe.setex(key, ttl_seconds, payload)

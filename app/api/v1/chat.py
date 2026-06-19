@@ -47,9 +47,19 @@ def chat(
         action="chat.ask",
         resource_type="chat_session",
         resource_id=answer.session_id,
-        details={"kb_id": kb_id, "reference_count": len(answer.references), "cache_hit": answer.cache_hit},
+        details={
+            "kb_id": kb_id,
+            "reference_count": len(answer.references),
+            "cache_hit": answer.cache_hit,
+            "usage": answer.usage,
+        },
     )
-    return ChatAnswerResponse(answer=answer.answer, references=answer.references, session_id=answer.session_id)
+    return ChatAnswerResponse(
+        answer=answer.answer,
+        references=answer.references,
+        session_id=answer.session_id,
+        usage=answer.usage,
+    )
 
 
 @router.post("/kbs/{kb_id}/chat/stream")
@@ -75,7 +85,12 @@ def chat_stream(
             action="chat.stream",
             resource_type="chat_session",
             resource_id=answer.session_id,
-            details={"kb_id": kb_id, "reference_count": len(answer.references), "cache_hit": answer.cache_hit},
+            details={
+                "kb_id": kb_id,
+                "reference_count": len(answer.references),
+                "cache_hit": answer.cache_hit,
+                "usage": answer.usage,
+            },
         )
         streamed_answer = ""
         for content in _answer_chunks(answer.answer):
@@ -88,6 +103,7 @@ def chat_stream(
                 "references": answer.references,
                 "session_id": answer.session_id,
                 "cache_hit": answer.cache_hit,
+                "usage": answer.usage,
             },
         )
 

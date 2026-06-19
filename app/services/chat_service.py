@@ -32,6 +32,7 @@ class ChatAnswer:
     references: list[dict[str, Any]]
     session_id: int
     cache_hit: bool = False
+    usage: dict[str, Any] | None = None
 
 
 class ChatService:
@@ -86,18 +87,20 @@ class ChatService:
                 top_k=settings.top_k,
             )
             references = [chunk.to_reference() for chunk in chunks]
-            answer = self._generate_answer(question=question, references=references)
+            answer, usage = self._generate_answer(question=question, references=references)
             self._set_cached_answer(
                 cache_key=cache_key,
                 scope_key=scope_key,
                 answer=answer,
                 references=references,
+                usage=usage,
             )
             cache_hit = False
         else:
             answer = cached_answer.answer
             references = cached_answer.references
             cache_hit = True
+            usage = _cached_usage(cached_answer.usage)
 
         assistant_message = ChatMessage(
             session_id=chat_session.id,
@@ -107,7 +110,13 @@ class ChatService:
         )
         session.add(assistant_message)
         session.commit()
-        return ChatAnswer(answer=answer, references=references, session_id=chat_session.id, cache_hit=cache_hit)
+        return ChatAnswer(
+            answer=answer,
+            references=references,
+            session_id=chat_session.id,
+            cache_hit=cache_hit,
+            usage=usage,
+        )
 
     def list_sessions(self, session: Session, *, user_id: int) -> list[ChatSession]:
         statement = select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.updated_at.desc())
@@ -147,9 +156,9 @@ class ChatService:
             raise ChatSessionNotFoundError("Chat session not found")
         return chat_session
 
-    def _generate_answer(self, *, question: str, references: list[dict[str, Any]]) -> str:
+    def _generate_answer(self, *, question: str, references: list[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
         if not references:
-            return "当前知识库中没有检索到足够相关的内容，无法基于资料回答。"
+            return "当前知识库中没有检索到足够相关的内容，无法基于资料回答。", _zero_usage(cached=False)
 
         context = "\n\n".join(
             f"[{index}] filename={reference['filename']}, chunk={reference['chunk_index']}\n{reference['content']}"
@@ -167,7 +176,7 @@ class ChatService:
                 HumanMessage(content=f"资料:\n{context}\n\n问题: {question}"),
             ]
         )
-        return str(getattr(response, "content", response)).strip()
+        return str(getattr(response, "content", response)).strip(), _extract_usage(response)
 
     def _get_cached_answer(self, *, cache_key: str) -> CachedChatAnswer | None:
         if not settings.hot_question_cache_enabled:
@@ -181,13 +190,14 @@ class ChatService:
         scope_key: str,
         answer: str,
         references: list[dict[str, Any]],
+        usage: dict[str, Any],
     ) -> None:
         if not settings.hot_question_cache_enabled:
             return
         self._cache().set(
             key=cache_key,
             scope_key=scope_key,
-            value=CachedChatAnswer(answer=answer, references=references),
+            value=CachedChatAnswer(answer=answer, references=references, usage=usage),
             ttl_seconds=settings.hot_question_cache_ttl_seconds,
         )
 
@@ -203,6 +213,34 @@ def _build_chat_model() -> ChatOpenAI:
     if settings.openai_base_url:
         kwargs["base_url"] = settings.openai_base_url
     return ChatOpenAI(**kwargs)
+
+
+def _extract_usage(response: Any) -> dict[str, Any]:
+    usage = getattr(response, "usage_metadata", None)
+    if usage:
+        return dict(usage)
+
+    response_metadata = getattr(response, "response_metadata", None) or {}
+    token_usage = response_metadata.get("token_usage") or response_metadata.get("usage")
+    if token_usage:
+        return dict(token_usage)
+
+    return _zero_usage(cached=False)
+
+
+def _zero_usage(*, cached: bool) -> dict[str, Any]:
+    return {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "cached": cached,
+    }
+
+
+def _cached_usage(usage: dict[str, Any] | None) -> dict[str, Any]:
+    payload = dict(usage or _zero_usage(cached=False))
+    payload["cached"] = True
+    return payload
 
 
 def get_chat_service() -> ChatService:

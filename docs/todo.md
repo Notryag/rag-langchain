@@ -99,4 +99,4 @@
 - [x] Redis 缓存热点问题
 - [x] SSE 流式问答
 - [x] Docker Compose 增加 API / worker 服务
-- [ ] Token 用量统计
+- [x] Token 用量统计

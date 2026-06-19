@@ -71,6 +71,7 @@ class ChatApiTests(unittest.TestCase):
                     answer="系统根据调用次数计费。",
                     references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
                     session_id=12,
+                    usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
                 )
 
         fake_service = FakeChatService()
@@ -91,6 +92,8 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(self.operation_logs[0]["action"], "chat.ask")
         self.assertEqual(self.operation_logs[0]["details"]["reference_count"], 1)
         self.assertFalse(self.operation_logs[0]["details"]["cache_hit"])
+        self.assertEqual(response.json()["usage"]["total_tokens"], 15)
+        self.assertEqual(self.operation_logs[0]["details"]["usage"]["total_tokens"], 15)
 
     def test_chat_returns_404_for_missing_session(self) -> None:
         class FakeChatService:
@@ -114,6 +117,7 @@ class ChatApiTests(unittest.TestCase):
                     answer="系统根据调用次数计费。",
                     references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
                     session_id=12,
+                    usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
                 )
 
         fake_service = FakeChatService()
@@ -126,6 +130,7 @@ class ChatApiTests(unittest.TestCase):
         self.assertIn("event: answer", body)
         self.assertIn("event: complete", body)
         self.assertIn('"session_id": 12', body)
+        self.assertIn('"total_tokens": 15', body)
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.kb_id, 2)
         self.assertEqual(self.operation_logs[0]["action"], "chat.stream")

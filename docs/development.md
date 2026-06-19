@@ -417,10 +417,12 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 5. 保存助手回答和结构化 references。
 6. 返回 `answer / references / session_id`。
 
+同步问答响应会额外返回 `usage`，尽量包含 `input_tokens`、`output_tokens`、`total_tokens` 和 `cached`。不同模型网关可能不返回 token usage，此时本接口会返回 0 值占位并继续完成回答。
+
 流式问答接口返回 `text/event-stream`，事件包括:
 
 - `answer`: 增量回答片段，字段为 `content` 和当前累计 `answer`
-- `complete`: 完整回答、references、session_id 和 cache_hit
+- `complete`: 完整回答、references、session_id、cache_hit 和 usage
 
 ## 用户反馈
 

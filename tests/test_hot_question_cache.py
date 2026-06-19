@@ -46,7 +46,10 @@ class FakeModel:
 
     def invoke(self, messages):
         self.calls += 1
-        return SimpleNamespace(content="根据资料回答。")
+        return SimpleNamespace(
+            content="根据资料回答。",
+            usage_metadata={"input_tokens": 7, "output_tokens": 3, "total_tokens": 10},
+        )
 
 
 class HotQuestionCacheTests(unittest.TestCase):
@@ -94,6 +97,9 @@ class HotQuestionCacheTests(unittest.TestCase):
 
         self.assertFalse(first.cache_hit)
         self.assertTrue(second.cache_hit)
+        self.assertEqual(first.usage["total_tokens"], 10)
+        self.assertTrue(second.usage["cached"])
+        self.assertEqual(second.usage["total_tokens"], 10)
         self.assertEqual(retriever_calls, ["怎么计费？"])
         self.assertEqual(model.calls, 1)
         self.assertEqual(len([item for item in session.added if isinstance(item, ChatMessage)]), 4)

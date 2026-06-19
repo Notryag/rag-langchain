@@ -17,6 +17,7 @@ class ChatAnswerResponse(BaseModel):
     answer: str
     references: list[dict[str, Any]]
     session_id: int
+    usage: dict[str, Any] | None = None
 
 
 class ChatSessionRead(BaseModel):
