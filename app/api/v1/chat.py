@@ -11,6 +11,8 @@ from app.db.models.user import User
 from app.db.session import get_db_session
 from app.runtime.schemas import DisconnectMode
 from app.runtime.service import RuntimeService, get_runtime_service
+from app.retrieval.pgvector_store import retrieve_pgvector_retrieved_chunks
+from app.retrieval.profile import RetrievalProfile
 from app.schemas.chat import (
     ChatAnswerResponse,
     ChatMessageRead,
@@ -18,9 +20,13 @@ from app.schemas.chat import (
     ChatRunCancelResponse,
     ChatRunRead,
     ChatSessionRead,
+    RetrievalPreviewChunk,
+    RetrievalPreviewRequest,
+    RetrievalPreviewResponse,
 )
 from app.services.chat_service import ChatService, ChatSessionNotFoundError, get_chat_service
 from app.services.operation_log_service import OperationLogService, get_operation_log_service
+from app.services.kb_service import KnowledgeBaseService, get_kb_service
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
@@ -65,6 +71,51 @@ def chat(
         session_id=answer.session_id,
         run_id=answer.run_id,
         usage=answer.usage,
+    )
+
+
+@router.post("/kbs/{kb_id}/retrieval/preview", response_model=RetrievalPreviewResponse)
+def retrieval_preview(
+    kb_id: int,
+    payload: RetrievalPreviewRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+    kb_service: KnowledgeBaseService = Depends(get_kb_service),
+) -> RetrievalPreviewResponse:
+    kb_service.get_for_user(session, user_id=current_user.id, kb_id=kb_id)
+    profile = RetrievalProfile.from_settings().with_overrides(
+        search_type=payload.search_type,
+        top_k=payload.top_k,
+        fetch_k=payload.fetch_k,
+        reranker_enabled=payload.reranker_enabled,
+    )
+    chunks = retrieve_pgvector_retrieved_chunks(
+        session,
+        user_id=current_user.id,
+        kb_id=kb_id,
+        query=payload.question.strip(),
+        top_k=profile.top_k,
+        search_type=profile.search_type,
+        fetch_k=profile.fetch_k,
+        reranker_enabled=profile.reranker_enabled,
+    )
+    return RetrievalPreviewResponse(
+        question=payload.question.strip(),
+        kb_id=kb_id,
+        chunks=[
+            RetrievalPreviewChunk(
+                rank=chunk.rank,
+                document_id=chunk.document_id,
+                filename=chunk.source,
+                chunk_id=chunk.chunk_id,
+                chunk_index=chunk.chunk_index,
+                page=chunk.page,
+                score=chunk.score,
+                content=chunk.content,
+                metadata=chunk.metadata,
+            )
+            for chunk in chunks
+        ],
     )
 
 

@@ -11,6 +11,7 @@ import {
   loadConfig,
   loadMe,
   processDocument,
+  previewRetrieval,
   streamChat,
   updateKnowledgeBase,
   uploadDocument,
@@ -302,6 +303,70 @@ function App() {
     }
   }
 
+  async function previewActiveRetrieval() {
+    const text = input.trim();
+    if (!text || pending) return;
+    if (!apiToken || !activeKbId) {
+      setMessages((current) => [
+        ...current,
+        { id: crypto.randomUUID(), role: "user", content: text },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "请先登录并创建或选择一个知识库。",
+          error: true,
+        },
+      ]);
+      return;
+    }
+
+    setPending(true);
+    setInput("");
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content: text }]);
+    try {
+      const result = await previewRetrieval({
+        kbId: activeKbId,
+        question: text,
+        retrievalProfile,
+        token: apiToken,
+      });
+      const citations: Citation[] = result.chunks.map((chunk) => ({
+        rank: chunk.rank || undefined,
+        document_id: typeof chunk.document_id === "number" ? chunk.document_id : undefined,
+        filename: chunk.filename,
+        chunk_id: typeof chunk.chunk_id === "number" ? chunk.chunk_id : undefined,
+        chunk_index: chunk.chunk_index,
+        page: chunk.page,
+        score: chunk.score || undefined,
+        content: chunk.content,
+      }));
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: result.chunks.length
+            ? `检索命中 ${result.chunks.length} 个片段，未调用 AI。`
+            : "没有检索到相关片段，未调用 AI。",
+          citations,
+          retrievalProfile: retrievalProfile ? { ...retrievalProfile } : undefined,
+        },
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: `检索失败：${error instanceof Error ? error.message : "未知错误"}`,
+          error: true,
+        },
+      ]);
+    } finally {
+      setPending(false);
+    }
+  }
+
   function handleStreamEvent(
     eventData: StreamEvent,
     assistantId: string,
@@ -456,6 +521,7 @@ function App() {
         onCancelRun={cancelActiveRun}
         onFeedback={handleFeedback}
         onInputChange={setInput}
+        onPreviewRetrieval={previewActiveRetrieval}
         onSubmit={submitMessage}
       />
     </main>

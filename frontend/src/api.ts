@@ -2,6 +2,7 @@ import type {
   KnowledgeBase,
   KnowledgeDocument,
   PublicConfig,
+  RetrievalPreviewResponse,
   RetrievalProfile,
   StreamEvent,
   TokenResponse,
@@ -138,6 +139,31 @@ export async function deleteDocument(token: string, documentId: number): Promise
 
 export async function cancelChatRun(token: string, runId: number): Promise<{ run_id: number; cancelled: boolean }> {
   const response = await postJson(`/api/v1/chat-runs/${runId}/cancel`, {}, token);
+  return response.json();
+}
+
+export async function previewRetrieval({
+  kbId,
+  question,
+  retrievalProfile,
+  token,
+}: {
+  kbId: number;
+  question: string;
+  retrievalProfile?: RetrievalProfile | null;
+  token: string;
+}): Promise<RetrievalPreviewResponse> {
+  const response = await postJson(
+    `/api/v1/kbs/${kbId}/retrieval/preview`,
+    {
+      question,
+      search_type: retrievalProfile?.search_type,
+      top_k: retrievalProfile?.top_k,
+      fetch_k: retrievalProfile?.fetch_k,
+      reranker_enabled: retrievalProfile?.reranker_enabled,
+    },
+    token,
+  );
   return response.json();
 }
 

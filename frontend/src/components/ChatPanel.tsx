@@ -1,4 +1,4 @@
-import { RotateCcw, Send, Square, Trash2 } from "lucide-react";
+import { RotateCcw, Search, Send, Square, Trash2 } from "lucide-react";
 import type { FormEvent, ReactNode, RefObject } from "react";
 
 import type { ChatMessage, FeedbackRating } from "../types";
@@ -15,6 +15,7 @@ type ChatPanelProps = {
   onCancelRun: () => void;
   onFeedback: (message: ChatMessage, rating: FeedbackRating) => void;
   onInputChange: (value: string) => void;
+  onPreviewRetrieval: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -29,6 +30,7 @@ function ChatPanel({
   onCancelRun,
   onFeedback,
   onInputChange,
+  onPreviewRetrieval,
   onSubmit,
 }: ChatPanelProps) {
   return (
@@ -68,6 +70,18 @@ function ChatPanel({
           disabled={pending}
           required
         />
+        <button
+          className="send-button secondary-send"
+          disabled={pending || !input.trim()}
+          onClick={(event) => {
+            event.preventDefault();
+            onPreviewRetrieval();
+          }}
+          title="只检索"
+          type="button"
+        >
+          <Search size={20} />
+        </button>
         <button
           className={`send-button ${pending && activeRunId !== null ? "cancel" : ""}`}
           disabled={pending ? activeRunId === null : !input.trim()}

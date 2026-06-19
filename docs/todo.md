@@ -120,7 +120,7 @@ frontend/src/components/StatusBadge.tsx
 - [x] 引用来源展示 filename/source、chunk_index、content 预览
 - [x] 发送中、错误、空 references 的状态处理
 - [ ] 保留 usage 展示，但不阻塞主要聊天体验
-- [ ] 增加只检索不问 AI 的 preview 接口，用于直接查看 pgvector 命中的 chunks
+- [x] 增加只检索不问 AI 的 preview 接口，用于直接查看 pgvector 命中的 chunks
 - [x] 前端接入 chat run 取消按钮
 
 建议组件:

@@ -85,6 +85,24 @@ export type ChatResponse = {
   usage: Record<string, unknown> | null;
 };
 
+export type RetrievalPreviewChunk = {
+  rank: number | null;
+  document_id: number | string | null;
+  filename: string;
+  chunk_id: number | string | null;
+  chunk_index: number | null;
+  page?: string | null;
+  score?: number | null;
+  content: string;
+  metadata: Record<string, unknown>;
+};
+
+export type RetrievalPreviewResponse = {
+  question: string;
+  kb_id: number;
+  chunks: RetrievalPreviewChunk[];
+};
+
 export type ChatMessage = {
   id: string;
   role: "assistant" | "user";

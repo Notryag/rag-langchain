@@ -802,7 +802,7 @@ button {
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) 48px 48px;
   gap: 12px;
   padding: 18px 28px 24px;
   border-top: 1px solid var(--line);
@@ -837,6 +837,10 @@ textarea:focus {
 
 .send-button.cancel {
   background: var(--danger);
+}
+
+.send-button.secondary-send {
+  background: var(--accent-2);
 }
 
 .send-button:disabled,

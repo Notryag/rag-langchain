@@ -13,6 +13,32 @@ class ChatRequest(BaseModel):
     session_id: int | None = None
 
 
+class RetrievalPreviewRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=8000)
+    search_type: str | None = None
+    top_k: int | None = Field(default=None, gt=0)
+    fetch_k: int | None = Field(default=None, gt=0)
+    reranker_enabled: bool | None = None
+
+
+class RetrievalPreviewChunk(BaseModel):
+    rank: int | None
+    document_id: int | str | None
+    filename: str
+    chunk_id: int | str | None
+    chunk_index: int | None
+    page: str | None = None
+    score: float | None = None
+    content: str
+    metadata: dict[str, Any]
+
+
+class RetrievalPreviewResponse(BaseModel):
+    question: str
+    kb_id: int
+    chunks: list[RetrievalPreviewChunk]
+
+
 class ChatAnswerResponse(BaseModel):
     answer: str
     references: list[dict[str, Any]]
