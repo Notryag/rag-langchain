@@ -52,6 +52,16 @@ class FakeModel:
         )
 
 
+class FakeStreamingModel:
+    def __init__(self) -> None:
+        self.stream_calls = 0
+
+    def stream(self, messages):
+        self.stream_calls += 1
+        yield SimpleNamespace(content="根据", usage_metadata={"input_tokens": 7, "output_tokens": 1, "total_tokens": 8})
+        yield SimpleNamespace(content="资料回答。", usage_metadata={"input_tokens": 0, "output_tokens": 2, "total_tokens": 2})
+
+
 class HotQuestionCacheTests(unittest.TestCase):
     def test_cache_key_is_tenant_scoped(self) -> None:
         first = build_hot_question_cache_key(user_id=1, kb_id=1, question="怎么计费？", top_k=3)
@@ -128,6 +138,55 @@ class HotQuestionCacheTests(unittest.TestCase):
         self.assertEqual(len(runs), 1)
         self.assertEqual(runs[0].status, ChatRunStatus.FAILED)
         self.assertEqual(runs[0].error_message, "retriever failed")
+
+    def test_chat_service_streams_model_deltas_and_completes_run(self) -> None:
+        cache = InMemoryHotQuestionCache()
+        model = FakeStreamingModel()
+
+        def retriever(session, *, user_id, kb_id, query, top_k):
+            return [FakeChunk()]
+
+        service = ChatService(
+            kb_service=FakeKbService(),
+            retriever=retriever,
+            chat_model=model,
+            answer_cache=cache,
+        )
+        session = FakeSession()
+
+        events = list(service.stream(session, user_id=1, kb_id=2, question="怎么计费？"))
+
+        self.assertEqual([event.type for event in events], ["answer_delta", "answer_delta", "complete"])
+        self.assertEqual(events[0].content, "根据")
+        self.assertEqual(events[1].answer, "根据资料回答。")
+        self.assertEqual(events[-1].result.answer, "根据资料回答。")
+        self.assertEqual(events[-1].result.usage["total_tokens"], 10)
+        self.assertEqual(model.stream_calls, 1)
+        runs = [item for item in session.added if isinstance(item, ChatRun)]
+        self.assertEqual(runs[0].status, ChatRunStatus.COMPLETED)
+
+    def test_chat_service_streams_cached_answer_without_model_call(self) -> None:
+        cache = InMemoryHotQuestionCache()
+        model = FakeStreamingModel()
+
+        def retriever(session, *, user_id, kb_id, query, top_k):
+            return [FakeChunk()]
+
+        service = ChatService(
+            kb_service=FakeKbService(),
+            retriever=retriever,
+            chat_model=model,
+            answer_cache=cache,
+        )
+        session = FakeSession()
+
+        list(service.stream(session, user_id=1, kb_id=2, question="怎么计费？"))
+        second_events = list(service.stream(session, user_id=1, kb_id=2, question="怎么计费？"))
+
+        self.assertEqual(model.stream_calls, 1)
+        self.assertEqual(second_events[-1].type, "complete")
+        self.assertTrue(second_events[-1].result.cache_hit)
+        self.assertTrue(second_events[-1].result.usage["cached"])
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterator, Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -34,6 +34,15 @@ class ChatAnswer:
     run_id: int
     cache_hit: bool = False
     usage: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class ChatStreamEvent:
+    type: Literal["answer_delta", "complete", "error"]
+    content: str = ""
+    answer: str = ""
+    result: ChatAnswer | None = None
+    error_message: str | None = None
 
 
 class ChatService:
@@ -138,6 +147,112 @@ class ChatService:
             cache_hit=cache_hit,
             usage=usage,
         )
+
+    def stream(
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        kb_id: int,
+        question: str,
+        session_id: int | None = None,
+    ) -> Iterator[ChatStreamEvent]:
+        self._kb_service.get_for_user(session, user_id=user_id, kb_id=kb_id)
+        chat_session = self._get_or_create_session(
+            session,
+            user_id=user_id,
+            kb_id=kb_id,
+            session_id=session_id,
+            question=question,
+        )
+        user_message = ChatMessage(
+            session_id=chat_session.id,
+            role=ChatRole.USER,
+            content=question,
+            references=[],
+        )
+        session.add(user_message)
+        session.commit()
+
+        chat_run = self._create_run(
+            session,
+            user_id=user_id,
+            kb_id=kb_id,
+            chat_session_id=chat_session.id,
+            question=question,
+        )
+        cache_key = build_hot_question_cache_key(user_id=user_id, kb_id=kb_id, question=question, top_k=settings.top_k)
+        scope_key = build_hot_question_scope_key(user_id=user_id, kb_id=kb_id)
+
+        try:
+            cached_answer = self._get_cached_answer(cache_key=cache_key)
+            if cached_answer is None:
+                chunks = self._retriever(
+                    session,
+                    user_id=user_id,
+                    kb_id=kb_id,
+                    query=question,
+                    top_k=settings.top_k,
+                )
+                references = [chunk.to_reference() for chunk in chunks]
+                answer_parts: list[str] = []
+                usage: dict[str, Any] = _zero_usage(cached=False)
+                for content, usage_update in self._stream_generate_answer(question=question, references=references):
+                    if usage_update is not None:
+                        usage = usage_update
+                    if not content:
+                        continue
+                    answer_parts.append(content)
+                    yield ChatStreamEvent(type="answer_delta", content=content, answer="".join(answer_parts))
+
+                answer = "".join(answer_parts)
+                self._set_cached_answer(
+                    cache_key=cache_key,
+                    scope_key=scope_key,
+                    answer=answer,
+                    references=references,
+                    usage=usage,
+                )
+                cache_hit = False
+            else:
+                answer = cached_answer.answer
+                references = cached_answer.references
+                usage = _cached_usage(cached_answer.usage)
+                cache_hit = True
+                streamed_answer = ""
+                for content in _answer_chunks(answer):
+                    streamed_answer += content
+                    yield ChatStreamEvent(type="answer_delta", content=content, answer=streamed_answer)
+
+            assistant_message = ChatMessage(
+                session_id=chat_session.id,
+                role=ChatRole.ASSISTANT,
+                content=answer,
+                references=references,
+            )
+            session.add(assistant_message)
+            self._mark_run_completed(
+                session,
+                chat_run=chat_run,
+                answer=answer,
+                references=references,
+                usage=usage,
+                cache_hit=cache_hit,
+            )
+            session.commit()
+            result = ChatAnswer(
+                answer=answer,
+                references=references,
+                session_id=chat_session.id,
+                run_id=chat_run.id,
+                cache_hit=cache_hit,
+                usage=usage,
+            )
+            yield ChatStreamEvent(type="complete", answer=answer, result=result)
+        except Exception as exc:
+            self._mark_run_failed(session, chat_run=chat_run, error_message=str(exc))
+            yield ChatStreamEvent(type="error", error_message=str(exc))
+            return
 
     def _create_run(
         self,
@@ -245,6 +360,42 @@ class ChatService:
         )
         return str(getattr(response, "content", response)).strip(), _extract_usage(response)
 
+    def _stream_generate_answer(
+        self,
+        *,
+        question: str,
+        references: list[dict[str, Any]],
+    ) -> Iterator[tuple[str, dict[str, Any] | None]]:
+        if not references:
+            yield "当前知识库中没有检索到足够相关的内容，无法基于资料回答。", _zero_usage(cached=False)
+            return
+
+        context = "\n\n".join(
+            f"[{index}] filename={reference['filename']}, chunk={reference['chunk_index']}\n{reference['content']}"
+            for index, reference in enumerate(references, start=1)
+        )
+        messages = [
+            SystemMessage(
+                content=(
+                    "你是企业知识库问答助手。必须仅根据给定资料回答；"
+                    "资料不足时说明无法基于资料回答；回答要简洁，并提及相关引用编号。"
+                )
+            ),
+            HumanMessage(content=f"资料:\n{context}\n\n问题: {question}"),
+        ]
+        model = self._chat_model or _build_chat_model()
+        stream = getattr(model, "stream", None)
+        if stream is None:
+            response = model.invoke(messages)
+            yield str(getattr(response, "content", response)).strip(), _extract_usage(response)
+            return
+
+        usage = _zero_usage(cached=False)
+        for chunk in stream(messages):
+            usage = _merge_usage(usage, _extract_usage(chunk))
+            yield str(getattr(chunk, "content", chunk)), None
+        yield "", usage
+
     def _get_cached_answer(self, *, cache_key: str) -> CachedChatAnswer | None:
         if not settings.hot_question_cache_enabled:
             return None
@@ -308,6 +459,22 @@ def _cached_usage(usage: dict[str, Any] | None) -> dict[str, Any]:
     payload = dict(usage or _zero_usage(cached=False))
     payload["cached"] = True
     return payload
+
+
+def _answer_chunks(answer: str, *, chunk_size: int = 32) -> Iterator[str]:
+    for start in range(0, len(answer), chunk_size):
+        yield answer[start : start + chunk_size]
+
+
+def _merge_usage(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(left)
+    for key, value in right.items():
+        if isinstance(value, int):
+            merged[key] = int(merged.get(key, 0)) + value
+        else:
+            merged[key] = value
+    merged["cached"] = False
+    return merged
 
 
 def get_chat_service() -> ChatService:

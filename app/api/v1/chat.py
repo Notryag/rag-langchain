@@ -20,11 +20,6 @@ def _sse_payload(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _answer_chunks(answer: str, *, chunk_size: int = 32):
-    for start in range(0, len(answer), chunk_size):
-        yield answer[start : start + chunk_size]
-
-
 @router.post("/kbs/{kb_id}/chat", response_model=ChatAnswerResponse)
 def chat(
     kb_id: int,
@@ -74,42 +69,51 @@ def chat_stream(
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> StreamingResponse:
     def event_generator():
-        answer = chat_service.ask(
-            session,
-            user_id=current_user.id,
-            kb_id=kb_id,
-            question=payload.question.strip(),
-            session_id=payload.session_id,
-        )
-        operation_log_service.record(
-            session,
-            user_id=current_user.id,
-            action="chat.stream",
-            resource_type="chat_run",
-            resource_id=answer.run_id,
-            details={
-                "kb_id": kb_id,
-                "session_id": answer.session_id,
-                "reference_count": len(answer.references),
-                "cache_hit": answer.cache_hit,
-                "usage": answer.usage,
-            },
-        )
-        streamed_answer = ""
-        for content in _answer_chunks(answer.answer):
-            streamed_answer += content
-            yield _sse_payload("answer", {"content": content, "answer": streamed_answer})
-        yield _sse_payload(
-            "complete",
-            {
-                "answer": answer.answer,
-                "references": answer.references,
-                "session_id": answer.session_id,
-                "run_id": answer.run_id,
-                "cache_hit": answer.cache_hit,
-                "usage": answer.usage,
-            },
-        )
+        try:
+            for event in chat_service.stream(
+                session,
+                user_id=current_user.id,
+                kb_id=kb_id,
+                question=payload.question.strip(),
+                session_id=payload.session_id,
+            ):
+                if event.type == "answer_delta":
+                    yield _sse_payload("answer_delta", {"content": event.content, "answer": event.answer})
+                    continue
+
+                if event.type == "complete" and event.result is not None:
+                    answer = event.result
+                    operation_log_service.record(
+                        session,
+                        user_id=current_user.id,
+                        action="chat.stream",
+                        resource_type="chat_run",
+                        resource_id=answer.run_id,
+                        details={
+                            "kb_id": kb_id,
+                            "session_id": answer.session_id,
+                            "reference_count": len(answer.references),
+                            "cache_hit": answer.cache_hit,
+                            "usage": answer.usage,
+                        },
+                    )
+                    yield _sse_payload(
+                        "complete",
+                        {
+                            "answer": answer.answer,
+                            "references": answer.references,
+                            "session_id": answer.session_id,
+                            "run_id": answer.run_id,
+                            "cache_hit": answer.cache_hit,
+                            "usage": answer.usage,
+                        },
+                    )
+                    continue
+
+                if event.type == "error":
+                    yield _sse_payload("error", {"message": event.error_message or "chat stream failed"})
+        except Exception as exc:
+            yield _sse_payload("error", {"message": str(exc)})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

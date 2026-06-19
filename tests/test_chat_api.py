@@ -10,7 +10,7 @@ from app.api.main import app
 from app.api.v1 import auth as auth_routes
 from app.api.v1 import chat as chat_routes
 from app.db.models.chat import ChatRole
-from app.services.chat_service import ChatAnswer, ChatSessionNotFoundError
+from app.services.chat_service import ChatAnswer, ChatSessionNotFoundError, ChatStreamEvent
 
 
 def _chat_session(**overrides):
@@ -114,17 +114,19 @@ class ChatApiTests(unittest.TestCase):
 
     def test_chat_stream(self) -> None:
         class FakeChatService:
-            def ask(self, session, *, user_id, kb_id, question, session_id=None):
+            def stream(self, session, *, user_id, kb_id, question, session_id=None):
                 self.user_id = user_id
                 self.kb_id = kb_id
                 self.question = question
-                return ChatAnswer(
+                answer = ChatAnswer(
                     answer="系统根据调用次数计费。",
                     references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
                     session_id=12,
                     run_id=34,
                     usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
                 )
+                yield ChatStreamEvent(type="answer_delta", content="系统", answer="系统")
+                yield ChatStreamEvent(type="complete", answer=answer.answer, result=answer)
 
         fake_service = FakeChatService()
         app.dependency_overrides[chat_routes.get_chat_service] = lambda: fake_service
@@ -133,7 +135,7 @@ class ChatApiTests(unittest.TestCase):
             body = response.read().decode("utf-8")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("event: answer", body)
+        self.assertIn("event: answer_delta", body)
         self.assertIn("event: complete", body)
         self.assertIn('"session_id": 12', body)
         self.assertIn('"run_id": 34', body)

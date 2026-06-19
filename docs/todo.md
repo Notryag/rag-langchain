@@ -134,10 +134,10 @@
 
 ## Batch 11: Token 级 SSE
 
-- [ ] 将模型 streaming 下沉到 service
-- [ ] SSE 输出 answer_delta / complete / error
-- [ ] complete 时保存最终 answer、references、usage
-- [ ] 缓存命中时保持快速流式输出
+- [x] 将模型 streaming 下沉到 service
+- [x] SSE 输出 answer_delta / complete / error
+- [x] complete 时保存最终 answer、references、usage
+- [x] 缓存命中时保持快速流式输出
 
 ## Batch 12: pgvector 多租户评测
 

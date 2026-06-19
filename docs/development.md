@@ -423,8 +423,9 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 
 流式问答接口返回 `text/event-stream`，事件包括:
 
-- `answer`: 增量回答片段，字段为 `content` 和当前累计 `answer`
+- `answer_delta`: 增量回答片段，字段为 `content` 和当前累计 `answer`
 - `complete`: 完整回答、references、session_id、run_id、cache_hit 和 usage
+- `error`: 流式问答失败信息，失败时对应 `chat_runs.status = failed`
 
 每次问答都会创建一条 `chat_runs` 记录。operation log 的 `chat.ask` / `chat.stream` 以 `chat_run` 作为 resource，并在 details 中保留 `session_id`、`kb_id`、引用数量、缓存命中和 usage。
 

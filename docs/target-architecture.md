@@ -147,10 +147,10 @@ DeerFlow 的设计重点是通用长任务 SuperAgent: gateway、runtime、skill
 
 ### Batch 11: token 级 SSE
 
-- [ ] 将模型 streaming 从 API 层下沉到 service。
-- [ ] SSE 输出 `answer_delta / complete / error`。
-- [ ] complete 事件保存最终 answer、references、usage。
-- [ ] 缓存命中时仍允许快速流式输出。
+- [x] 将模型 streaming 从 API 层下沉到 service。
+- [x] SSE 输出 `answer_delta / complete / error`。
+- [x] complete 事件保存最终 answer、references、usage。
+- [x] 缓存命中时仍允许快速流式输出。
 
 ### Batch 12: pgvector 多租户评测
 
