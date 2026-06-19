@@ -158,7 +158,9 @@
 
 ## Batch 14: 真实数据质量基线
 
+- [x] 增加 pgvector baseline runner
 - [ ] 在本地 PostgreSQL + Redis 环境运行 pgvector retrieval eval
 - [ ] 运行 pgvector answer sampling + answer eval
-- [ ] 保存 baseline manifest 和 bad cases
+- [x] 保存 baseline manifest 和 bad cases 的标准路径
+- [x] baseline manifest 汇总 artifact 数量和 retrieval summary
 - [ ] 根据结果决定 hybrid / rerank 默认策略
