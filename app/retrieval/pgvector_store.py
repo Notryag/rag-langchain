@@ -8,9 +8,12 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.models.document import Document, DocumentChunk
+from app.retrieval.lexical import lexical_score
 from app.retrieval.splitter import split_documents_by_type
 from app.retrieval.types import RetrievedChunk
 from app.retrieval.vectorstore import get_embeddings
+
+DEFAULT_RRF_K = 60
 
 
 @dataclass(frozen=True)
@@ -47,6 +50,8 @@ def retrieve_pgvector_retrieved_chunks(
     kb_id: int,
     query: str,
     top_k: int,
+    search_type: str = "similarity",
+    fetch_k: int | None = None,
     embeddings=None,
 ) -> list[RetrievedChunk]:
     return [
@@ -58,6 +63,8 @@ def retrieve_pgvector_retrieved_chunks(
                 kb_id=kb_id,
                 query=query,
                 top_k=top_k,
+                search_type=search_type,
+                fetch_k=fetch_k,
                 embeddings=embeddings,
             ),
             start=1,
@@ -101,8 +108,24 @@ def retrieve_pgvector_chunks(
     kb_id: int,
     query: str,
     top_k: int,
+    search_type: str = "similarity",
+    fetch_k: int | None = None,
     embeddings=None,
 ) -> list[PgVectorRetrievedChunk]:
+    normalized_search_type = search_type.strip().lower()
+    if normalized_search_type == "hybrid":
+        return retrieve_pgvector_hybrid_chunks(
+            session,
+            user_id=user_id,
+            kb_id=kb_id,
+            query=query,
+            top_k=top_k,
+            fetch_k=fetch_k,
+            embeddings=embeddings,
+        )
+    if normalized_search_type != "similarity":
+        raise ValueError(f"Unsupported pgvector search_type: {search_type}")
+
     query_embedding = (embeddings or get_embeddings()).embed_query(query)
     distance = DocumentChunk.embedding.cosine_distance(query_embedding).label("distance")
     statement = (
@@ -127,6 +150,106 @@ def retrieve_pgvector_chunks(
             )
         )
     return results
+
+
+def retrieve_pgvector_lexical_chunks(
+    session: Session,
+    *,
+    user_id: int,
+    kb_id: int,
+    query: str,
+    top_k: int,
+) -> list[PgVectorRetrievedChunk]:
+    statement = (
+        select(DocumentChunk, Document.filename)
+        .join(Document, Document.id == DocumentChunk.document_id)
+        .where(DocumentChunk.user_id == user_id, DocumentChunk.kb_id == kb_id)
+    )
+
+    scored: list[tuple[int, int, PgVectorRetrievedChunk]] = []
+    for chunk, filename in session.execute(statement):
+        metadata = dict(chunk.chunk_metadata or {})
+        score = lexical_score(
+            query,
+            LangChainDocument(page_content=chunk.content, metadata=metadata),
+        )
+        if score <= 0:
+            continue
+        scored.append(
+            (
+                score,
+                -len(chunk.content),
+                PgVectorRetrievedChunk(
+                    chunk_id=chunk.id,
+                    document_id=chunk.document_id,
+                    filename=filename,
+                    chunk_index=chunk.chunk_index,
+                    content=chunk.content,
+                    metadata={**metadata, "lexical_score": score},
+                    distance=None,
+                ),
+            )
+        )
+
+    return [chunk for _, _, chunk in sorted(scored, key=lambda item: item[:2], reverse=True)[:top_k]]
+
+
+def retrieve_pgvector_hybrid_chunks(
+    session: Session,
+    *,
+    user_id: int,
+    kb_id: int,
+    query: str,
+    top_k: int,
+    fetch_k: int | None = None,
+    embeddings=None,
+) -> list[PgVectorRetrievedChunk]:
+    candidate_k = max(fetch_k or top_k, top_k)
+    dense_chunks = retrieve_pgvector_chunks(
+        session,
+        user_id=user_id,
+        kb_id=kb_id,
+        query=query,
+        top_k=candidate_k,
+        search_type="similarity",
+        embeddings=embeddings,
+    )
+    lexical_chunks = retrieve_pgvector_lexical_chunks(
+        session,
+        user_id=user_id,
+        kb_id=kb_id,
+        query=query,
+        top_k=candidate_k,
+    )
+    return _rrf_fuse_pgvector_chunks(dense_chunks, lexical_chunks, top_k=top_k)
+
+
+def _rrf_fuse_pgvector_chunks(
+    dense_chunks: list[PgVectorRetrievedChunk],
+    lexical_chunks: list[PgVectorRetrievedChunk],
+    *,
+    top_k: int,
+    rrf_k: int = DEFAULT_RRF_K,
+) -> list[PgVectorRetrievedChunk]:
+    scores: dict[tuple[Any, ...], float] = {}
+    chunks_by_key: dict[tuple[Any, ...], PgVectorRetrievedChunk] = {}
+
+    for rank, chunk in enumerate(dense_chunks, start=1):
+        key = _pgvector_chunk_key(chunk)
+        scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank)
+        chunks_by_key.setdefault(key, chunk)
+
+    for rank, chunk in enumerate(lexical_chunks, start=1):
+        key = _pgvector_chunk_key(chunk)
+        scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank)
+        chunks_by_key.setdefault(key, chunk)
+
+    ranked_keys = sorted(scores, key=lambda key: scores[key], reverse=True)
+    return [chunks_by_key[key] for key in ranked_keys[:top_k]]
+
+
+def _pgvector_chunk_key(chunk: PgVectorRetrievedChunk) -> tuple[Any, ...]:
+    return (chunk.chunk_id, chunk.document_id, chunk.chunk_index)
 
 
 def _prepare_split_docs(*, document: Document, parsed_docs: list[LangChainDocument]) -> list[LangChainDocument]:

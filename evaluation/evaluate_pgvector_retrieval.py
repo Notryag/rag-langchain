@@ -20,10 +20,15 @@ class PgVectorRetrievalEvalConfig:
     user_id: int
     kb_id: int
     top_k: int
+    search_type: str
+    fetch_k: int
 
     @property
     def label(self) -> str:
-        return f"user_id={self.user_id} kb_id={self.kb_id} top_k={self.top_k}"
+        return (
+            f"user_id={self.user_id} kb_id={self.kb_id} "
+            f"search_type={self.search_type} top_k={self.top_k} fetch_k={self.fetch_k}"
+        )
 
 
 @dataclass(frozen=True)
@@ -90,7 +95,9 @@ def result_to_bad_case(result: PgVectorRetrievalEvalResult) -> dict[str, Any]:
         "config": {
             "user_id": result.config.user_id,
             "kb_id": result.config.kb_id,
+            "search_type": result.config.search_type,
             "top_k": result.config.top_k,
+            "fetch_k": result.config.fetch_k,
         },
         "expected_sources": result.sample.expected_sources,
         "expected_keywords": result.sample.expected_keywords,
@@ -130,7 +137,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset", default=str(DEFAULT_RETRIEVAL_EVAL_PATH), help="Path to retrieval eval jsonl.")
     parser.add_argument("--user-id", type=int, required=True, help="Tenant user id used for SQL permission filter.")
     parser.add_argument("--kb-id", type=int, required=True, help="Knowledge base id used for SQL permission filter.")
+    parser.add_argument(
+        "--search-type",
+        nargs="+",
+        default=["similarity"],
+        choices=["similarity", "hybrid"],
+        help="pgvector retrieval modes to compare.",
+    )
     parser.add_argument("--top-k", type=int, default=settings.top_k, help="Number of chunks to retrieve.")
+    parser.add_argument("--fetch-k", type=int, default=settings.retrieval_fetch_k, help="Candidate count for hybrid.")
     parser.add_argument("--limit", type=int, default=None, help="Only evaluate the first N samples.")
     parser.add_argument("--show-passes", action="store_true", help="Print passing samples as well.")
     parser.add_argument("--bad-cases-out", default=None, help="Optional JSONL output for failed samples.")
@@ -202,7 +217,9 @@ def _write_manifest(
                 "label": config.label,
                 "user_id": config.user_id,
                 "kb_id": config.kb_id,
+                "search_type": config.search_type,
                 "top_k": config.top_k,
+                "fetch_k": config.fetch_k,
             },
             "summary": summary,
         },
@@ -217,49 +234,63 @@ def main() -> None:
     if args.limit is not None:
         samples = samples[: args.limit]
 
-    config = PgVectorRetrievalEvalConfig(user_id=args.user_id, kb_id=args.kb_id, top_k=args.top_k)
     session_factory = get_session_factory()
-    with session_factory() as session:
-        results = [
-            evaluate_pgvector_sample(
-                sample,
-                config,
-                retrieve_pgvector_retrieved_chunks(
-                    session,
-                    user_id=config.user_id,
-                    kb_id=config.kb_id,
-                    query=sample.query,
-                    top_k=config.top_k,
-                ),
-            )
-            for sample in samples
-        ]
+    all_results: list[PgVectorRetrievalEvalResult] = []
+    for search_type in args.search_type:
+        config = PgVectorRetrievalEvalConfig(
+            user_id=args.user_id,
+            kb_id=args.kb_id,
+            top_k=args.top_k,
+            search_type=search_type,
+            fetch_k=max(args.fetch_k, args.top_k),
+        )
+        with session_factory() as session:
+            results = [
+                evaluate_pgvector_sample(
+                    sample,
+                    config,
+                    retrieve_pgvector_retrieved_chunks(
+                        session,
+                        user_id=config.user_id,
+                        kb_id=config.kb_id,
+                        query=sample.query,
+                        top_k=config.top_k,
+                        search_type=config.search_type,
+                        fetch_k=config.fetch_k,
+                    ),
+                )
+                for sample in samples
+            ]
 
-    summary = summarize(results)
-    print(f"\n=== PgVector Retrieval Eval | {config.label} ===")
-    print(
-        "summary total={total} scored={scored} skipped={skipped} "
-        "source_hit={source_hit} source_hit_rate={source_hit_rate:.2%} "
-        "permission_ok={permission_ok} permission_ok_rate={permission_ok_rate:.2%} "
-        "passed={passed} pass_rate={pass_rate:.2%}".format(**summary)
-    )
-    for result in results:
-        if result.passed and not args.show_passes:
-            continue
-        _print_result(result)
+        all_results.extend(results)
+        summary = summarize(results)
+        print(f"\n=== PgVector Retrieval Eval | {config.label} ===")
+        print(
+            "summary total={total} scored={scored} skipped={skipped} "
+            "source_hit={source_hit} source_hit_rate={source_hit_rate:.2%} "
+            "permission_ok={permission_ok} permission_ok_rate={permission_ok_rate:.2%} "
+            "passed={passed} pass_rate={pass_rate:.2%}".format(**summary)
+        )
+        for result in results:
+            if result.passed and not args.show_passes:
+                continue
+            _print_result(result)
+
+        if args.manifest_output:
+            output_path = Path(args.manifest_output)
+            manifest_path = output_path.with_name(f"{output_path.stem}_{search_type}{output_path.suffix}")
+            _write_manifest(
+                manifest_path,
+                args=args,
+                config=config,
+                summary=summary,
+                sample_count=len(samples),
+            )
+            print(f"manifest_written={manifest_path.as_posix()}")
 
     if args.bad_cases_out:
-        _write_bad_cases(args.bad_cases_out, results)
+        _write_bad_cases(args.bad_cases_out, all_results)
         print(f"bad_cases_written={Path(args.bad_cases_out).as_posix()}")
-    if args.manifest_output:
-        _write_manifest(
-            args.manifest_output,
-            args=args,
-            config=config,
-            summary=summary,
-            sample_count=len(samples),
-        )
-        print(f"manifest_written={Path(args.manifest_output).as_posix()}")
 
 
 if __name__ == "__main__":

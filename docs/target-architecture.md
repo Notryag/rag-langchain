@@ -157,7 +157,8 @@ DeerFlow 的设计重点是通用长任务 SuperAgent: gateway、runtime、skill
 - [x] 增加 pgvector retrieval eval 入口。
 - [x] 增加多租户权限隔离评测样本。
 - [x] 将 bad case 与 references 一起落盘。
-- [ ] 后续再做 hybrid、rerank、上下文压缩。
+- [x] 增加 pgvector dense + lexical RRF hybrid 召回。
+- [ ] 后续再做 rerank、上下文压缩。
 
 ## 当前不做
 

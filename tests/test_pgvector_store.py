@@ -8,6 +8,8 @@ from langchain_core.documents import Document as LangChainDocument
 from app.retrieval.pgvector_store import (
     ingest_document_chunks,
     retrieve_pgvector_chunks,
+    retrieve_pgvector_hybrid_chunks,
+    retrieve_pgvector_lexical_chunks,
     retrieve_pgvector_retrieved_chunks,
 )
 
@@ -35,6 +37,8 @@ class FakeSession:
 
     def execute(self, statement):
         self.executed.append(statement)
+        if callable(self.execute_result):
+            return self.execute_result(statement)
         return self.execute_result
 
 
@@ -118,6 +122,77 @@ class PgVectorStoreTests(unittest.TestCase):
         self.assertEqual(results[0].chunk_index, 2)
         self.assertEqual(results[0].score, 0.12)
         self.assertEqual(results[0].to_reference()["filename"], "产品说明.pdf")
+
+    def test_retrieve_pgvector_lexical_chunks_filters_by_tenant_and_scores_content(self) -> None:
+        matching_chunk = SimpleNamespace(
+            id=7,
+            document_id=9,
+            chunk_index=2,
+            content="计费规则包括调用次数",
+            chunk_metadata={"user_id": 2, "kb_id": 3},
+        )
+        other_chunk = SimpleNamespace(
+            id=8,
+            document_id=9,
+            chunk_index=3,
+            content="完全无关",
+            chunk_metadata={"user_id": 2, "kb_id": 3},
+        )
+        session = FakeSession(execute_result=[(matching_chunk, "产品说明.pdf"), (other_chunk, "产品说明.pdf")])
+
+        results = retrieve_pgvector_lexical_chunks(
+            session,
+            user_id=2,
+            kb_id=3,
+            query="怎么计费",
+            top_k=5,
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].chunk_id, 7)
+        self.assertGreater(results[0].metadata["lexical_score"], 0)
+        statement_text = str(session.executed[0])
+        self.assertIn("document_chunks.user_id", statement_text)
+        self.assertIn("document_chunks.kb_id", statement_text)
+
+    def test_retrieve_pgvector_hybrid_chunks_fuses_dense_and_lexical_candidates(self) -> None:
+        dense_chunk = SimpleNamespace(
+            id=7,
+            document_id=9,
+            chunk_index=2,
+            content="向量命中",
+            chunk_metadata={"user_id": 2, "kb_id": 3},
+        )
+        lexical_chunk = SimpleNamespace(
+            id=8,
+            document_id=10,
+            chunk_index=1,
+            content="计费规则包括调用次数",
+            chunk_metadata={"user_id": 2, "kb_id": 3},
+        )
+
+        calls = []
+
+        def execute_result(statement):
+            calls.append(str(statement))
+            if len(calls) == 1:
+                return [(dense_chunk, "dense.pdf", 0.11)]
+            return [(lexical_chunk, "lexical.pdf")]
+
+        session = FakeSession(execute_result=execute_result)
+
+        results = retrieve_pgvector_hybrid_chunks(
+            session,
+            user_id=2,
+            kb_id=3,
+            query="怎么计费",
+            top_k=2,
+            fetch_k=4,
+            embeddings=FakeEmbeddings(),
+        )
+
+        self.assertEqual([chunk.filename for chunk in results], ["dense.pdf", "lexical.pdf"])
+        self.assertEqual(len(session.executed), 2)
 
 
 if __name__ == "__main__":
