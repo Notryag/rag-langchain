@@ -1,9 +1,21 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-import { checkHealth, loadConfig, streamChat } from "./api";
+import { checkHealth, createKnowledgeBase, listKnowledgeBases, loadConfig, loadMe, streamChat } from "./api";
+import AuthPanel from "./components/AuthPanel";
 import ChatPanel from "./components/ChatPanel";
 import Sidebar from "./components/Sidebar";
-import type { ChatMessage, Citation, FeedbackRating, PublicConfig, RetrievalProfile, StreamEvent, ToolTrace } from "./types";
+import type {
+  ChatMessage,
+  Citation,
+  FeedbackRating,
+  KnowledgeBase,
+  PublicConfig,
+  RetrievalProfile,
+  StreamEvent,
+  TokenResponse,
+  ToolTrace,
+  User,
+} from "./types";
 
 const welcomeMessage: ChatMessage = {
   id: "welcome",
@@ -11,14 +23,20 @@ const welcomeMessage: ChatMessage = {
   content: "你好，我可以基于当前知识库回答选购、维护和故障排除问题。",
 };
 
+const tokenStorageKey = "rag_access_token";
+
 function App() {
-  const apiToken = import.meta.env.VITE_API_TOKEN || "";
-  const kbId = Number(import.meta.env.VITE_KB_ID || "0");
+  const [apiToken, setApiToken] = useState(() => localStorage.getItem(tokenStorageKey) || "");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [activeKbId, setActiveKbId] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState<number | undefined>(undefined);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [defaultRetrievalProfile, setDefaultRetrievalProfile] = useState<RetrievalProfile | null>(null);
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile | null>(null);
   const [apiStatus, setApiStatus] = useState("连接中");
+  const [workspaceError, setWorkspaceError] = useState("");
+  const [workspacePending, setWorkspacePending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -27,6 +45,11 @@ function App() {
   useEffect(() => {
     void boot();
   }, []);
+
+  useEffect(() => {
+    if (!apiToken) return;
+    void loadWorkspace(apiToken);
+  }, [apiToken]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
@@ -45,6 +68,42 @@ function App() {
     }
   }
 
+  async function loadWorkspace(token: string) {
+    setWorkspacePending(true);
+    setWorkspaceError("");
+    try {
+      const [user, kbs] = await Promise.all([loadMe(token), listKnowledgeBases(token)]);
+      setCurrentUser(user);
+      setKnowledgeBases(kbs);
+      setActiveKbId((current) => current || kbs[0]?.id || null);
+    } catch (error) {
+      localStorage.removeItem(tokenStorageKey);
+      setApiToken("");
+      setCurrentUser(null);
+      setKnowledgeBases([]);
+      setActiveKbId(null);
+      setWorkspaceError(error instanceof Error ? error.message : "加载用户信息失败");
+    } finally {
+      setWorkspacePending(false);
+    }
+  }
+
+  function handleAuthenticated(tokenResponse: TokenResponse) {
+    localStorage.setItem(tokenStorageKey, tokenResponse.access_token);
+    setApiToken(tokenResponse.access_token);
+    setCurrentUser(tokenResponse.user);
+  }
+
+  function logout() {
+    localStorage.removeItem(tokenStorageKey);
+    setApiToken("");
+    setCurrentUser(null);
+    setKnowledgeBases([]);
+    setActiveKbId(null);
+    setSessionId(undefined);
+    setMessages([welcomeMessage]);
+  }
+
   async function resetThread() {
     setPending(true);
     try {
@@ -52,6 +111,26 @@ function App() {
       setMessages([welcomeMessage]);
     } finally {
       setPending(false);
+    }
+  }
+
+  async function createDefaultKb() {
+    if (!apiToken || workspacePending) return;
+    setWorkspacePending(true);
+    setWorkspaceError("");
+    try {
+      const kb = await createKnowledgeBase(apiToken, {
+        name: "默认知识库",
+        description: "用于上传文档并开始问答",
+      });
+      setKnowledgeBases((current) => [kb, ...current]);
+      setActiveKbId(kb.id);
+      setSessionId(undefined);
+      setMessages([welcomeMessage]);
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : "创建知识库失败");
+    } finally {
+      setWorkspacePending(false);
     }
   }
 
@@ -63,14 +142,14 @@ function App() {
     event.preventDefault();
     const text = input.trim();
     if (!text || pending) return;
-    if (!apiToken || !kbId) {
+    if (!apiToken || !activeKbId) {
       setMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: "user", content: text },
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: "请先通过 VITE_API_TOKEN 和 VITE_KB_ID 配置当前用户 token 与知识库 ID。",
+          content: "请先登录并创建或选择一个知识库。",
           error: true,
         },
       ]);
@@ -96,7 +175,7 @@ function App() {
 
     try {
       await streamChat({
-        kbId,
+        kbId: activeKbId,
         message: text,
         retrievalProfile: activeProfile,
         sessionId,
@@ -183,15 +262,31 @@ function App() {
     updateAssistant(message.id, { feedbackRating: rating, feedbackPending: false });
   }
 
+  if (!apiToken || !currentUser) {
+    return <AuthPanel apiStatus={apiStatus} onAuthenticated={handleAuthenticated} />;
+  }
+
   return (
     <main className="app-shell">
       <Sidebar
         apiStatus={apiStatus}
+        activeKbId={activeKbId}
         config={config}
         defaultRetrievalProfile={defaultRetrievalProfile}
+        knowledgeBases={knowledgeBases}
         pending={pending}
         retrievalProfile={retrievalProfile}
         threadId={sessionId ? String(sessionId) : "-"}
+        user={currentUser}
+        workspaceError={workspaceError}
+        workspacePending={workspacePending}
+        onCreateKb={createDefaultKb}
+        onLogout={logout}
+        onKbChange={(kbId) => {
+          setActiveKbId(kbId);
+          setSessionId(undefined);
+          setMessages([welcomeMessage]);
+        }}
         onRetrievalProfileChange={setRetrievalProfile}
         onResetThread={resetThread}
       />

@@ -19,6 +19,42 @@ export type PublicConfig = {
   retrieval_max_context_chars: number;
 };
 
+export type User = {
+  id: number;
+  username: string;
+  email: string;
+};
+
+export type TokenResponse = {
+  access_token: string;
+  token_type: string;
+  user: User;
+};
+
+export type KnowledgeBase = {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DocumentStatus = "pending" | "processing" | "completed" | "failed";
+
+export type KnowledgeDocument = {
+  id: number;
+  kb_id: number;
+  user_id: number;
+  filename: string;
+  content_type: string | null;
+  file_path: string;
+  status: DocumentStatus;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SearchType = "similarity" | "mmr" | "hybrid";
 
 export type RetrievalProfile = {

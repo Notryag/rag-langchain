@@ -34,21 +34,17 @@
 - `react-hook-form`: 登录、注册、知识库表单。
 - `zod`: 前端表单校验和 API payload 校验。
 
-暂不建议引入:
-
-- Redux/Zustand 等全局状态库，当前状态规模还不需要。
-- 大型组件库，除非后续确认要快速搭完整后台。
-- 路由框架，单页工作台先足够。
 
 ## Batch F1: 前端 API Client 和会话状态
 
-- [ ] 增加 `/api/v1/auth/register`、`/api/v1/auth/login`、`/api/v1/auth/me` 前端 API 方法
-- [ ] 增加 `/api/v1/kbs` CRUD 前端 API 方法
+- [x] 增加 `/api/v1/auth/register`、`/api/v1/auth/login`、`/api/v1/auth/me` 前端 API 方法
+- [x] 增加 `/api/v1/kbs` 创建、列表前端 API 方法
+- [ ] 增加知识库编辑、删除前端 API 方法
 - [ ] 增加文档上传、列表、详情、删除、手动处理 API 方法
-- [ ] 增加聊天会话、消息、SSE chat API 方法
-- [ ] 统一 Bearer token 注入和 401 处理
-- [ ] 将 token 保存到 `localStorage`
-- [ ] 移除对 `VITE_API_TOKEN` 和 `VITE_KB_ID` 的运行时依赖
+- [x] 增加聊天 SSE API 方法
+- [x] 统一 Bearer token 注入和基础错误处理
+- [x] 将 token 保存到 `localStorage`
+- [x] 移除对 `VITE_API_TOKEN` 和 `VITE_KB_ID` 的运行时依赖
 
 建议组件/文件:
 
@@ -63,12 +59,12 @@ frontend/src/hooks/useChat.ts
 
 ## Batch F2: 登录 / 注册
 
-- [ ] 增加登录表单
-- [ ] 增加注册表单
-- [ ] 登录成功后保存 token 并加载当前用户
-- [ ] 未登录时只展示认证界面
-- [ ] 增加退出登录
-- [ ] 显示接口错误和 loading 状态
+- [x] 增加登录表单
+- [x] 增加注册表单
+- [x] 登录成功后保存 token 并加载当前用户
+- [x] 未登录时只展示认证界面
+- [x] 增加退出登录
+- [x] 显示接口错误和 loading 状态
 
 建议组件:
 
@@ -80,8 +76,9 @@ frontend/src/components/RegisterForm.tsx
 
 ## Batch F3: 知识库工作台
 
-- [ ] 展示当前用户知识库列表
-- [ ] 创建知识库
+- [x] 展示当前用户知识库列表
+- [x] 创建默认知识库
+- [ ] 创建自定义知识库
 - [ ] 编辑知识库名称和描述
 - [ ] 删除知识库前二次确认
 - [ ] 选择当前知识库后加载文档和聊天区域

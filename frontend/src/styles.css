@@ -50,6 +50,128 @@ button {
   min-height: 100vh;
 }
 
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #eef3f8;
+}
+
+.auth-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  width: min(920px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.auth-copy {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 42px;
+  background: #182332;
+  color: #ffffff;
+}
+
+.auth-copy h1,
+.auth-copy p {
+  margin: 0;
+}
+
+.auth-copy h1 {
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.auth-copy p {
+  color: #b8c4d3;
+  line-height: 1.7;
+}
+
+.auth-form {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 34px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.segmented button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.segmented button.active {
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(32, 42, 56, 0.08);
+}
+
+.light-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.light-field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.light-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  outline: none;
+}
+
+.light-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(20, 108, 99, 0.14);
+}
+
+.primary-button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-error,
+.panel-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -175,6 +297,7 @@ button {
   margin: 0;
   color: #b8c4d3;
   font-size: 13px;
+  line-height: 1.55;
 }
 
 .field-stack {
@@ -499,6 +622,10 @@ textarea:disabled {
 
 @media (max-width: 860px) {
   .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-panel {
     grid-template-columns: 1fr;
   }
 
