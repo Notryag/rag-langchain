@@ -119,10 +119,12 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 - `app/retrieval/hybrid.py`
 - `app/retrieval/reranker.py`
 - `app/retrieval/retriever.py`
+- `evaluation/evaluate_pgvector_retrieval.py`
 
 验证建议:
 
 - 改检索或回答逻辑时，至少跑相关 evaluation。
+- 多租户主链路 pgvector retrieval eval 需要显式传 `--user-id` 和 `--kb-id`。
 - 没有评测前不要靠感觉反复调 prompt。
 
 ### 前端、React、静态托管
