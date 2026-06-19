@@ -132,18 +132,18 @@ DeerFlow 的设计重点是通用长任务 SuperAgent: gateway、runtime、skill
 
 ### Batch 9: 统一检索接口
 
-- [ ] 定义多租户安全的 retrieval protocol / DTO。
-- [ ] 让 pgvector 检索返回统一结构。
-- [ ] 给旧 Chroma 检索加 adapter，保留为 legacy/eval 实现。
-- [ ] 更新 chat service 只依赖统一检索接口。
-- [ ] 补测试，确保 `user_id + kb_id` 过滤仍在 SQL 层发生。
+- [x] 定义多租户安全的 retrieval protocol / DTO。
+- [x] 让 pgvector 检索返回统一结构。
+- [x] 给旧 Chroma 检索加 adapter，保留为 legacy/eval 实现。
+- [x] 更新 chat service 只依赖统一检索接口。
+- [x] 补测试，确保 `user_id + kb_id` 过滤仍在 SQL 层发生。
 
 ### Batch 10: 真正的 chat run
 
-- [ ] 设计 `chat_runs` 表或等价 run model。
-- [ ] 同步 Alembic migration。
-- [ ] 同步记录 status、usage、cache_hit、error。
-- [ ] chat API / SSE 统一围绕 run 生命周期。
+- [x] 设计 `chat_runs` 表或等价 run model。
+- [x] 同步 Alembic migration。
+- [x] 同步记录 status、usage、cache_hit、error。
+- [x] chat API / SSE 统一围绕 run 生命周期。
 
 ### Batch 11: token 级 SSE
 

@@ -130,7 +130,7 @@
 - [x] 增加 Alembic migration
 - [x] 记录 running / completed / failed / cancelled
 - [x] 记录 usage / cache_hit / error_message
-- [ ] API 和 SSE 围绕 run 生命周期收口
+- [x] API 和 SSE 围绕 run 生命周期收口
 
 ## Batch 11: Token 级 SSE
 

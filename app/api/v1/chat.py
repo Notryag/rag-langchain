@@ -45,10 +45,11 @@ def chat(
         session,
         user_id=current_user.id,
         action="chat.ask",
-        resource_type="chat_session",
-        resource_id=answer.session_id,
+        resource_type="chat_run",
+        resource_id=answer.run_id,
         details={
             "kb_id": kb_id,
+            "session_id": answer.session_id,
             "reference_count": len(answer.references),
             "cache_hit": answer.cache_hit,
             "usage": answer.usage,
@@ -58,6 +59,7 @@ def chat(
         answer=answer.answer,
         references=answer.references,
         session_id=answer.session_id,
+        run_id=answer.run_id,
         usage=answer.usage,
     )
 
@@ -83,10 +85,11 @@ def chat_stream(
             session,
             user_id=current_user.id,
             action="chat.stream",
-            resource_type="chat_session",
-            resource_id=answer.session_id,
+            resource_type="chat_run",
+            resource_id=answer.run_id,
             details={
                 "kb_id": kb_id,
+                "session_id": answer.session_id,
                 "reference_count": len(answer.references),
                 "cache_hit": answer.cache_hit,
                 "usage": answer.usage,
@@ -102,6 +105,7 @@ def chat_stream(
                 "answer": answer.answer,
                 "references": answer.references,
                 "session_id": answer.session_id,
+                "run_id": answer.run_id,
                 "cache_hit": answer.cache_hit,
                 "usage": answer.usage,
             },

@@ -84,8 +84,9 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 
 - 问答保存 user / assistant 两类消息。
 - assistant 消息保存结构化 `references`。
-- 同步接口返回 `answer / references / session_id / usage`。
-- SSE 接口返回 `answer` 增量事件和 `complete` 事件。
+- 同步接口返回 `answer / references / session_id / run_id / usage`。
+- SSE 接口返回 `answer` 增量事件和包含 `run_id` 的 `complete` 事件。
+- 每次问答都会创建 `chat_runs`，operation log 围绕 `chat_run` 聚合，并在 details 中保留 `session_id`。
 - 热点问题缓存按 `user_id + kb_id + question + top_k + 模型配置` 隔离。
 
 ### 旧本地 RAG、Agent、Tool、Chroma

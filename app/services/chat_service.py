@@ -31,6 +31,7 @@ class ChatAnswer:
     answer: str
     references: list[dict[str, Any]]
     session_id: int
+    run_id: int
     cache_hit: bool = False
     usage: dict[str, Any] | None = None
 
@@ -133,6 +134,7 @@ class ChatService:
             answer=answer,
             references=references,
             session_id=chat_session.id,
+            run_id=chat_run.id,
             cache_hit=cache_hit,
             usage=usage,
         )

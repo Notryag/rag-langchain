@@ -71,6 +71,7 @@ class ChatApiTests(unittest.TestCase):
                     answer="系统根据调用次数计费。",
                     references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
                     session_id=12,
+                    run_id=34,
                     usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
                 )
 
@@ -84,12 +85,16 @@ class ChatApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["session_id"], 12)
+        self.assertEqual(response.json()["run_id"], 34)
         self.assertEqual(response.json()["references"][0]["filename"], "产品说明.pdf")
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.kb_id, 2)
         self.assertEqual(fake_service.question, "怎么计费？")
         self.assertEqual(fake_service.session_id, 12)
         self.assertEqual(self.operation_logs[0]["action"], "chat.ask")
+        self.assertEqual(self.operation_logs[0]["resource_type"], "chat_run")
+        self.assertEqual(self.operation_logs[0]["resource_id"], 34)
+        self.assertEqual(self.operation_logs[0]["details"]["session_id"], 12)
         self.assertEqual(self.operation_logs[0]["details"]["reference_count"], 1)
         self.assertFalse(self.operation_logs[0]["details"]["cache_hit"])
         self.assertEqual(response.json()["usage"]["total_tokens"], 15)
@@ -117,6 +122,7 @@ class ChatApiTests(unittest.TestCase):
                     answer="系统根据调用次数计费。",
                     references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
                     session_id=12,
+                    run_id=34,
                     usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
                 )
 
@@ -130,10 +136,14 @@ class ChatApiTests(unittest.TestCase):
         self.assertIn("event: answer", body)
         self.assertIn("event: complete", body)
         self.assertIn('"session_id": 12', body)
+        self.assertIn('"run_id": 34', body)
         self.assertIn('"total_tokens": 15', body)
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.kb_id, 2)
         self.assertEqual(self.operation_logs[0]["action"], "chat.stream")
+        self.assertEqual(self.operation_logs[0]["resource_type"], "chat_run")
+        self.assertEqual(self.operation_logs[0]["resource_id"], 34)
+        self.assertEqual(self.operation_logs[0]["details"]["session_id"], 12)
 
     def test_list_chat_sessions(self) -> None:
         class FakeChatService:
