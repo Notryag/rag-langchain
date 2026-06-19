@@ -61,8 +61,10 @@ uv run python -m <module>
 
 ### 数据库服务
 
+仅启动 PostgreSQL + Redis 依赖:
+
 ```powershell
-docker compose up -d
+docker compose up -d postgres redis
 uv run alembic upgrade head
 ```
 
@@ -74,7 +76,7 @@ uv run alembic revision --autogenerate -m "message"
 
 ### Celery Worker
 
-启动 Redis 后，可以启动文档处理 worker:
+本地开发时，启动 Redis 后，可以启动文档处理 worker:
 
 ```powershell
 uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
@@ -90,10 +92,25 @@ uv run python -m unittest tests.test_api
 
 ### 多租户端到端 Smoke
 
-先启动依赖和数据库迁移:
+方式一：一键启动完整后端（PostgreSQL / Redis / FastAPI / Celery worker）:
 
 ```powershell
 docker compose up -d
+uv run python scripts/smoke_multitenant.py
+```
+
+`api` 服务启动时会自动执行 `alembic upgrade head`，然后监听 `http://127.0.0.1:8000`。
+
+如果容器内 API / worker 需要访问宿主机上的 Ollama 或兼容 OpenAI 服务，不要在 `.env` 里使用 `http://127.0.0.1:11434/v1`，应改为:
+
+```env
+OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+```
+
+方式二：本机进程调试。先启动依赖和数据库迁移:
+
+```powershell
+docker compose up -d postgres redis
 uv run alembic upgrade head
 ```
 
@@ -116,11 +133,15 @@ uv run python scripts/smoke_multitenant.py
 EMBEDDING_DIMENSION=1024
 ```
 
+Docker Compose 的 `api` / `worker` 服务会读取 `.env` 中的模型配置，并自动把数据库和 Redis 地址改为容器内部服务名。
+
 修改 embedding 维度后，需要重新执行:
 
 ```powershell
 uv run alembic upgrade head
 ```
+
+如果数据库中已经存在旧维度的 pgvector 列，Compose 环境也需要重新运行迁移，必要时清理本地 `postgres_data` volume 后重建开发环境。
 
 该脚本会依次执行:
 

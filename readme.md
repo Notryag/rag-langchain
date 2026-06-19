@@ -102,6 +102,9 @@ uv run python -m app.main delete-source 维护保养.txt
 curl http://127.0.0.1:8000/api/metrics
 
 # 启动 PostgreSQL + Redis
+docker compose up -d postgres redis
+
+# 一键启动多租户后端: PostgreSQL + Redis + FastAPI + Celery worker
 docker compose up -d
 
 # 执行数据库迁移
@@ -116,6 +119,8 @@ uv run python -m evaluation.generate_answers --limit 10
 # 回答评测
 uv run python -m evaluation.evaluate_answers --limit 10
 ```
+
+如果容器要访问宿主机上的 Ollama，请在 `.env` 中使用 `OPENAI_BASE_URL=http://host.docker.internal:11434/v1`。使用 `bge-m3` 时同时设置 `EMBEDDING_DIMENSION=1024`。
 
 ## 项目结构（简版）
 
