@@ -96,12 +96,14 @@ cd frontend
 npm run dev
 ```
 
-前端当前通过 `/api/v1` 调用后端。聊天需要设置:
+前端当前通过 `/api/v1` 调用后端。现阶段仍是调试形态，聊天需要设置:
 
 ```env
 VITE_API_TOKEN=<access_token>
 VITE_KB_ID=<kb_id>
 ```
+
+下一步会补齐登录、知识库选择、文档上传和状态追踪，详见 [docs/todo.md](docs/todo.md)。
 
 ## 项目结构
 

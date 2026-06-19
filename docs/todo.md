@@ -1,181 +1,157 @@
 # 执行清单
 
-本文件只保留仍需推进的事项。已完成内容归档到 [todo-done.md](todo-done.md)。
+本文件只保留仍需推进的事项。已完成批次不在这里堆叠，历史见 [todo-done.md](todo-done.md) 和 git 提交记录。
 
-当前阶段重点:
+## 当前阶段判断
 
-1. 将 `/api/v1 + PostgreSQL + pgvector` 明确为多租户产品主链路
-2. 保持权限隔离优先，避免跨用户检索泄露
-3. 保持旧链路删除后的 `/api/v1 + pgvector` 单主线
-4. 在真实 PostgreSQL 数据上沉淀 retrieval / answer eval baseline
+后端主线已经收口为:
 
-架构结论:
+```text
+/api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
+```
 
-- 项目没有致命总体设计缺陷，原核心风险是旧 `/api + Chroma + Agent` 与新 `/api/v1 + pgvector` 两条 RAG 链路继续平级增长；该风险已通过删除旧链路收口。
-- 参考 DeerFlow 时只借鉴 run/thread 生命周期、分层边界、渐进上下文和 SSE/run 聚合，不引入 subagent、sandbox、skill marketplace 等通用 Agent 平台复杂度。
-- 架构收口主任务已经完成，接下来的实现顺序应围绕真实数据质量基线: pgvector retrieval eval -> pgvector answer eval -> bad case 回流 -> 默认检索策略决策。
+旧 `/api + Chroma + Agent + CLI + Streamlit` 已删除。现在最短板不是后端接口，而是前端还停留在临时调试形态: 需要手动配置 `VITE_API_TOKEN` 和 `VITE_KB_ID` 才能聊天。
 
-总体规划见 [multitenant-rag.md](multitenant-rag.md)，架构收口计划见 [target-architecture.md](target-architecture.md)。
+## 当前优先级
 
-## Batch 1: 数据库与工程地基
+1. 补齐前端最小产品闭环: 登录、知识库选择、文档上传、状态追踪、聊天。
+2. 在真实 PostgreSQL 数据上跑 pgvector retrieval / answer baseline。
+3. 根据 bad cases 决定 hybrid / rerank 默认策略。
+4. 再考虑更复杂的权限模型、运维面板和质量运营。
 
-- [x] 引入 SQLAlchemy / Alembic / PostgreSQL / pgvector / Redis / Celery 依赖
-- [x] 增加数据库、Redis、Celery、JWT、上传目录配置
-- [x] 增加 SQLAlchemy Base 和 session provider
-- [x] 增加核心模型: users / knowledge_bases / documents / document_chunks / chat_sessions / chat_messages
-- [x] 增加 Alembic 基础配置
-- [x] 增加 Docker Compose 的 PostgreSQL + Redis
-- [x] 增加模型层测试
+## 前端实现原则
 
-## Batch 2: 用户认证
+- 组件按业务场景拆分，避免做成通用后台框架。
+- 可以引入成熟依赖减少手写复杂度，但不要为了“看起来专业”堆设计系统。
+- 优先使用浏览器原生能力、React state 和少量稳定工具库。
+- API 调用集中在 `frontend/src/api.ts`，类型集中在 `frontend/src/types.ts`。
+- 页面状态保持简单: token、当前用户、知识库列表、当前知识库、文档列表、聊天会话。
+- 暂不做复杂路由、RBAC、组织空间、全局状态库和表格引擎。
 
-- [x] 增加密码哈希工具
-- [x] 增加用户注册 service
-- [x] 增加用户登录 service
-- [x] 增加 JWT access token 生成与解析
-- [x] 增加 `get_current_user` 鉴权依赖
-- [x] 增加 `/api/v1/auth/register`
-- [x] 增加 `/api/v1/auth/login`
-- [x] 增加 `/api/v1/auth/me`
-- [x] 增加认证测试
+可考虑的成熟依赖:
 
-## Batch 3: 知识库 CRUD
+- `@tanstack/react-query`: 管理 API 请求、缓存、刷新和 loading/error 状态。
+- `react-hook-form`: 登录、注册、知识库表单。
+- `zod`: 前端表单校验和 API payload 校验。
 
-- [x] 增加知识库 schema
-- [x] 增加知识库 service
-- [x] 增加 `/api/v1/kbs` CRUD 路由
-- [x] 所有知识库查询限制当前用户
-- [x] 增加知识库权限测试
+暂不建议引入:
 
-## Batch 4: 文档上传与状态
+- Redux/Zustand 等全局状态库，当前状态规模还不需要。
+- 大型组件库，除非后续确认要快速搭完整后台。
+- 路由框架，单页工作台先足够。
 
-- [x] 增加文档 schema
-- [x] 增加上传文件保存逻辑
-- [x] 上传后创建 document 记录
-- [x] 支持 document 状态流转
-- [x] 增加同步解析入口
-- [x] 增加文档上传与状态测试
+## Batch F1: 前端 API Client 和会话状态
 
-## Batch 5: pgvector 入库与检索
+- [ ] 增加 `/api/v1/auth/register`、`/api/v1/auth/login`、`/api/v1/auth/me` 前端 API 方法
+- [ ] 增加 `/api/v1/kbs` CRUD 前端 API 方法
+- [ ] 增加文档上传、列表、详情、删除、手动处理 API 方法
+- [ ] 增加聊天会话、消息、SSE chat API 方法
+- [ ] 统一 Bearer token 注入和 401 处理
+- [ ] 将 token 保存到 `localStorage`
+- [ ] 移除对 `VITE_API_TOKEN` 和 `VITE_KB_ID` 的运行时依赖
 
-- [x] 将新文档切片写入 `document_chunks`
-- [x] 将 embedding 写入 pgvector 字段
-- [x] 检索时按 `user_id + kb_id` 过滤
-- [x] 返回结构化 references
-- [x] 增加权限过滤检索测试
+建议组件/文件:
 
-## Batch 6: 多租户问答和聊天记录
+```text
+frontend/src/api.ts
+frontend/src/types.ts
+frontend/src/hooks/useAuth.ts
+frontend/src/hooks/useKbs.ts
+frontend/src/hooks/useDocuments.ts
+frontend/src/hooks/useChat.ts
+```
 
-- [x] 增加 `/api/v1/kbs/{kb_id}/chat`
-- [x] 支持 chat_session 创建和复用
-- [x] 保存用户消息
-- [x] 保存助手消息和 references
-- [x] 问答响应返回 answer / references / session_id
-- [x] 增加聊天记录查询接口
-- [x] 增加问答和聊天记录测试
+## Batch F2: 登录 / 注册
 
-## Batch 7: 异步文档处理
+- [ ] 增加登录表单
+- [ ] 增加注册表单
+- [ ] 登录成功后保存 token 并加载当前用户
+- [ ] 未登录时只展示认证界面
+- [ ] 增加退出登录
+- [ ] 显示接口错误和 loading 状态
 
-- [x] 增加 Celery app
-- [x] 增加文档处理 task
-- [x] 上传文档后投递异步任务
-- [x] 任务失败时写入 `failed` 和 `error_message`
-- [x] 增加任务幂等策略
+建议组件:
 
-## 当前不做
+```text
+frontend/src/components/AuthPanel.tsx
+frontend/src/components/LoginForm.tsx
+frontend/src/components/RegisterForm.tsx
+```
 
-下面这些事情当前不建议优先推进:
+## Batch F3: 知识库工作台
 
-- [ ] 组织 / 团队 / RBAC / ACL
-- [ ] 同时支持很多向量库
-- [ ] 复杂长期 memory
-- [ ] 在权限过滤未稳定前做大规模检索优化
-- [ ] 在多租户主链路没跑通前做复杂前端后台
+- [ ] 展示当前用户知识库列表
+- [ ] 创建知识库
+- [ ] 编辑知识库名称和描述
+- [ ] 删除知识库前二次确认
+- [ ] 选择当前知识库后加载文档和聊天区域
+- [ ] 空知识库状态给出创建入口
 
-## 建议执行顺序
+建议组件:
 
-1. [x] 增加 API 端到端 smoke test 脚本
-2. [x] 在真实 PostgreSQL + Redis 环境跑通端到端上传、异步处理和问答
-3. [x] 进入第二阶段增强: 限流、统一异常、操作日志、缓存和 SSE
-4. [x] 进入架构收口: 统一检索接口、chat run 生命周期、token 级 SSE、pgvector 多租户评测
-5. [ ] 建立真实数据质量基线: pgvector retrieval / answer eval baseline
+```text
+frontend/src/components/KbSidebar.tsx
+frontend/src/components/KbFormDialog.tsx
+frontend/src/components/EmptyState.tsx
+```
 
-## 下一阶段增强
+## Batch F4: 文档上传和状态追踪
 
-- [x] 统一异常处理
-- [x] 操作日志
-- [x] 接口限流
-- [x] Redis 缓存热点问题
-- [x] SSE 流式问答
-- [x] Docker Compose 增加 API / worker 服务
-- [x] Token 用量统计
+- [ ] 支持选择文件上传到当前知识库
+- [ ] 展示文档列表: 文件名、content type、状态、错误信息、更新时间
+- [ ] 支持 pending / processing / completed / failed 状态样式
+- [ ] 支持手动触发处理 `/api/v1/documents/{document_id}/process`
+- [ ] 支持删除文档
+- [ ] 上传或处理后自动刷新文档列表
 
-## Batch 8: 架构收口文档
+建议组件:
 
-- [x] 明确 `/api/v1 + pgvector` 是产品主链路
-- [x] 删除旧 `/api + Chroma + Agent` 运行时链路
-- [x] 记录参考 DeerFlow 后的取舍
-- [x] 更新项目状态、路线图和 AI 助手导航
+```text
+frontend/src/components/DocumentPanel.tsx
+frontend/src/components/DocumentUpload.tsx
+frontend/src/components/DocumentList.tsx
+frontend/src/components/StatusBadge.tsx
+```
 
-## Batch 9: 统一检索接口
+## Batch F5: 聊天体验收口
 
-- [x] 定义 retrieval protocol / DTO
-- [x] 让 pgvector 检索返回统一结构
-- [x] 删除旧 Chroma adapter，保留 pgvector 为唯一运行时检索实现
-- [x] 更新 chat service 依赖统一检索接口
-- [x] 补权限过滤和 adapter 测试
+- [ ] 聊天使用当前选中知识库，不再手动填 `kb_id`
+- [ ] 新会话、历史会话列表、消息加载
+- [ ] SSE 展示 `answer_delta / complete / error`
+- [ ] 引用来源展示 filename、chunk_index、content 预览
+- [ ] 发送中、错误、空 references 的状态处理
+- [ ] 保留 usage 展示，但不阻塞主要聊天体验
 
-## Batch 10: Chat Run 生命周期
+建议组件:
 
-- [x] 设计 chat run model
-- [x] 增加 Alembic migration
-- [x] 记录 running / completed / failed / cancelled
-- [x] 记录 usage / cache_hit / error_message
-- [x] API 和 SSE 围绕 run 生命周期收口
+```text
+frontend/src/components/ChatPanel.tsx
+frontend/src/components/SessionList.tsx
+frontend/src/components/MessageBubble.tsx
+frontend/src/components/ReferenceList.tsx
+```
 
-## Batch 11: Token 级 SSE
+## Batch Q1: 真实数据质量基线
 
-- [x] 将模型 streaming 下沉到 service
-- [x] SSE 输出 answer_delta / complete / error
-- [x] complete 时保存最终 answer、references、usage
-- [x] 缓存命中时保持快速流式输出
+- [ ] 准备一组与当前知识库一致的 eval dataset
+- [ ] 运行 pgvector retrieval baseline
+- [ ] 运行 pgvector answer sampling
+- [ ] 运行 answer eval
+- [ ] 保存 baseline manifest、answer runs 和 bad cases
+- [ ] 根据结果决定 `RETRIEVAL_SEARCH_TYPE`、`RERANKER_ENABLED` 默认值
 
-## Batch 12: pgvector 多租户评测
+建议命令:
 
-- [x] 增加 pgvector retrieval eval 入口
-- [x] 增加权限隔离评测样本
-- [x] 落盘 bad case、references 和检索参数
-- [x] pgvector hybrid dense + lexical RRF 召回
-- [x] 问答 prompt 上下文压缩
-- [x] pgvector rerank 评测和 chat service 接入
+```powershell
+uv run python -m evaluation.check_pgvector_embedding_config
+uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --answer-limit 5
+```
 
-## Batch 13: pgvector 回答评测闭环
+## 暂不做
 
-- [x] 增加 pgvector answer 采样入口
-- [x] 复用 answer eval 评分 pgvector runs
-- [x] 导出 pgvector answer bad cases
-- [x] 更新 project status / roadmap 到最新真实状态
-
-## Batch 14: 真实数据质量基线
-
-- [x] 增加 pgvector baseline runner
-- [x] baseline runner 支持无模型配置时只跑 retrieval
-- [x] baseline runner 失败时写入 failed manifest
-- [x] 增加 pgvector embedding 维度诊断命令
-- [x] 在本地 PostgreSQL + Redis 环境运行 pgvector retrieval eval
-  - 本地诊断: `EMBEDDING_DIMENSION=1024` 时配置和 pgvector 列维度一致。
-  - 当前 smoke baseline: `storage/exports/pgvector_baselines/smoke-retrieval-ok-1024/`，权限隔离通过，pass rate 为 0，因为库内只有 `smoke-billing.txt`，与扫地机器人评测集不匹配。
-- [ ] 运行 pgvector answer sampling + answer eval
-- [x] 保存 baseline manifest 和 bad cases 的标准路径
-- [x] baseline manifest 汇总 artifact 数量和 retrieval summary
-- [ ] 根据结果决定 hybrid / rerank 默认策略
-
-## Batch 15: 删除旧 /api + Chroma + Agent
-
-- [x] 删除旧 `/api` 路由、schema 和 rag service
-- [x] 删除 Chroma vectorstore、本地 ingest、Agent、Tool、CLI、Streamlit 链路
-- [x] 将系统接口替换为 `/api/v1/health`、`/api/v1/config`、`/api/v1/metrics`
-- [x] 将 embedding provider 提取为 `app/retrieval/embeddings.py`
-- [x] 移除 `langchain-chroma` 和 `streamlit` 依赖
-- [x] 更新 Docker、smoke、前端 API 和测试到 `/api/v1`
-- [x] 更新 README、AI 导航和架构文档，避免后续助手误读旧链路
+- 组织 / 团队 / RBAC / ACL
+- 多向量库适配
+- 复杂长期 memory
+- 通用 Agent / subagent / tool marketplace
+- 大型后台管理框架
+- 在没有 baseline 前反复调 prompt
