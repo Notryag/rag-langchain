@@ -20,6 +20,7 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
         openai_base_url=None,
         chat_model="test-chat",
         embedding_model="test-embedding",
+        embedding_dimension=1536,
         vector_db_dir="./storage/chroma",
         collection_name="rag_docs",
         top_k=3,

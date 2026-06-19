@@ -88,5 +88,15 @@
 ## 建议执行顺序
 
 1. [x] 增加 API 端到端 smoke test 脚本
-2. [ ] 在真实 PostgreSQL + Redis 环境跑通端到端上传、异步处理和问答
+2. [x] 在真实 PostgreSQL + Redis 环境跑通端到端上传、异步处理和问答
 3. [ ] 进入第二阶段增强: 限流、统一异常、操作日志、缓存和 SSE
+
+## 下一阶段增强
+
+- [ ] 统一异常处理
+- [ ] 操作日志
+- [ ] 接口限流
+- [ ] Redis 缓存热点问题
+- [ ] SSE 流式问答
+- [ ] Docker Compose 增加 API / worker 服务
+- [ ] Token 用量统计

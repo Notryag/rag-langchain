@@ -33,6 +33,7 @@ OPENAI_API_KEY=your_key
 ```env
 CHAT_MODEL=gpt-4.1-mini
 EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSION=1536
 CHECKPOINTER_TYPE=sqlite
 CHECKPOINTER_SQLITE_PATH=./storage/checkpoints.sqlite3
 FEEDBACK_LOG_PATH=./storage/feedback.jsonl

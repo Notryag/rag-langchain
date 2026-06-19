@@ -36,6 +36,7 @@ uv run python -m <module>
 - `OPENAI_API_KEY` 是必填项，即使接本地兼容服务也需要显式提供一个非空值。
 - `OPENAI_BASE_URL` 是可选项；走官方 OpenAI 可留空，走兼容网关或本地模型服务时填写。
 - `CHAT_MODEL`、`EMBEDDING_MODEL`、`VECTOR_DB_DIR`、`COLLECTION_NAME`、`LOG_DIR`、`LOG_FILE_NAME` 都有默认值，但不允许为空字符串。
+- `EMBEDDING_DIMENSION` 默认 `1536`，必须和当前 embedding 模型输出维度一致；例如 `text-embedding-3-small` 是 `1536`，`bge-m3` 通常是 `1024`。
 - `TOP_K`、`RETRIEVAL_FETCH_K`、`CHUNK_SIZE` 必须大于 `0`。
 - `RETRIEVAL_MAX_CONTEXT_CHARS` 必须大于 `0`，用于限制传给模型的检索上下文字符数。
 - `CHUNK_OVERLAP` 必须大于等于 `0`，且必须小于 `CHUNK_SIZE`。
@@ -109,6 +110,18 @@ uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
 uv run python scripts/smoke_multitenant.py
 ```
 
+如果使用本地 `bge-m3` embedding，请确保 `.env` 或当前 shell 中设置:
+
+```env
+EMBEDDING_DIMENSION=1024
+```
+
+修改 embedding 维度后，需要重新执行:
+
+```powershell
+uv run alembic upgrade head
+```
+
 该脚本会依次执行:
 
 1. 健康检查
@@ -124,6 +137,12 @@ uv run python scripts/smoke_multitenant.py
 
 ```powershell
 uv run python scripts/smoke_multitenant.py --skip-chat
+```
+
+本地模型首次推理较慢时，可以调大请求超时:
+
+```powershell
+uv run python scripts/smoke_multitenant.py --request-timeout 240
 ```
 
 ### 检索评测

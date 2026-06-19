@@ -88,6 +88,8 @@ class DocumentService:
             parsed_docs = parse_document_file(document.file_path)
             chunk_count = ingest_document_chunks(session, document=document, parsed_docs=parsed_docs)
         except Exception as exc:
+            session.rollback()
+            document = self.get_for_user(session, user_id=user_id, document_id=document_id)
             document.status = DocumentStatus.FAILED
             document.error_message = str(exc)
             session.commit()

@@ -19,13 +19,15 @@ class SmokeConfig:
     email: str
     password: str
     poll_seconds: int
+    request_timeout: int
     skip_chat: bool
     sync_fallback: bool
 
 
 class SmokeClient:
-    def __init__(self, base_url: str) -> None:
+    def __init__(self, base_url: str, *, request_timeout: int) -> None:
         self.base_url = base_url.rstrip("/")
+        self.request_timeout = request_timeout
         self.token: str | None = None
 
     def get(self, path: str) -> Any:
@@ -70,7 +72,7 @@ class SmokeClient:
             method=method,
         )
         try:
-            with urlopen(request, timeout=60) as response:
+            with urlopen(request, timeout=self.request_timeout) as response:
                 data = response.read()
                 if not data:
                     return None
@@ -104,7 +106,7 @@ def _unique_default(prefix: str) -> str:
 
 
 def run_smoke(config: SmokeConfig) -> None:
-    client = SmokeClient(config.base_url)
+    client = SmokeClient(config.base_url, request_timeout=config.request_timeout)
     print(f"[1/8] health {config.base_url}/api/health")
     health = client.get("/api/health")
     _assert(health == {"status": "ok"}, f"unexpected health response: {health}")
@@ -209,6 +211,7 @@ def parse_args() -> SmokeConfig:
     parser.add_argument("--email", default=None)
     parser.add_argument("--password", default="password-123")
     parser.add_argument("--poll-seconds", type=int, default=30)
+    parser.add_argument("--request-timeout", type=int, default=180)
     parser.add_argument("--skip-chat", action="store_true", help="Skip LLM chat call after document processing.")
     parser.add_argument(
         "--no-sync-fallback",
@@ -223,6 +226,7 @@ def parse_args() -> SmokeConfig:
         email=email,
         password=args.password,
         poll_seconds=args.poll_seconds,
+        request_timeout=args.request_timeout,
         skip_chat=args.skip_chat,
         sync_fallback=not args.no_sync_fallback,
     )

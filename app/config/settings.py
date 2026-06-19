@@ -55,6 +55,7 @@ class Settings:
     openai_base_url: str | None
     chat_model: str
     embedding_model: str
+    embedding_dimension: int
     vector_db_dir: str
     collection_name: str
     top_k: int
@@ -105,6 +106,7 @@ class Settings:
             "RETRIEVAL_MAX_CONTEXT_CHARS": self.retrieval_max_context_chars,
             "CHUNK_SIZE": self.chunk_size,
             "ACCESS_TOKEN_EXPIRE_MINUTES": self.access_token_expire_minutes,
+            "EMBEDDING_DIMENSION": self.embedding_dimension,
         }
         for field_name, field_value in positive_fields.items():
             if field_value <= 0:
@@ -154,6 +156,7 @@ class Settings:
             openai_base_url=_get_optional_env("OPENAI_BASE_URL"),
             chat_model=(os.getenv("CHAT_MODEL") or "gpt-4.1-mini").strip(),
             embedding_model=(os.getenv("EMBEDDING_MODEL") or "text-embedding-3-small").strip(),
+            embedding_dimension=_get_int_env("EMBEDDING_DIMENSION", 1536),
             vector_db_dir=(os.getenv("VECTOR_DB_DIR") or "./storage/chroma").strip(),
             collection_name=(os.getenv("COLLECTION_NAME") or "rag_docs").strip(),
             top_k=_get_int_env("TOP_K", 3),
