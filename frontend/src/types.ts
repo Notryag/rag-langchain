@@ -124,6 +124,10 @@ export type StreamEvent =
       data: ChatResponse;
     }
   | {
+      eventName: "end";
+      data: Record<string, never>;
+    }
+  | {
       eventName: "error";
       data: { message?: string };
     };

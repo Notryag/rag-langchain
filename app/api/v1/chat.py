@@ -9,8 +9,17 @@ from sqlalchemy.orm import Session
 from app.api.v1.auth import get_current_user
 from app.db.models.user import User
 from app.db.session import get_db_session
-from app.schemas.chat import ChatAnswerResponse, ChatMessageRead, ChatRequest, ChatSessionRead
-from app.services.chat_service import ChatService, get_chat_service
+from app.runtime.schemas import DisconnectMode
+from app.runtime.service import RuntimeService, get_runtime_service
+from app.schemas.chat import (
+    ChatAnswerResponse,
+    ChatMessageRead,
+    ChatRequest,
+    ChatRunCancelResponse,
+    ChatRunRead,
+    ChatSessionRead,
+)
+from app.services.chat_service import ChatService, ChatSessionNotFoundError, get_chat_service
 from app.services.operation_log_service import OperationLogService, get_operation_log_service
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
@@ -65,79 +74,78 @@ def chat_stream(
     payload: ChatRequest,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
-    chat_service: ChatService = Depends(get_chat_service),
+    runtime_service: RuntimeService = Depends(get_runtime_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> StreamingResponse:
-    def event_generator():
+    async def event_generator():
+        record = await runtime_service.start_chat_run(
+            session,
+            user_id=current_user.id,
+            kb_id=kb_id,
+            question=payload.question.strip(),
+            session_id=payload.session_id,
+        )
+        operation_log_service.record(
+            session,
+            user_id=current_user.id,
+            action="chat.run.start",
+            resource_type="chat_run",
+            resource_id=record.run_id,
+            details={"kb_id": kb_id, "session_id": record.session_id},
+        )
         try:
-            for event in chat_service.stream(
-                session,
-                user_id=current_user.id,
-                kb_id=kb_id,
-                question=payload.question.strip(),
-                session_id=payload.session_id,
-            ):
-                if event.type == "answer_delta":
-                    yield _sse_payload("answer_delta", {"content": event.content, "answer": event.answer})
+            async for event in runtime_service.stream_run(record.run_id, disconnect_mode=DisconnectMode.CANCEL):
+                if event.event == "heartbeat":
+                    yield ": heartbeat\n\n"
                     continue
+                if event.event == "end":
+                    yield _sse_payload("end", {})
+                    return
 
-                if event.type == "tool_call":
-                    yield _sse_payload(
-                        "tool_call",
-                        {
-                            "status_line": event.status_line,
-                            "tool_name": event.tool_name,
-                        },
-                    )
-                    continue
-
-                if event.type == "tool_result":
-                    yield _sse_payload(
-                        "tool_result",
-                        {
-                            "status_line": event.status_line,
-                            "tool_name": event.tool_name,
-                            "content": event.content,
-                            "citations": event.citations or [],
-                        },
-                    )
-                    continue
-
-                if event.type == "complete" and event.result is not None:
-                    answer = event.result
+                if event.event == "complete":
+                    payload_data = event.data if isinstance(event.data, dict) else {}
                     operation_log_service.record(
                         session,
                         user_id=current_user.id,
                         action="chat.stream",
                         resource_type="chat_run",
-                        resource_id=answer.run_id,
+                        resource_id=record.run_id,
                         details={
                             "kb_id": kb_id,
-                            "session_id": answer.session_id,
-                            "reference_count": len(answer.references),
-                            "cache_hit": answer.cache_hit,
-                            "usage": answer.usage,
+                            "session_id": record.session_id,
+                            "reference_count": len(payload_data.get("references") or []),
+                            "cache_hit": payload_data.get("cache_hit", False),
+                            "usage": payload_data.get("usage"),
                         },
                     )
-                    yield _sse_payload(
-                        "complete",
-                        {
-                            "answer": answer.answer,
-                            "references": answer.references,
-                            "session_id": answer.session_id,
-                            "run_id": answer.run_id,
-                            "cache_hit": answer.cache_hit,
-                            "usage": answer.usage,
-                        },
-                    )
-                    continue
-
-                if event.type == "error":
-                    yield _sse_payload("error", {"message": event.error_message or "chat stream failed"})
+                yield _sse_payload(event.event, event.data if isinstance(event.data, dict) else {"value": event.data})
         except Exception as exc:
             yield _sse_payload("error", {"message": str(exc)})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/chat-runs/{run_id}", response_model=ChatRunRead)
+def get_chat_run(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+    runtime_service: RuntimeService = Depends(get_runtime_service),
+) -> ChatRunRead:
+    chat_run = runtime_service.get_run_for_user(session, run_id=run_id, user_id=current_user.id)
+    if chat_run is None:
+        raise ChatSessionNotFoundError("Chat run not found")
+    return ChatRunRead.model_validate(chat_run)
+
+
+@router.post("/chat-runs/{run_id}/cancel", response_model=ChatRunCancelResponse)
+async def cancel_chat_run(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    runtime_service: RuntimeService = Depends(get_runtime_service),
+) -> ChatRunCancelResponse:
+    cancelled = await runtime_service.cancel_run(run_id, user_id=current_user.id)
+    return ChatRunCancelResponse(run_id=run_id, cancelled=cancelled)
 
 
 @router.get("/chat-sessions", response_model=list[ChatSessionRead])

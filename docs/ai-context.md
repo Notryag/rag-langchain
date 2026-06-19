@@ -85,8 +85,11 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 读取:
 
 - [development.md](development.md) 的多租户问答 API 章节
+- [../RAG_RUNTIME_SPEC.md](../RAG_RUNTIME_SPEC.md): 只有改运行态、取消、后台 run、SSE 桥时需要读取。
 - `app/api/v1/chat.py`
 - `app/services/chat_service.py`
+- `app/services/rag_service.py`
+- `app/services/chat_client.py`
 - `app/services/hot_question_cache.py`
 - `app/retrieval/pgvector_store.py`
 - `app/db/models/chat.py`
@@ -94,7 +97,7 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 当前行为:
 
 - 同步接口返回 `answer / references / session_id / run_id / usage`。
-- SSE 返回 `answer_delta`、`complete`、`error`。
+- SSE 返回 `tool_call`、`tool_result`、`answer_delta`、`complete`、`error`。
 - assistant 消息保存结构化 `references`。
 - 热点问题缓存按 `user_id + kb_id + question + top_k + 模型配置` 隔离。
 
@@ -128,7 +131,7 @@ uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrie
 当前关系:
 
 - 前端调用 `/api/v1`。
-- 聊天需要 `VITE_API_TOKEN` 和 `VITE_KB_ID`。
+- 前端已内置登录、知识库选择、文档上传和聊天，不再需要手动配置 `VITE_API_TOKEN` / `VITE_KB_ID`。
 - `frontend/dist/` 存在时由 FastAPI 托管。
 
 ## 代码结构速览

@@ -98,14 +98,7 @@ cd frontend
 npm run dev
 ```
 
-前端当前通过 `/api/v1` 调用后端。现阶段仍是调试形态，聊天需要设置:
-
-```env
-VITE_API_TOKEN=<access_token>
-VITE_KB_ID=<kb_id>
-```
-
-下一步会补齐登录、知识库选择、文档上传和状态追踪，详见 [docs/todo.md](docs/todo.md)。
+前端当前通过 `/api/v1` 调用后端，已支持登录、知识库选择、文档上传、状态追踪和聊天。
 
 ## 项目结构
 
@@ -133,6 +126,7 @@ docs/           架构、运行、规划、待办
 - AI 助手上下文入口: [docs/ai-context.md](docs/ai-context.md)
 - 架构说明: [docs/architecture.md](docs/architecture.md)
 - 目标架构与收口计划: [docs/target-architecture.md](docs/target-architecture.md)
+- RAG runtime 适配规格: [RAG_RUNTIME_SPEC.md](RAG_RUNTIME_SPEC.md)
 - 开发与运行约定: [docs/development.md](docs/development.md)
 - 多租户企业知识库 RAG 规划: [docs/multitenant-rag.md](docs/multitenant-rag.md)
 - 入库策略: [docs/ingestion.md](docs/ingestion.md)

@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.db.models.chat import ChatRole
+from app.db.models.chat import ChatRole, ChatRunStatus
 
 
 class ChatRequest(BaseModel):
@@ -42,3 +42,26 @@ class ChatMessageRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ChatRunRead(BaseModel):
+    id: int
+    session_id: int
+    user_id: int
+    kb_id: int
+    status: ChatRunStatus
+    question: str
+    answer: str | None
+    references: list[dict[str, Any]]
+    usage: dict[str, Any]
+    cache_hit: bool
+    error_message: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ChatRunCancelResponse(BaseModel):
+    run_id: int
+    cancelled: bool
