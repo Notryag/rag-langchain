@@ -3,6 +3,7 @@
 相关文档:
 
 - AI 助手上下文入口: [ai-context.md](ai-context.md)
+- 目标架构与收口计划: [target-architecture.md](target-architecture.md)
 - 项目现状: [project-status.md](project-status.md)
 - 架构说明: [architecture.md](architecture.md)
 - 多租户企业知识库 RAG 规划: [multitenant-rag.md](multitenant-rag.md)
@@ -15,7 +16,7 @@
 
 长期目标不是做一个“能回答问题”的 demo，而是演进为一个多租户企业知识库 RAG 系统。
 
-新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前路线图保留质量闭环和检索迭代要求，但后续工程建设会优先围绕用户、知识库、文档、pgvector、聊天记录和权限隔离展开。
+新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力已经落地，后续重点转为架构收口: 将 `/api/v1 + pgvector` 明确为产品主线，把旧 Chroma/Agent 链路定位为 legacy demo / evaluation 基线，并统一检索接口、chat run 生命周期和流式输出。详细计划见 [target-architecture.md](target-architecture.md)。
 
 ### 目标一: 可验证的 RAG 系统
 
@@ -112,38 +113,39 @@ evaluation/
 
 ## 短期计划
 
-### P0: 建立质量闭环
+### P0: 架构收口
 
 这是当前最高优先级。
 
 计划内容:
 
-- 建立一份小型评测集，覆盖事实问答、步骤问答、拒答场景
+- 明确 `/api/v1 + pgvector` 是产品主链路
+- 抽统一 retrieval interface / DTO
+- 将旧 Chroma/Agent 链路降级为 legacy demo / eval 基线
+- 增加 chat run 生命周期
+- 将 `/api/v1` SSE 升级为 service 层 token 级 streaming
+
+预期结果:
+
+- 新功能默认进入产品主线
+- 检索、引用、流式、usage 和日志不再两套实现
+- 后续做权限、评测、hybrid、rerank 时有稳定接口
+
+### P1: 建立 pgvector 多租户质量闭环
+
+计划内容:
+
+- 建立 pgvector retrieval eval
 - 区分 retrieval eval 与 answer eval
-- 沉淀 bad case 样本
+- 增加权限隔离评测样本
+- 沉淀 bad case、references 和检索参数
 - 给每轮优化建立可对比基线
 
 预期结果:
 
-- 知道当前系统哪些问题答得好
+- 知道新产品主链路哪些问题答得好
 - 知道哪些问题召回不准
 - 后续引入 reranker 或 hybrid search 时有客观依据
-
-### P1: 收紧工程边界
-
-计划内容:
-
-- 抽出 `rag_service`，统一 CLI、Streamlit、后续 API 调用入口
-- 让 middleware 真正接入主流程
-- 整理 `settings` 与配置校验
-- 缓存 embeddings / vector store 实例，减少重复初始化
-- 统一项目入口，避免旁路调用和重复逻辑
-
-预期结果:
-
-- 主流程更稳定
-- 模块职责更清晰
-- 后续改动成本下降
 
 ### P2: 升级检索能力
 

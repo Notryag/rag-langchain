@@ -2,13 +2,14 @@
 
 这份文档给代码助手使用。目标是用最少上下文理解项目，不要一开始读取所有文档。
 
-## 先读这三份
+## 先读这几份
 
 每次接手任务时，优先按顺序读取:
 
 1. [../AGENTS.md](../AGENTS.md): 仓库内工作规则、代码落点和提交前检查。
 2. [architecture.md](architecture.md): 当前分层、边界和关键文件映射。
-3. [todo.md](todo.md): 当前待办、已完成批次和近期方向。
+3. [target-architecture.md](target-architecture.md): 当前主架构决策、旧链路定位和收口计划。
+4. [todo.md](todo.md): 当前待办、已完成批次和近期方向。
 
 只有当任务需要时，再按下面的路由继续读取。
 
@@ -34,6 +35,7 @@
 
 读取:
 
+- [target-architecture.md](target-architecture.md)
 - [multitenant-rag.md](multitenant-rag.md)
 - [development.md](development.md) 的多租户 API 章节
 - `app/api/v1/`
@@ -90,6 +92,7 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 
 读取:
 
+- [target-architecture.md](target-architecture.md)
 - [architecture.md](architecture.md)
 - [ingestion.md](ingestion.md)
 - [hybrid-search-evaluation.md](hybrid-search-evaluation.md)
@@ -182,8 +185,12 @@ docs/           架构、运行、规划、待办
 
 ## 当前长期方向
 
-第二阶段后端增强已经基本完成。后续更适合进入第三阶段:
+第二阶段后端增强已经基本完成。后续先做架构收口，再进入第三阶段能力增强:
 
+- 统一 retrieval interface
+- chat run 生命周期
+- 真正 token 级 SSE
+- pgvector 多租户评测
 - 混合检索: 关键词 + 向量
 - 重排序 rerank
 - 上下文压缩

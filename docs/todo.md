@@ -4,11 +4,12 @@
 
 当前阶段重点:
 
-1. 从单用户本地 RAG 演进为多租户企业知识库 RAG
+1. 将 `/api/v1 + PostgreSQL + pgvector` 明确为多租户产品主链路
 2. 保持权限隔离优先，避免跨用户检索泄露
-3. 分批迁移，先建立数据库和认证地基，再迁移入库与问答链路
+3. 收口旧 Chroma/Agent 链路与新 pgvector 链路的边界
+4. 进入第三阶段前，先统一检索接口、chat run 生命周期和真正 token 级 SSE
 
-总体规划见 [multitenant-rag.md](multitenant-rag.md)。
+总体规划见 [multitenant-rag.md](multitenant-rag.md)，架构收口计划见 [target-architecture.md](target-architecture.md)。
 
 ## Batch 1: 数据库与工程地基
 
@@ -89,7 +90,8 @@
 
 1. [x] 增加 API 端到端 smoke test 脚本
 2. [x] 在真实 PostgreSQL + Redis 环境跑通端到端上传、异步处理和问答
-3. [ ] 进入第二阶段增强: 限流、统一异常、操作日志、缓存和 SSE
+3. [x] 进入第二阶段增强: 限流、统一异常、操作日志、缓存和 SSE
+4. [ ] 进入架构收口: 统一检索接口、chat run 生命周期、token 级 SSE、pgvector 多租户评测
 
 ## 下一阶段增强
 
@@ -100,3 +102,40 @@
 - [x] SSE 流式问答
 - [x] Docker Compose 增加 API / worker 服务
 - [x] Token 用量统计
+
+## Batch 8: 架构收口文档
+
+- [x] 明确 `/api/v1 + pgvector` 是产品主链路
+- [x] 明确旧 `/api + Chroma + Agent` 是 legacy demo / eval 基线
+- [x] 记录参考 DeerFlow 后的取舍
+- [x] 更新项目状态、路线图和 AI 助手导航
+
+## Batch 9: 统一检索接口
+
+- [ ] 定义 retrieval protocol / DTO
+- [ ] 让 pgvector 检索返回统一结构
+- [ ] 给旧 Chroma 检索加 adapter
+- [ ] 更新 chat service 依赖统一检索接口
+- [ ] 补权限过滤和 adapter 测试
+
+## Batch 10: Chat Run 生命周期
+
+- [ ] 设计 chat run model
+- [ ] 增加 Alembic migration
+- [ ] 记录 running / completed / failed / cancelled
+- [ ] 记录 usage / cache_hit / error_message
+- [ ] API 和 SSE 围绕 run 生命周期收口
+
+## Batch 11: Token 级 SSE
+
+- [ ] 将模型 streaming 下沉到 service
+- [ ] SSE 输出 answer_delta / complete / error
+- [ ] complete 时保存最终 answer、references、usage
+- [ ] 缓存命中时保持快速流式输出
+
+## Batch 12: pgvector 多租户评测
+
+- [ ] 增加 pgvector retrieval eval 入口
+- [ ] 增加权限隔离评测样本
+- [ ] 落盘 bad case、references 和检索参数
+- [ ] 再推进 hybrid、rerank、上下文压缩

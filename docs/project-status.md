@@ -2,7 +2,7 @@
 
 ## 项目阶段
 
-当前项目不是从 0 到 1 的空壳，而是已经具备最小可用闭环的本地 RAG 工程，并开始向多租户企业知识库 RAG 后端演进。
+当前项目不是从 0 到 1 的空壳，而是已经具备最小可用闭环的本地 RAG 工程，并已经完成多租户企业知识库 RAG 后端的第一、第二阶段主体能力。
 
 已落地的链路包括:
 
@@ -15,6 +15,10 @@
 - Streamlit 演示界面
 - FastAPI API 与 React Web 控制台
 - SQLAlchemy / Alembic / PostgreSQL / pgvector 的多租户数据层地基
+- JWT 认证、知识库 CRUD、文档上传与状态追踪
+- Celery 异步文档处理
+- pgvector 入库、权限过滤检索、结构化引用
+- 多租户问答、聊天记录、SSE、热点缓存、限流、操作日志、usage 统计
 
 这意味着项目当前的主要问题已经不是“能不能跑起来”，而是“怎么稳定变好、怎么长期维护”。
 
@@ -45,10 +49,11 @@
 
 ## 当前不足
 
-- 多租户认证、知识库 CRUD、文档上传、pgvector 入库和问答接口还在建设中。
-- 当前 Chroma 本地检索主链路仍在，新 pgvector 链路尚未替换主链路。
-- Agent、middleware、service 与新的多租户 service 边界还需要继续收紧。
-- 当前已进入产品化改造期，但还没有形成完整可部署企业知识库后端。
+- 当前存在旧 `/api + Chroma + Agent` 和新 `/api/v1 + pgvector + 多租户` 两条问答链路。
+- pgvector 多租户链路已成为产品主线，但检索接口还没有统一抽象。
+- `/api/v1` SSE 仍是回答完成后的分块输出，还不是真正 token 级 streaming。
+- 聊天记录有 session/message，但还缺少一次问答运行的 run 生命周期模型。
+- 新 pgvector 产品主链路还缺独立 retrieval / answer evaluation。
 
 ## 当前目录判断
 
@@ -71,16 +76,17 @@ storage/
 migrations/
 ```
 
-这是合理的最小骨架，但还没有演化成长期稳定的工程结构。
+这是合理的工程骨架。当前主要风险不是目录缺失，而是旧本地 RAG 链路和新多租户产品链路需要明确主次并逐步收口。
 
 ## 当前最重要的结论
 
-接下来最值得投入的方向是分批完成多租户后端主链路:
+接下来最值得投入的方向是架构收口，而不是继续堆产品功能:
 
-1. 用户认证
-2. 知识库 CRUD
-3. 文档上传与状态追踪
-4. pgvector 入库与权限过滤检索
-5. 问答接口、引用返回和聊天记录
+1. 明确 `/api/v1 + pgvector` 是产品主链路。
+2. 将旧 `/api + Chroma + Agent` 定位为 legacy demo / eval 基线。
+3. 抽统一 retrieval interface，避免两套检索逻辑继续分叉。
+4. 增加 chat run 生命周期，聚合 status、usage、cache_hit、error。
+5. 将 SSE 从 API 层伪流式升级为 service 层 token 级 streaming。
+6. 给 pgvector 多租户链路补 retrieval / answer evaluation。
 
-质量评测仍然重要，但当前工程主线已经切到多租户企业知识库能力建设。
+详细计划见 [target-architecture.md](target-architecture.md)。
