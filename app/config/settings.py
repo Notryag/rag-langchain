@@ -83,6 +83,8 @@ class Settings:
     rate_limit_enabled: bool
     rate_limit_requests: int
     rate_limit_window_seconds: int
+    hot_question_cache_enabled: bool
+    hot_question_cache_ttl_seconds: int
 
     def __post_init__(self) -> None:
         if self.retrieval_search_type not in _SUPPORTED_RETRIEVAL_SEARCH_TYPES:
@@ -112,6 +114,7 @@ class Settings:
             "EMBEDDING_DIMENSION": self.embedding_dimension,
             "RATE_LIMIT_REQUESTS": self.rate_limit_requests,
             "RATE_LIMIT_WINDOW_SECONDS": self.rate_limit_window_seconds,
+            "HOT_QUESTION_CACHE_TTL_SECONDS": self.hot_question_cache_ttl_seconds,
         }
         for field_name, field_value in positive_fields.items():
             if field_value <= 0:
@@ -192,6 +195,8 @@ class Settings:
             rate_limit_enabled=_get_bool_env("RATE_LIMIT_ENABLED", True),
             rate_limit_requests=_get_int_env("RATE_LIMIT_REQUESTS", 60),
             rate_limit_window_seconds=_get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60),
+            hot_question_cache_enabled=_get_bool_env("HOT_QUESTION_CACHE_ENABLED", True),
+            hot_question_cache_ttl_seconds=_get_int_env("HOT_QUESTION_CACHE_TTL_SECONDS", 300),
         )
 
 

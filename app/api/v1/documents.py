@@ -11,6 +11,7 @@ from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.document import DocumentProcessResponse, DocumentRead
 from app.services.document_service import DocumentNotFoundError, DocumentService, get_document_service
+from app.services.hot_question_cache import build_hot_question_scope_key, get_hot_question_cache
 from app.services.operation_log_service import OperationLogService, get_operation_log_service
 from app.workers.tasks import get_document_task_dispatcher
 
@@ -26,6 +27,7 @@ async def upload_document(
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
+    hot_question_cache=Depends(get_hot_question_cache),
     dispatch_document_processing=Depends(get_document_task_dispatcher),
 ) -> DocumentRead:
     content = await file.read()
@@ -50,6 +52,7 @@ async def upload_document(
         resource_id=document.id,
         details={"kb_id": kb_id, "filename": document.filename, "content_type": document.content_type},
     )
+    hot_question_cache.invalidate_scope(scope_key=build_hot_question_scope_key(user_id=current_user.id, kb_id=kb_id))
     return DocumentRead.model_validate(document)
 
 
@@ -82,7 +85,9 @@ def delete_document(
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
+    hot_question_cache=Depends(get_hot_question_cache),
 ) -> Response:
+    document = document_service.get_for_user(session, user_id=current_user.id, document_id=document_id)
     document_service.delete(session, user_id=current_user.id, document_id=document_id)
     operation_log_service.record(
         session,
@@ -90,6 +95,9 @@ def delete_document(
         action="document.delete",
         resource_type="document",
         resource_id=document_id,
+    )
+    hot_question_cache.invalidate_scope(
+        scope_key=build_hot_question_scope_key(user_id=current_user.id, kb_id=document.kb_id)
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -101,6 +109,7 @@ def process_document(
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
+    hot_question_cache=Depends(get_hot_question_cache),
 ) -> DocumentProcessResponse:
     try:
         document, chunk_count = document_service.process_sync(
@@ -123,6 +132,9 @@ def process_document(
         resource_type="document",
         resource_id=document.id,
         details={"kb_id": document.kb_id, "chunk_count": chunk_count, "status": document.status.value},
+    )
+    hot_question_cache.invalidate_scope(
+        scope_key=build_hot_question_scope_key(user_id=current_user.id, kb_id=document.kb_id)
     )
     return DocumentProcessResponse(
         document=DocumentRead.model_validate(document),

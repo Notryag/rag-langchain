@@ -11,6 +11,14 @@ from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.db.models.chat import ChatMessage, ChatRole, ChatSession
 from app.retrieval.pgvector_store import retrieve_pgvector_chunks
+from app.services.hot_question_cache import (
+    CachedChatAnswer,
+    InMemoryHotQuestionCache,
+    RedisHotQuestionCache,
+    build_hot_question_cache_key,
+    build_hot_question_scope_key,
+    get_hot_question_cache,
+)
 from app.services.kb_service import KnowledgeBaseService
 
 
@@ -23,6 +31,7 @@ class ChatAnswer:
     answer: str
     references: list[dict[str, Any]]
     session_id: int
+    cache_hit: bool = False
 
 
 class ChatService:
@@ -32,10 +41,12 @@ class ChatService:
         kb_service: KnowledgeBaseService | None = None,
         retriever=retrieve_pgvector_chunks,
         chat_model=None,
+        answer_cache: RedisHotQuestionCache | InMemoryHotQuestionCache | None = None,
     ) -> None:
         self._kb_service = kb_service or KnowledgeBaseService()
         self._retriever = retriever
         self._chat_model = chat_model
+        self._answer_cache = answer_cache
 
     def ask(
         self,
@@ -63,15 +74,31 @@ class ChatService:
         session.add(user_message)
         session.commit()
 
-        chunks = self._retriever(
-            session,
-            user_id=user_id,
-            kb_id=kb_id,
-            query=question,
-            top_k=settings.top_k,
-        )
-        references = [chunk.to_reference() for chunk in chunks]
-        answer = self._generate_answer(question=question, references=references)
+        cache_key = build_hot_question_cache_key(user_id=user_id, kb_id=kb_id, question=question, top_k=settings.top_k)
+        scope_key = build_hot_question_scope_key(user_id=user_id, kb_id=kb_id)
+        cached_answer = self._get_cached_answer(cache_key=cache_key)
+        if cached_answer is None:
+            chunks = self._retriever(
+                session,
+                user_id=user_id,
+                kb_id=kb_id,
+                query=question,
+                top_k=settings.top_k,
+            )
+            references = [chunk.to_reference() for chunk in chunks]
+            answer = self._generate_answer(question=question, references=references)
+            self._set_cached_answer(
+                cache_key=cache_key,
+                scope_key=scope_key,
+                answer=answer,
+                references=references,
+            )
+            cache_hit = False
+        else:
+            answer = cached_answer.answer
+            references = cached_answer.references
+            cache_hit = True
+
         assistant_message = ChatMessage(
             session_id=chat_session.id,
             role=ChatRole.ASSISTANT,
@@ -80,7 +107,7 @@ class ChatService:
         )
         session.add(assistant_message)
         session.commit()
-        return ChatAnswer(answer=answer, references=references, session_id=chat_session.id)
+        return ChatAnswer(answer=answer, references=references, session_id=chat_session.id, cache_hit=cache_hit)
 
     def list_sessions(self, session: Session, *, user_id: int) -> list[ChatSession]:
         statement = select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.updated_at.desc())
@@ -141,6 +168,31 @@ class ChatService:
             ]
         )
         return str(getattr(response, "content", response)).strip()
+
+    def _get_cached_answer(self, *, cache_key: str) -> CachedChatAnswer | None:
+        if not settings.hot_question_cache_enabled:
+            return None
+        return self._cache().get(key=cache_key)
+
+    def _set_cached_answer(
+        self,
+        *,
+        cache_key: str,
+        scope_key: str,
+        answer: str,
+        references: list[dict[str, Any]],
+    ) -> None:
+        if not settings.hot_question_cache_enabled:
+            return
+        self._cache().set(
+            key=cache_key,
+            scope_key=scope_key,
+            value=CachedChatAnswer(answer=answer, references=references),
+            ttl_seconds=settings.hot_question_cache_ttl_seconds,
+        )
+
+    def _cache(self) -> RedisHotQuestionCache | InMemoryHotQuestionCache:
+        return self._answer_cache or get_hot_question_cache()
 
 
 def _build_chat_model() -> ChatOpenAI:

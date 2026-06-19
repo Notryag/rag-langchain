@@ -38,6 +38,7 @@ class DocumentApiTests(unittest.TestCase):
         self.client = TestClient(app)
         self.current_user = SimpleNamespace(id=1, username="alice", email="alice@example.com")
         self.operation_logs: list[dict] = []
+        self.invalidated_scopes: list[str] = []
         app.dependency_overrides[auth_routes.get_current_user] = lambda: self.current_user
         app.dependency_overrides[document_routes.get_db_session] = lambda: object()
         self.dispatched_document_ids: list[int] = []
@@ -50,6 +51,12 @@ class DocumentApiTests(unittest.TestCase):
                 self.operation_logs.append(kwargs)
 
         app.dependency_overrides[document_routes.get_operation_log_service] = lambda: FakeOperationLogService()
+
+        class FakeHotQuestionCache:
+            def invalidate_scope(inner_self, *, scope_key):
+                self.invalidated_scopes.append(scope_key)
+
+        app.dependency_overrides[document_routes.get_hot_question_cache] = lambda: FakeHotQuestionCache()
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
@@ -81,6 +88,7 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(self.dispatched_document_ids, [3])
         self.assertEqual(self.operation_logs[0]["action"], "document.upload")
         self.assertEqual(self.operation_logs[0]["resource_id"], 3)
+        self.assertEqual(self.invalidated_scopes, ["hot_question:scope:user:1:kb:2"])
 
     def test_upload_document_rejects_missing_kb(self) -> None:
         class FakeDocumentService:
@@ -134,6 +142,9 @@ class DocumentApiTests(unittest.TestCase):
 
     def test_delete_document(self) -> None:
         class FakeDocumentService:
+            def get_for_user(self, session, *, user_id, document_id):
+                return _document(id=document_id)
+
             def delete(self, session, *, user_id, document_id):
                 self.user_id = user_id
                 self.document_id = document_id
@@ -147,6 +158,7 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.document_id, 3)
         self.assertEqual(self.operation_logs[0]["action"], "document.delete")
+        self.assertEqual(self.invalidated_scopes, ["hot_question:scope:user:1:kb:2"])
 
     def test_process_document(self) -> None:
         class FakeDocumentService:
@@ -167,6 +179,7 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(self.operation_logs[0]["action"], "document.process")
         self.assertEqual(self.operation_logs[0]["details"]["chunk_count"], 1)
+        self.assertEqual(self.invalidated_scopes, ["hot_question:scope:user:1:kb:2"])
 
     def test_missing_document_returns_404(self) -> None:
         class FakeDocumentService:

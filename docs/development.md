@@ -58,6 +58,8 @@ uv run python -m <module>
 - `RATE_LIMIT_ENABLED` 默认 `true`，用于开启 `/api/v1` 接口限流。
 - `RATE_LIMIT_REQUESTS` 默认 `60`，表示一个窗口内允许的请求数。
 - `RATE_LIMIT_WINDOW_SECONDS` 默认 `60`，表示限流窗口秒数。
+- `HOT_QUESTION_CACHE_ENABLED` 默认 `true`，用于缓存同一用户同一知识库的热点问题回答。
+- `HOT_QUESTION_CACHE_TTL_SECONDS` 默认 `300`，表示热点问题缓存有效期秒数。
 - 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令

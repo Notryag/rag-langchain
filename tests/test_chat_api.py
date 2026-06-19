@@ -90,6 +90,7 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(fake_service.session_id, 12)
         self.assertEqual(self.operation_logs[0]["action"], "chat.ask")
         self.assertEqual(self.operation_logs[0]["details"]["reference_count"], 1)
+        self.assertFalse(self.operation_logs[0]["details"]["cache_hit"])
 
     def test_chat_returns_404_for_missing_session(self) -> None:
         class FakeChatService:

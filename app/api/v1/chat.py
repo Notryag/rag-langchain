@@ -35,7 +35,7 @@ def chat(
         action="chat.ask",
         resource_type="chat_session",
         resource_id=answer.session_id,
-        details={"kb_id": kb_id, "reference_count": len(answer.references)},
+        details={"kb_id": kb_id, "reference_count": len(answer.references), "cache_hit": answer.cache_hit},
     )
     return ChatAnswerResponse(answer=answer.answer, references=answer.references, session_id=answer.session_id)
 

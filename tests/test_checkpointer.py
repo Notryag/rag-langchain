@@ -48,6 +48,8 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
         rate_limit_enabled=True,
         rate_limit_requests=60,
         rate_limit_window_seconds=60,
+        hot_question_cache_enabled=True,
+        hot_question_cache_ttl_seconds=300,
     )
 
 

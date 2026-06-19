@@ -96,7 +96,7 @@
 - [x] 统一异常处理
 - [x] 操作日志
 - [x] 接口限流
-- [ ] Redis 缓存热点问题
+- [x] Redis 缓存热点问题
 - [ ] SSE 流式问答
 - [x] Docker Compose 增加 API / worker 服务
 - [ ] Token 用量统计
