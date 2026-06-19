@@ -104,6 +104,32 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["error"]["code"], "chat_session_not_found")
 
+    def test_chat_stream(self) -> None:
+        class FakeChatService:
+            def ask(self, session, *, user_id, kb_id, question, session_id=None):
+                self.user_id = user_id
+                self.kb_id = kb_id
+                self.question = question
+                return ChatAnswer(
+                    answer="系统根据调用次数计费。",
+                    references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
+                    session_id=12,
+                )
+
+        fake_service = FakeChatService()
+        app.dependency_overrides[chat_routes.get_chat_service] = lambda: fake_service
+
+        with self.client.stream("POST", "/api/v1/kbs/2/chat/stream", json={"question": "怎么计费？"}) as response:
+            body = response.read().decode("utf-8")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("event: answer", body)
+        self.assertIn("event: complete", body)
+        self.assertIn('"session_id": 12', body)
+        self.assertEqual(fake_service.user_id, 1)
+        self.assertEqual(fake_service.kb_id, 2)
+        self.assertEqual(self.operation_logs[0]["action"], "chat.stream")
+
     def test_list_chat_sessions(self) -> None:
         class FakeChatService:
             def list_sessions(self, session, *, user_id):

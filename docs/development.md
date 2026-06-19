@@ -392,6 +392,7 @@ document_chunks.kb_id = requested_kb_id
 
 ```text
 POST /api/v1/kbs/{kb_id}/chat
+POST /api/v1/kbs/{kb_id}/chat/stream
 GET  /api/v1/chat-sessions
 GET  /api/v1/chat-sessions/{session_id}/messages
 ```
@@ -415,6 +416,11 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 4. 调用模型生成回答。
 5. 保存助手回答和结构化 references。
 6. 返回 `answer / references / session_id`。
+
+流式问答接口返回 `text/event-stream`，事件包括:
+
+- `answer`: 增量回答片段，字段为 `content` 和当前累计 `answer`
+- `complete`: 完整回答、references、session_id 和 cache_hit
 
 ## 用户反馈
 
