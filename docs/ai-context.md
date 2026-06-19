@@ -30,6 +30,7 @@
 - 本地统一使用 `uv run ...`。
 - Docker 容器访问宿主机 Ollama 时使用 `http://host.docker.internal:11434/v1`。
 - 使用 `bge-m3` embedding 时，`EMBEDDING_DIMENSION` 通常应为 `1024`。
+- 跑 pgvector baseline 前先用 `uv run python -m evaluation.check_pgvector_embedding_config` 检查配置和数据库列维度。
 
 ### 多租户 API、认证、权限隔离
 

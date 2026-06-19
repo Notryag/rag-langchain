@@ -150,6 +150,15 @@ uv run alembic upgrade head
 
 如果数据库中已经存在旧维度的 pgvector 列，Compose 环境也需要重新运行迁移，必要时清理本地 `postgres_data` volume 后重建开发环境。
 
+运行 baseline 前可以先检查 pgvector 维度配置:
+
+```powershell
+uv run python -m evaluation.check_pgvector_embedding_config
+uv run python -m evaluation.check_pgvector_embedding_config --probe-model
+```
+
+不带 `--probe-model` 时只检查配置和数据库列维度；带 `--probe-model` 会真实调用 embedding 模型，适合确认兼容 OpenAI 服务实际返回的向量维度。
+
 该脚本会依次执行:
 
 1. 健康检查
@@ -199,6 +208,16 @@ uv run python -m evaluation.evaluate_hybrid_search --show-changes
 如果 baseline 中途失败，`baseline_manifest.json` 会标记 `status=failed` 并记录失败命令。常见原因是 `EMBEDDING_DIMENSION` 与实际 embedding 模型输出维度不一致，或缺少模型 API Key。
 
 维度不一致时会看到 `Embedding dimension mismatch: EMBEDDING_DIMENSION=..., actual=...`。处理方式是让 `.env` 中的 `EMBEDDING_DIMENSION` 与当前 embedding 模型输出一致，并重建 pgvector 表/迁移与已有 embeddings；不要混用不同维度的 embedding 数据。
+
+如果只想先验证 retrieval baseline 路径，可临时在 PowerShell 中设置:
+
+```powershell
+$env:EMBEDDING_DIMENSION='1024'
+uv run python -m evaluation.check_pgvector_embedding_config
+uv run python -m evaluation.run_pgvector_baseline --user-id 2 --kb-id 2 --retrieval-limit 1 --skip-answer
+```
+
+注意: smoke 文档和正式评测集语义不匹配时，retrieval pass rate 为 0 是预期现象，不能据此判断 hybrid / rerank 策略优劣。
 
 ### 采样回答
 

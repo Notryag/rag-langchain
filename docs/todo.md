@@ -161,8 +161,10 @@
 - [x] 增加 pgvector baseline runner
 - [x] baseline runner 支持无模型配置时只跑 retrieval
 - [x] baseline runner 失败时写入 failed manifest
-- [ ] 在本地 PostgreSQL + Redis 环境运行 pgvector retrieval eval
-  - 当前阻塞: 本地 embedding 实际输出 1024 维，但 `EMBEDDING_DIMENSION` / pgvector 列为 1536 维，需要统一维度并重建 embeddings。
+- [x] 增加 pgvector embedding 维度诊断命令
+- [x] 在本地 PostgreSQL + Redis 环境运行 pgvector retrieval eval
+  - 本地诊断: `EMBEDDING_DIMENSION=1024` 时配置和 pgvector 列维度一致。
+  - 当前 smoke baseline: `storage/exports/pgvector_baselines/smoke-retrieval-ok-1024/`，权限隔离通过，pass rate 为 0，因为库内只有 `smoke-billing.txt`，与扫地机器人评测集不匹配。
 - [ ] 运行 pgvector answer sampling + answer eval
 - [x] 保存 baseline manifest 和 bad cases 的标准路径
 - [x] baseline manifest 汇总 artifact 数量和 retrieval summary
