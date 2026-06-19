@@ -114,9 +114,9 @@
 
 - [x] 定义 retrieval protocol / DTO
 - [x] 让 pgvector 检索返回统一结构
-- [ ] 给旧 Chroma 检索加 adapter
-- [ ] 更新 chat service 依赖统一检索接口
-- [ ] 补权限过滤和 adapter 测试
+- [x] 给旧 Chroma 检索加 adapter
+- [x] 更新 chat service 依赖统一检索接口
+- [x] 补权限过滤和 adapter 测试
 
 ## Batch 10: Chat Run 生命周期
 

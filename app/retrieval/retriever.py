@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 from langchain_core.documents import Document
 
@@ -11,6 +10,7 @@ from app.retrieval.hybrid import hybrid_search_documents
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
 from app.retrieval.profile import RetrievalProfile
+from app.retrieval.types import RetrievedChunk as BaseRetrievedChunk
 from app.retrieval.vectorstore import get_vector_store
 
 logger = logging.getLogger(__name__)
@@ -19,15 +19,7 @@ _QUERY_PREVIEW_WIDTH = 120
 
 
 @dataclass(frozen=True)
-class RetrievedChunk:
-    rank: int
-    content: str
-    document_id: str | None
-    source: str
-    page: str | None
-    chunk_index: int | None
-    metadata: dict[str, Any]
-
+class RetrievedChunk(BaseRetrievedChunk):
     @classmethod
     def from_document(cls, doc: Document, rank: int) -> "RetrievedChunk":
         metadata = dict(doc.metadata or {})
@@ -125,3 +117,26 @@ def retrieve_chunks(
         len(chunks),
     )
     return chunks
+
+
+def retrieve_legacy_retrieved_chunks(
+    query: str,
+    *,
+    profile: RetrievalProfile | None = None,
+    top_k: int | None = None,
+    search_type: str | None = None,
+    fetch_k: int | None = None,
+    reranker_enabled: bool | None = None,
+    metadata_filter: MetadataFilter | None = None,
+) -> list[BaseRetrievedChunk]:
+    return list(
+        retrieve_chunks(
+            query,
+            profile=profile,
+            top_k=top_k,
+            search_type=search_type,
+            fetch_k=fetch_k,
+            reranker_enabled=reranker_enabled,
+            metadata_filter=metadata_filter,
+        )
+    )

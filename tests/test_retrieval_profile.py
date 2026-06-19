@@ -5,6 +5,7 @@ import unittest
 from app.retrieval.formatter import format_retrieved_chunks
 from app.retrieval.profile import RetrievalProfile
 from app.retrieval.retriever import RetrievedChunk
+from app.retrieval.types import RetrievedChunk as BaseRetrievedChunk
 from app.tools.retrieve_context import _profile_from_runtime
 
 
@@ -58,6 +59,20 @@ class RetrievalProfileTests(unittest.TestCase):
 
         self.assertLessEqual(len(formatted), 140)
         self.assertIn("source=source.txt", formatted)
+
+    def test_legacy_retrieved_chunk_is_unified_dto(self) -> None:
+        chunk = RetrievedChunk(
+            rank=1,
+            content="content",
+            document_id="doc-1",
+            source="source.txt",
+            page="2",
+            chunk_index=3,
+            metadata={},
+        )
+
+        self.assertIsInstance(chunk, BaseRetrievedChunk)
+        self.assertEqual(chunk.to_reference()["filename"], "source.txt")
 
     def test_tool_profile_uses_runtime_context(self) -> None:
         class Runtime:
