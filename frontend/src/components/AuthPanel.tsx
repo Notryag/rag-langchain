@@ -46,6 +46,9 @@ function AuthPanel({ apiStatus, onAuthenticated }: AuthPanelProps) {
           <h1>多租户知识库</h1>
           <p>登录后选择知识库、上传文档，并基于当前权限范围问答。</p>
           <span className={apiStatus === "可用" ? "tone-ok" : "tone-bad"}>API {apiStatus}</span>
+          {apiStatus !== "可用" && (
+            <p className="auth-hint">请确认 FastAPI 已启动: uv run python -m app.main web</p>
+          )}
         </div>
 
         <form className="auth-form" onSubmit={submit}>
