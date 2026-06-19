@@ -145,4 +145,5 @@
 - [x] 增加权限隔离评测样本
 - [x] 落盘 bad case、references 和检索参数
 - [x] pgvector hybrid dense + lexical RRF 召回
-- [ ] 再推进 rerank、上下文压缩
+- [x] 问答 prompt 上下文压缩
+- [ ] 再推进 rerank

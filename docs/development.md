@@ -418,9 +418,12 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 1. 校验当前用户有权访问知识库。
 2. 保存用户问题到 `chat_messages`。
 3. 使用 pgvector 在 `user_id + kb_id` 范围内检索 chunks。
-4. 调用模型生成回答。
-5. 保存助手回答和结构化 references。
-6. 返回 `answer / references / session_id / run_id`。
+4. 按 `RETRIEVAL_MAX_CONTEXT_CHARS` 压缩发送给模型的上下文。
+5. 调用模型生成回答。
+6. 保存助手回答和结构化 references。
+7. 返回 `answer / references / session_id / run_id`。
+
+上下文压缩只影响模型 prompt 中的资料长度，不会截断响应里保存和返回的 `references[*].content`。
 
 同步问答响应会额外返回 `usage`，尽量包含 `input_tokens`、`output_tokens`、`total_tokens` 和 `cached`。不同模型网关可能不返回 token usage，此时本接口会返回 0 值占位并继续完成回答。
 

@@ -342,10 +342,7 @@ class ChatService:
         if not references:
             return "当前知识库中没有检索到足够相关的内容，无法基于资料回答。", _zero_usage(cached=False)
 
-        context = "\n\n".join(
-            f"[{index}] filename={reference['filename']}, chunk={reference['chunk_index']}\n{reference['content']}"
-            for index, reference in enumerate(references, start=1)
-        )
+        context = _build_reference_context(references, max_context_chars=settings.retrieval_max_context_chars)
         model = self._chat_model or _build_chat_model()
         response = model.invoke(
             [
@@ -370,10 +367,7 @@ class ChatService:
             yield "当前知识库中没有检索到足够相关的内容，无法基于资料回答。", _zero_usage(cached=False)
             return
 
-        context = "\n\n".join(
-            f"[{index}] filename={reference['filename']}, chunk={reference['chunk_index']}\n{reference['content']}"
-            for index, reference in enumerate(references, start=1)
-        )
+        context = _build_reference_context(references, max_context_chars=settings.retrieval_max_context_chars)
         messages = [
             SystemMessage(
                 content=(
@@ -464,6 +458,30 @@ def _cached_usage(usage: dict[str, Any] | None) -> dict[str, Any]:
 def _answer_chunks(answer: str, *, chunk_size: int = 32) -> Iterator[str]:
     for start in range(0, len(answer), chunk_size):
         yield answer[start : start + chunk_size]
+
+
+def _build_reference_context(references: list[dict[str, Any]], *, max_context_chars: int) -> str:
+    parts: list[str] = []
+    consumed_chars = 0
+    separator = "\n\n"
+    for index, reference in enumerate(references, start=1):
+        header = f"[{index}] filename={reference['filename']}, chunk={reference['chunk_index']}\n"
+        remaining_chars = max_context_chars - consumed_chars - (len(separator) if parts else 0)
+        if remaining_chars <= len(header):
+            break
+
+        content_budget = remaining_chars - len(header)
+        content = str(reference.get("content", ""))
+        if len(content) > content_budget:
+            if content_budget <= 3:
+                content = content[:content_budget]
+            else:
+                content = content[: content_budget - 3].rstrip() + "..."
+        part = f"{header}{content}"
+        parts.append(part)
+        consumed_chars += len(part) + (len(separator) if len(parts) > 1 else 0)
+
+    return separator.join(parts)
 
 
 def _merge_usage(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:

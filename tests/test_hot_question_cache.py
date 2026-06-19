@@ -4,7 +4,7 @@ import unittest
 from types import SimpleNamespace
 
 from app.db.models.chat import ChatMessage, ChatRun, ChatRunStatus
-from app.services.chat_service import ChatService
+from app.services.chat_service import ChatService, _build_reference_context
 from app.services.hot_question_cache import (
     CachedChatAnswer,
     InMemoryHotQuestionCache,
@@ -44,8 +44,12 @@ class FakeChunk:
 class FakeModel:
     calls = 0
 
+    def __init__(self) -> None:
+        self.last_messages = None
+
     def invoke(self, messages):
         self.calls += 1
+        self.last_messages = messages
         return SimpleNamespace(
             content="根据资料回答。",
             usage_metadata={"input_tokens": 7, "output_tokens": 3, "total_tokens": 10},
@@ -63,6 +67,29 @@ class FakeStreamingModel:
 
 
 class HotQuestionCacheTests(unittest.TestCase):
+    def test_build_reference_context_respects_char_budget(self) -> None:
+        references = [
+            {
+                "filename": "manual.txt",
+                "chunk_index": 1,
+                "content": "计费规则包括调用次数和存储容量。" * 20,
+            }
+        ]
+
+        context = _build_reference_context(references, max_context_chars=80)
+
+        self.assertLessEqual(len(context), 80)
+        self.assertIn("filename=manual.txt", context)
+        self.assertTrue(context.endswith("..."))
+
+    def test_build_reference_context_skips_when_budget_cannot_fit_header(self) -> None:
+        context = _build_reference_context(
+            [{"filename": "manual.txt", "chunk_index": 1, "content": "计费规则"}],
+            max_context_chars=5,
+        )
+
+        self.assertEqual(context, "")
+
     def test_cache_key_is_tenant_scoped(self) -> None:
         first = build_hot_question_cache_key(user_id=1, kb_id=1, question="怎么计费？", top_k=3)
         second = build_hot_question_cache_key(user_id=2, kb_id=1, question="怎么计费？", top_k=3)
@@ -118,6 +145,31 @@ class HotQuestionCacheTests(unittest.TestCase):
         self.assertTrue(all(run.status == ChatRunStatus.COMPLETED for run in runs))
         self.assertFalse(runs[0].cache_hit)
         self.assertTrue(runs[1].cache_hit)
+
+    def test_chat_service_compresses_prompt_context_without_truncating_references(self) -> None:
+        long_content = "计费规则包括调用次数和存储容量。" * 400
+
+        class LongChunk:
+            def to_reference(self):
+                return {"filename": "manual.txt", "chunk_index": 1, "content": long_content}
+
+        def retriever(session, *, user_id, kb_id, query, top_k):
+            return [LongChunk()]
+
+        model = FakeModel()
+        service = ChatService(
+            kb_service=FakeKbService(),
+            retriever=retriever,
+            chat_model=model,
+            answer_cache=InMemoryHotQuestionCache(),
+        )
+        session = FakeSession()
+
+        answer = service.ask(session, user_id=1, kb_id=2, question="怎么计费？")
+
+        prompt = model.last_messages[-1].content
+        self.assertLess(len(prompt), len(long_content))
+        self.assertEqual(answer.references[0]["content"], long_content)
 
     def test_chat_service_marks_run_failed_when_retriever_fails(self) -> None:
         def failing_retriever(session, *, user_id, kb_id, query, top_k):

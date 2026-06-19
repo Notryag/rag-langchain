@@ -87,6 +87,7 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 - 同步接口返回 `answer / references / session_id / run_id / usage`。
 - SSE 接口由 `ChatService.stream()` 驱动，返回 `answer_delta`、`complete`、`error` 事件。
 - 每次问答都会创建 `chat_runs`，operation log 围绕 `chat_run` 聚合，并在 details 中保留 `session_id`。
+- 发送给模型的资料上下文按 `RETRIEVAL_MAX_CONTEXT_CHARS` 压缩，但保存和返回的 references 保留原始片段。
 - 热点问题缓存按 `user_id + kb_id + question + top_k + 模型配置` 隔离。
 
 ### 旧本地 RAG、Agent、Tool、Chroma
