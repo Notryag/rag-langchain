@@ -9,6 +9,12 @@
 3. 收口旧 Chroma/Agent 链路与新 pgvector 链路的边界
 4. 进入第三阶段前，先统一检索接口、chat run 生命周期和真正 token 级 SSE
 
+架构结论:
+
+- 项目没有致命总体设计缺陷，核心风险是旧 `/api + Chroma + Agent` 与新 `/api/v1 + pgvector` 两条 RAG 链路继续平级增长。
+- 参考 DeerFlow 时只借鉴 run/thread 生命周期、分层边界、渐进上下文和 SSE/run 聚合，不引入 subagent、sandbox、skill marketplace 等通用 Agent 平台复杂度。
+- 接下来的实现顺序应围绕产品主链路收口: 统一检索 DTO -> chat run 生命周期 -> token 级 SSE -> pgvector 多租户评测。
+
 总体规划见 [multitenant-rag.md](multitenant-rag.md)，架构收口计划见 [target-architecture.md](target-architecture.md)。
 
 ## Batch 1: 数据库与工程地基
@@ -120,10 +126,10 @@
 
 ## Batch 10: Chat Run 生命周期
 
-- [ ] 设计 chat run model
-- [ ] 增加 Alembic migration
-- [ ] 记录 running / completed / failed / cancelled
-- [ ] 记录 usage / cache_hit / error_message
+- [x] 设计 chat run model
+- [x] 增加 Alembic migration
+- [x] 记录 running / completed / failed / cancelled
+- [x] 记录 usage / cache_hit / error_message
 - [ ] API 和 SSE 围绕 run 生命周期收口
 
 ## Batch 11: Token 级 SSE

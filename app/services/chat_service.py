@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
-from app.db.models.chat import ChatMessage, ChatRole, ChatSession
+from app.db.models.chat import ChatMessage, ChatRole, ChatRun, ChatRunStatus, ChatSession
 from app.retrieval.pgvector_store import retrieve_pgvector_retrieved_chunks
 from app.services.hot_question_cache import (
     CachedChatAnswer,
@@ -75,32 +75,43 @@ class ChatService:
         session.add(user_message)
         session.commit()
 
+        chat_run = self._create_run(
+            session,
+            user_id=user_id,
+            kb_id=kb_id,
+            chat_session_id=chat_session.id,
+            question=question,
+        )
         cache_key = build_hot_question_cache_key(user_id=user_id, kb_id=kb_id, question=question, top_k=settings.top_k)
         scope_key = build_hot_question_scope_key(user_id=user_id, kb_id=kb_id)
-        cached_answer = self._get_cached_answer(cache_key=cache_key)
-        if cached_answer is None:
-            chunks = self._retriever(
-                session,
-                user_id=user_id,
-                kb_id=kb_id,
-                query=question,
-                top_k=settings.top_k,
-            )
-            references = [chunk.to_reference() for chunk in chunks]
-            answer, usage = self._generate_answer(question=question, references=references)
-            self._set_cached_answer(
-                cache_key=cache_key,
-                scope_key=scope_key,
-                answer=answer,
-                references=references,
-                usage=usage,
-            )
-            cache_hit = False
-        else:
-            answer = cached_answer.answer
-            references = cached_answer.references
-            cache_hit = True
-            usage = _cached_usage(cached_answer.usage)
+        try:
+            cached_answer = self._get_cached_answer(cache_key=cache_key)
+            if cached_answer is None:
+                chunks = self._retriever(
+                    session,
+                    user_id=user_id,
+                    kb_id=kb_id,
+                    query=question,
+                    top_k=settings.top_k,
+                )
+                references = [chunk.to_reference() for chunk in chunks]
+                answer, usage = self._generate_answer(question=question, references=references)
+                self._set_cached_answer(
+                    cache_key=cache_key,
+                    scope_key=scope_key,
+                    answer=answer,
+                    references=references,
+                    usage=usage,
+                )
+                cache_hit = False
+            else:
+                answer = cached_answer.answer
+                references = cached_answer.references
+                cache_hit = True
+                usage = _cached_usage(cached_answer.usage)
+        except Exception as exc:
+            self._mark_run_failed(session, chat_run=chat_run, error_message=str(exc))
+            raise
 
         assistant_message = ChatMessage(
             session_id=chat_session.id,
@@ -109,6 +120,14 @@ class ChatService:
             references=references,
         )
         session.add(assistant_message)
+        self._mark_run_completed(
+            session,
+            chat_run=chat_run,
+            answer=answer,
+            references=references,
+            usage=usage,
+            cache_hit=cache_hit,
+        )
         session.commit()
         return ChatAnswer(
             answer=answer,
@@ -117,6 +136,52 @@ class ChatService:
             cache_hit=cache_hit,
             usage=usage,
         )
+
+    def _create_run(
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        kb_id: int,
+        chat_session_id: int,
+        question: str,
+    ) -> ChatRun:
+        chat_run = ChatRun(
+            session_id=chat_session_id,
+            user_id=user_id,
+            kb_id=kb_id,
+            status=ChatRunStatus.RUNNING,
+            question=question,
+            references=[],
+            usage={},
+            cache_hit=False,
+        )
+        session.add(chat_run)
+        session.commit()
+        session.refresh(chat_run)
+        return chat_run
+
+    def _mark_run_completed(
+        self,
+        session: Session,
+        *,
+        chat_run: ChatRun,
+        answer: str,
+        references: list[dict[str, Any]],
+        usage: dict[str, Any],
+        cache_hit: bool,
+    ) -> None:
+        chat_run.status = ChatRunStatus.COMPLETED
+        chat_run.answer = answer
+        chat_run.references = references
+        chat_run.usage = usage
+        chat_run.cache_hit = cache_hit
+        chat_run.error_message = None
+
+    def _mark_run_failed(self, session: Session, *, chat_run: ChatRun, error_message: str) -> None:
+        chat_run.status = ChatRunStatus.FAILED
+        chat_run.error_message = error_message
+        session.commit()
 
     def list_sessions(self, session: Session, *, user_id: int) -> list[ChatSession]:
         statement = select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.updated_at.desc())

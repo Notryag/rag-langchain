@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from app.db.models.chat import ChatMessage
+from app.db.models.chat import ChatMessage, ChatRun, ChatRunStatus
 from app.services.chat_service import ChatService
 from app.services.hot_question_cache import (
     CachedChatAnswer,
@@ -103,6 +103,31 @@ class HotQuestionCacheTests(unittest.TestCase):
         self.assertEqual(retriever_calls, ["怎么计费？"])
         self.assertEqual(model.calls, 1)
         self.assertEqual(len([item for item in session.added if isinstance(item, ChatMessage)]), 4)
+        runs = [item for item in session.added if isinstance(item, ChatRun)]
+        self.assertEqual(len(runs), 2)
+        self.assertTrue(all(run.status == ChatRunStatus.COMPLETED for run in runs))
+        self.assertFalse(runs[0].cache_hit)
+        self.assertTrue(runs[1].cache_hit)
+
+    def test_chat_service_marks_run_failed_when_retriever_fails(self) -> None:
+        def failing_retriever(session, *, user_id, kb_id, query, top_k):
+            raise RuntimeError("retriever failed")
+
+        service = ChatService(
+            kb_service=FakeKbService(),
+            retriever=failing_retriever,
+            chat_model=FakeModel(),
+            answer_cache=InMemoryHotQuestionCache(),
+        )
+        session = FakeSession()
+
+        with self.assertRaises(RuntimeError):
+            service.ask(session, user_id=1, kb_id=2, question="怎么计费？")
+
+        runs = [item for item in session.added if isinstance(item, ChatRun)]
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0].status, ChatRunStatus.FAILED)
+        self.assertEqual(runs[0].error_message, "retriever failed")
 
 
 if __name__ == "__main__":
