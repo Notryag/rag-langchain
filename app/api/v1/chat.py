@@ -93,6 +93,14 @@ def chat_stream(
             resource_id=record.run_id,
             details={"kb_id": kb_id, "session_id": record.session_id},
         )
+        yield _sse_payload(
+            "metadata",
+            {
+                "run_id": record.run_id,
+                "session_id": record.session_id,
+                "kb_id": record.kb_id,
+            },
+        )
         try:
             async for event in runtime_service.stream_run(record.run_id, disconnect_mode=DisconnectMode.CANCEL):
                 if event.event == "heartbeat":

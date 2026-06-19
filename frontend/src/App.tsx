@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import {
+  cancelChatRun,
   checkHealth,
   createKnowledgeBase,
   deleteDocument,
@@ -57,6 +58,7 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -133,6 +135,7 @@ function App() {
 
   async function resetThread() {
     setPending(true);
+    setActiveRunId(null);
     try {
       setSessionId(undefined);
       setMessages([welcomeMessage]);
@@ -295,6 +298,7 @@ function App() {
         updateAssistant(assistantId, { content: "没有收到回答。" });
       }
       setPending(false);
+      setActiveRunId(null);
     }
   }
 
@@ -306,6 +310,13 @@ function App() {
     toolTraces: ToolTrace[],
     setAnswer: (answer: string) => void,
   ) {
+    if (eventData.eventName === "metadata") {
+      setSessionId(eventData.data.session_id);
+      setActiveRunId(eventData.data.run_id);
+      updateAssistant(assistantId, { runId: eventData.data.run_id });
+      return;
+    }
+
     if (eventData.eventName === "answer" || eventData.eventName === "answer_delta") {
       const answer = eventData.data.answer || eventData.data.content || "";
       setAnswer(answer);
@@ -359,6 +370,29 @@ function App() {
     if (message.feedbackPending || message.role !== "assistant" || message.id === "welcome") return;
 
     updateAssistant(message.id, { feedbackRating: rating, feedbackPending: false });
+  }
+
+  async function cancelActiveRun() {
+    if (!apiToken || activeRunId === null) return;
+    const runId = activeRunId;
+    setPending(false);
+    setActiveRunId(null);
+    setMessages((current) =>
+      current.map((message) =>
+        message.runId === runId
+          ? {
+              ...message,
+              content: message.content && message.content !== "正在生成..." ? message.content : "已请求取消当前回答。",
+              statusLines: [...(message.statusLines || []), "已请求取消 run"],
+            }
+          : message,
+      ),
+    );
+    try {
+      await cancelChatRun(apiToken, runId);
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : "取消 run 失败");
+    }
   }
 
   const activeKb = knowledgeBases.find((kb) => kb.id === activeKbId) || null;
@@ -417,7 +451,9 @@ function App() {
         messages={messages}
         messagesEndRef={messagesEndRef}
         pending={pending}
+        activeRunId={activeRunId}
         onClear={clearMessages}
+        onCancelRun={cancelActiveRun}
         onFeedback={handleFeedback}
         onInputChange={setInput}
         onSubmit={submitMessage}

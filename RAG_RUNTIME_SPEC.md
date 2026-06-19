@@ -50,11 +50,11 @@
 1. API handler 已开始通过 RuntimeService 启动 run，不再直接 for-loop Agent stream。
 2. `chat_runs.id` 已作为 run_id，RunManager 管理当前进程内运行中任务。
 3. MemoryStreamBridge 已解耦 Agent producer 和 SSE consumer。
-4. 后端已有取消接口，前端取消按钮还未接入。
+4. 后端已有取消接口，前端已接入当前 run 取消按钮。
 5. 暂不支持断线后重新 join 某次 run。
 6. 同一会话并发请求第一版采用 interrupt 策略。
 
-剩余重点是前端取消入口、run 查询展示和更完整的测试覆盖。
+剩余重点是 run 查询展示和更完整的测试覆盖。
 
 ## 4. 边界
 
@@ -402,7 +402,7 @@ document_chunks.kb_id = requested_kb_id
 5. [x] 改造 `/api/v1/kbs/{kb_id}/chat/stream` 使用 RuntimeService
 6. [x] 新增 `POST /api/v1/chat-runs/{run_id}/cancel`
 7. [x] 给 `chat_runs` 查询接口补最小 schema
-8. [ ] 更新前端: 发送中显示 run_id，必要时显示取消按钮
+8. [x] 更新前端: 发送中显示 run_id，必要时显示取消按钮
 
 ## 16. 暂缓事项
 

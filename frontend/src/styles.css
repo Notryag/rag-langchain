@@ -835,6 +835,10 @@ textarea:focus {
   color: #ffffff;
 }
 
+.send-button.cancel {
+  background: var(--danger);
+}
+
 .send-button:disabled,
 .secondary-button:disabled,
 .feedback-actions button:disabled,

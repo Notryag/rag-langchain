@@ -136,6 +136,11 @@ export async function deleteDocument(token: string, documentId: number): Promise
   await request(`/api/v1/documents/${documentId}`, { method: "DELETE" }, token);
 }
 
+export async function cancelChatRun(token: string, runId: number): Promise<{ run_id: number; cancelled: boolean }> {
+  const response = await postJson(`/api/v1/chat-runs/${runId}/cancel`, {}, token);
+  return response.json();
+}
+
 export async function streamChat({
   kbId,
   message,

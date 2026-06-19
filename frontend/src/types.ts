@@ -95,6 +95,7 @@ export type ChatMessage = {
   retrievalProfile?: RetrievalProfile;
   toolTraces?: ToolTrace[];
   usage?: Record<string, unknown> | null;
+  runId?: number | null;
   elapsedMs?: number | null;
   feedbackRating?: FeedbackRating;
   feedbackPending?: boolean;
@@ -102,6 +103,14 @@ export type ChatMessage = {
 };
 
 export type StreamEvent =
+  | {
+      eventName: "metadata";
+      data: {
+        run_id: number;
+        session_id: number;
+        kb_id?: number;
+      };
+    }
   | {
       eventName: "answer";
       data: { content?: string; answer?: string };

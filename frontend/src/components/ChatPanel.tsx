@@ -1,4 +1,4 @@
-import { RotateCcw, Send, Trash2 } from "lucide-react";
+import { RotateCcw, Send, Square, Trash2 } from "lucide-react";
 import type { FormEvent, ReactNode, RefObject } from "react";
 
 import type { ChatMessage, FeedbackRating } from "../types";
@@ -10,7 +10,9 @@ type ChatPanelProps = {
   messages: ChatMessage[];
   messagesEndRef: RefObject<HTMLDivElement | null>;
   pending: boolean;
+  activeRunId: number | null;
   onClear: () => void;
+  onCancelRun: () => void;
   onFeedback: (message: ChatMessage, rating: FeedbackRating) => void;
   onInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -22,7 +24,9 @@ function ChatPanel({
   messages,
   messagesEndRef,
   pending,
+  activeRunId,
   onClear,
+  onCancelRun,
   onFeedback,
   onInputChange,
   onSubmit,
@@ -64,8 +68,25 @@ function ChatPanel({
           disabled={pending}
           required
         />
-        <button className="send-button" disabled={pending || !input.trim()} title="发送">
-          {pending ? <RotateCcw size={20} className="spin" /> : <Send size={20} />}
+        <button
+          className={`send-button ${pending && activeRunId !== null ? "cancel" : ""}`}
+          disabled={pending ? activeRunId === null : !input.trim()}
+          onClick={(event) => {
+            if (pending && activeRunId !== null) {
+              event.preventDefault();
+              onCancelRun();
+            }
+          }}
+          title={pending && activeRunId !== null ? "取消当前回答" : "发送"}
+          type={pending && activeRunId !== null ? "button" : "submit"}
+        >
+          {pending && activeRunId === null ? (
+            <RotateCcw size={20} className="spin" />
+          ) : pending ? (
+            <Square size={18} />
+          ) : (
+            <Send size={20} />
+          )}
         </button>
       </form>
     </section>
