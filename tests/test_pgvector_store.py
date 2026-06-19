@@ -21,6 +21,11 @@ class FakeEmbeddings:
         return [[float(index), 0.1] for index, _ in enumerate(texts)]
 
     def embed_query(self, text: str) -> list[float]:
+        return [0.2] * 1536
+
+
+class WrongDimensionEmbeddings:
+    def embed_query(self, text: str) -> list[float]:
         return [0.2, 0.3]
 
 
@@ -96,6 +101,21 @@ class PgVectorStoreTests(unittest.TestCase):
         statement_text = str(session.executed[0])
         self.assertIn("document_chunks.user_id", statement_text)
         self.assertIn("document_chunks.kb_id", statement_text)
+
+    def test_retrieve_pgvector_chunks_fails_fast_on_embedding_dimension_mismatch(self) -> None:
+        session = FakeSession()
+
+        with self.assertRaisesRegex(ValueError, "Embedding dimension mismatch"):
+            retrieve_pgvector_chunks(
+                session,
+                user_id=2,
+                kb_id=3,
+                query="怎么计费",
+                top_k=5,
+                embeddings=WrongDimensionEmbeddings(),
+            )
+
+        self.assertEqual(session.executed, [])
 
     def test_retrieve_pgvector_retrieved_chunks_returns_unified_dto(self) -> None:
         chunk = SimpleNamespace(

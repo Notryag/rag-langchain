@@ -4,6 +4,7 @@ import argparse
 import json
 import subprocess
 import sys
+import traceback
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,6 +42,7 @@ def build_baseline_commands(
     kb_id: int,
     retrieval_limit: int | None,
     answer_limit: int | None,
+    skip_answer: bool = False,
 ) -> list[list[str]]:
     retrieval_command = [
         sys.executable,
@@ -90,6 +92,8 @@ def build_baseline_commands(
     if answer_limit is not None:
         answer_eval_command.extend(["--limit", str(answer_limit)])
 
+    if skip_answer:
+        return [retrieval_command]
     return [retrieval_command, answer_sampling_command, answer_eval_command]
 
 
@@ -162,6 +166,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--run-id", default=None, help="Optional stable run id; defaults to UTC timestamp.")
     parser.add_argument("--retrieval-limit", type=int, default=None, help="Limit retrieval eval samples.")
     parser.add_argument("--answer-limit", type=int, default=None, help="Limit answer eval samples.")
+    parser.add_argument("--skip-answer", action="store_true", help="Only run retrieval eval artifacts.")
     parser.add_argument("--dry-run", action="store_true", help="Only write manifest and print commands.")
     return parser.parse_args()
 
@@ -177,6 +182,7 @@ def main() -> None:
         kb_id=args.kb_id,
         retrieval_limit=args.retrieval_limit,
         answer_limit=args.answer_limit,
+        skip_answer=args.skip_answer,
     )
     write_baseline_manifest(
         paths,
@@ -190,18 +196,38 @@ def main() -> None:
         for command in commands:
             print("$ " + " ".join(command))
         return
-    run_commands(commands)
-    summary = collect_baseline_summary(paths)
-    write_baseline_manifest(
-        paths,
-        run_id=run_id,
-        user_id=args.user_id,
-        kb_id=args.kb_id,
-        commands=commands,
-        status="completed",
-        summary=summary,
-    )
-    print(f"baseline_summary={json.dumps(summary, ensure_ascii=False)}")
+    try:
+        run_commands(commands)
+    except subprocess.CalledProcessError as exc:
+        summary = collect_baseline_summary(paths)
+        summary["error"] = {
+            "returncode": exc.returncode,
+            "command": exc.cmd,
+            "traceback": traceback.format_exc(),
+        }
+        write_baseline_manifest(
+            paths,
+            run_id=run_id,
+            user_id=args.user_id,
+            kb_id=args.kb_id,
+            commands=commands,
+            status="failed",
+            summary=summary,
+        )
+        print(f"baseline_failed_manifest={paths.manifest.as_posix()}")
+        raise
+    else:
+        summary = collect_baseline_summary(paths)
+        write_baseline_manifest(
+            paths,
+            run_id=run_id,
+            user_id=args.user_id,
+            kb_id=args.kb_id,
+            commands=commands,
+            status="completed",
+            summary=summary,
+        )
+        print(f"baseline_summary={json.dumps(summary, ensure_ascii=False)}")
 
 
 if __name__ == "__main__":

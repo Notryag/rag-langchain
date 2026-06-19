@@ -187,6 +187,7 @@ uv run python -m evaluation.evaluate_retrieval --metadata-filter-json '{"source"
 uv run python -m evaluation.evaluate_retrieval --limit 10 --manifest-output storage/exports/retrieval_eval_manifest.json
 uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --search-type similarity hybrid --reranker off on --limit 10 --bad-cases-out data/eval/pgvector_bad_cases.jsonl --manifest-output storage/exports/pgvector_retrieval_eval_manifest.json
 uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --answer-limit 5
+uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --skip-answer
 uv run python -m evaluation.evaluate_hybrid_need --show-failures
 uv run python -m evaluation.evaluate_hybrid_search --show-changes
 ```
@@ -194,6 +195,10 @@ uv run python -m evaluation.evaluate_hybrid_search --show-changes
 `evaluate_pgvector_retrieval` 使用相同 retrieval eval 样本评测 `/api/v1` 主链路的 PostgreSQL + pgvector 检索。它必须显式传入 `--user-id` 和 `--kb-id`，结果会同时检查 source / keyword 命中和返回 chunk metadata 中的租户范围是否匹配当前用户与知识库。`--search-type similarity hybrid` 可以对比纯向量召回与 pgvector dense + lexical RRF 融合召回，`--reranker off on` 可以对比 embedding + lexical rerank 效果。
 
 `run_pgvector_baseline` 会串行运行 pgvector retrieval eval、pgvector answer sampling 和 answer eval，并把 baseline manifest、bad cases 和 answer runs 放到 `storage/exports/pgvector_baselines/{run_id}/`。实际执行完成后，`baseline_manifest.json` 会回填 retrieval manifest 数量、answer run 数量和 bad case 数量。
+
+如果 baseline 中途失败，`baseline_manifest.json` 会标记 `status=failed` 并记录失败命令。常见原因是 `EMBEDDING_DIMENSION` 与实际 embedding 模型输出维度不一致，或缺少模型 API Key。
+
+维度不一致时会看到 `Embedding dimension mismatch: EMBEDDING_DIMENSION=..., actual=...`。处理方式是让 `.env` 中的 `EMBEDDING_DIMENSION` 与当前 embedding 模型输出一致，并重建 pgvector 表/迁移与已有 embeddings；不要混用不同维度的 embedding 数据。
 
 ### 采样回答
 

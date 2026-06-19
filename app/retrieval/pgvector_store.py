@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.models.document import Document, DocumentChunk
+from app.config.settings import settings
 from app.retrieval.lexical import lexical_score
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.splitter import split_documents_by_type
@@ -133,6 +134,7 @@ def retrieve_pgvector_chunks(
         raise ValueError(f"Unsupported pgvector search_type: {search_type}")
 
     query_embedding = (embeddings or get_embeddings()).embed_query(query)
+    _validate_embedding_dimension(query_embedding)
     distance = DocumentChunk.embedding.cosine_distance(query_embedding).label("distance")
     statement = (
         select(DocumentChunk, Document.filename, distance)
@@ -288,6 +290,16 @@ def rerank_pgvector_chunks(
 def _pgvector_lexical_score(query: str, content: str) -> int:
     doc = LangChainDocument(page_content=content, metadata={})
     return lexical_score(query, doc)
+
+
+def _validate_embedding_dimension(vector: list[float]) -> None:
+    actual_dimension = len(vector)
+    if actual_dimension != settings.embedding_dimension:
+        raise ValueError(
+            "Embedding dimension mismatch: "
+            f"EMBEDDING_DIMENSION={settings.embedding_dimension}, actual={actual_dimension}. "
+            "Update EMBEDDING_DIMENSION to match the embedding model output and rebuild pgvector embeddings."
+        )
 
 
 def _prepare_split_docs(*, document: Document, parsed_docs: list[LangChainDocument]) -> list[LangChainDocument]:

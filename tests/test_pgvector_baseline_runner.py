@@ -43,6 +43,21 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertIn("evaluation.evaluate_answers", commands[2])
         self.assertIn(str(paths.answer_bad_cases), commands[2])
 
+    def test_build_baseline_commands_can_skip_answer_steps(self) -> None:
+        paths = build_baseline_paths(Path("out"), run_id="run-1")
+
+        commands = build_baseline_commands(
+            paths=paths,
+            user_id=1,
+            kb_id=2,
+            retrieval_limit=3,
+            answer_limit=4,
+            skip_answer=True,
+        )
+
+        self.assertEqual(len(commands), 1)
+        self.assertIn("evaluation.evaluate_pgvector_retrieval", commands[0])
+
     def test_write_baseline_manifest_records_commands_and_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
             paths = build_baseline_paths(Path(tmpdir), run_id="run-1")
@@ -77,6 +92,25 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertEqual(summary["answer_bad_case_count"], 1)
         self.assertEqual(summary["retrieval_bad_case_count"], 3)
         self.assertEqual(summary["retrieval_summaries"][0]["passed"], 1)
+
+    def test_write_baseline_manifest_can_record_failed_status(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            paths = build_baseline_paths(Path(tmpdir), run_id="run-1")
+
+            write_baseline_manifest(
+                paths,
+                run_id="run-1",
+                user_id=1,
+                kb_id=2,
+                commands=[["python"]],
+                status="failed",
+                summary={"error": {"returncode": 1}},
+            )
+
+            payload = json.loads(paths.manifest.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["summary"]["error"]["returncode"], 1)
 
 
 if __name__ == "__main__":
