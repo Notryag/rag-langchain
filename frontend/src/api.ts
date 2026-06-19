@@ -1,4 +1,4 @@
-import type { Citation, FeedbackRating, PublicConfig, RetrievalProfile, StreamEvent } from "./types";
+import type { PublicConfig, RetrievalProfile, StreamEvent } from "./types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
@@ -6,10 +6,13 @@ function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`;
 }
 
-async function postJson(url: string, body: unknown = {}) {
+async function postJson(url: string, body: unknown = {}, token?: string) {
   const response = await fetch(apiUrl(url), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   if (!response.ok) {
@@ -20,38 +23,38 @@ async function postJson(url: string, body: unknown = {}) {
 }
 
 export async function checkHealth() {
-  const response = await fetch(apiUrl("/api/health"));
+  const response = await fetch(apiUrl("/api/v1/health"));
   return response.ok;
 }
 
 export async function loadConfig(): Promise<PublicConfig> {
-  const response = await fetch(apiUrl("/api/config"));
+  const response = await fetch(apiUrl("/api/v1/config"));
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
 
-export async function createThread(): Promise<string> {
-  const response = await postJson("/api/threads");
-  const payload = await response.json();
-  return payload.thread_id;
-}
-
 export async function streamChat({
+  kbId,
   message,
-  retrievalProfile,
-  threadId,
+  sessionId,
+  token,
   onEvent,
 }: {
+  kbId: number;
   message: string;
   retrievalProfile?: RetrievalProfile;
-  threadId: string;
+  sessionId?: number;
+  token: string;
   onEvent: (event: StreamEvent) => void;
 }) {
-  const response = await postJson("/api/chat/stream", {
-    message,
-    thread_id: threadId,
-    retrieval_profile: retrievalProfile,
-  });
+  const response = await postJson(
+    `/api/v1/kbs/${kbId}/chat/stream`,
+    {
+      question: message,
+      session_id: sessionId,
+    },
+    token,
+  );
 
   const reader = response.body?.getReader();
   if (!reader) throw new Error("当前浏览器不支持流式响应");
@@ -65,35 +68,6 @@ export async function streamChat({
     buffer += decoder.decode(value, { stream: true });
     buffer = parseSse(buffer, onEvent);
   }
-}
-
-export async function submitFeedback({
-  threadId,
-  messageId,
-  rating,
-  question,
-  answer,
-  citations,
-  metadata,
-}: {
-  threadId: string;
-  messageId: string;
-  rating: FeedbackRating;
-  question?: string;
-  answer?: string;
-  citations?: Citation[];
-  metadata?: Record<string, unknown>;
-}) {
-  const response = await postJson("/api/feedback", {
-    thread_id: threadId,
-    message_id: messageId,
-    rating,
-    question,
-    answer,
-    citations,
-    metadata,
-  });
-  return response.json();
 }
 
 function parseSse(buffer: string, onEvent: (event: StreamEvent) => void) {

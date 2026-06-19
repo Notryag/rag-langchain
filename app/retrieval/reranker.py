@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from langchain_core.documents import Document
 
 from app.config.settings import settings
-from app.retrieval.vectorstore import get_embeddings
+from app.retrieval.embeddings import get_embeddings
 
 _SUPPORTED_RERANKER_STRATEGIES = {"embedding_lexical"}
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]")

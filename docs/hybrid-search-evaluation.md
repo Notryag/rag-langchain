@@ -7,7 +7,7 @@
 使用当前最佳 dense baseline:
 
 ```powershell
-uv run python -m evaluation.evaluate_retrieval --search-type similarity --top-k 3 --fetch-k 8 --reranker on
+uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --search-type similarity --top-k 3 --fetch-k 8 --reranker on
 ```
 
 再运行词面补救诊断:
@@ -55,7 +55,7 @@ uv run python -m evaluation.evaluate_hybrid_search --show-changes
 主链路可选 `hybrid` 检索:
 
 ```powershell
-uv run python -m evaluation.evaluate_retrieval --search-type hybrid --top-k 3 --fetch-k 8 --reranker off on
+uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --search-type hybrid --top-k 3 --fetch-k 8 --reranker off on
 ```
 
 - `hybrid + reranker=off`: passed 29 / 29，pass_rate 100.00%

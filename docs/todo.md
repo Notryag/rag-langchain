@@ -6,12 +6,12 @@
 
 1. 将 `/api/v1 + PostgreSQL + pgvector` 明确为多租户产品主链路
 2. 保持权限隔离优先，避免跨用户检索泄露
-3. 收口旧 Chroma/Agent 链路与新 pgvector 链路的边界
+3. 保持旧链路删除后的 `/api/v1 + pgvector` 单主线
 4. 在真实 PostgreSQL 数据上沉淀 retrieval / answer eval baseline
 
 架构结论:
 
-- 项目没有致命总体设计缺陷，核心风险是旧 `/api + Chroma + Agent` 与新 `/api/v1 + pgvector` 两条 RAG 链路继续平级增长。
+- 项目没有致命总体设计缺陷，原核心风险是旧 `/api + Chroma + Agent` 与新 `/api/v1 + pgvector` 两条 RAG 链路继续平级增长；该风险已通过删除旧链路收口。
 - 参考 DeerFlow 时只借鉴 run/thread 生命周期、分层边界、渐进上下文和 SSE/run 聚合，不引入 subagent、sandbox、skill marketplace 等通用 Agent 平台复杂度。
 - 架构收口主任务已经完成，接下来的实现顺序应围绕真实数据质量基线: pgvector retrieval eval -> pgvector answer eval -> bad case 回流 -> 默认检索策略决策。
 
@@ -113,7 +113,7 @@
 ## Batch 8: 架构收口文档
 
 - [x] 明确 `/api/v1 + pgvector` 是产品主链路
-- [x] 明确旧 `/api + Chroma + Agent` 是 legacy demo / eval 基线
+- [x] 删除旧 `/api + Chroma + Agent` 运行时链路
 - [x] 记录参考 DeerFlow 后的取舍
 - [x] 更新项目状态、路线图和 AI 助手导航
 
@@ -121,7 +121,7 @@
 
 - [x] 定义 retrieval protocol / DTO
 - [x] 让 pgvector 检索返回统一结构
-- [x] 给旧 Chroma 检索加 adapter
+- [x] 删除旧 Chroma adapter，保留 pgvector 为唯一运行时检索实现
 - [x] 更新 chat service 依赖统一检索接口
 - [x] 补权限过滤和 adapter 测试
 
@@ -169,3 +169,13 @@
 - [x] 保存 baseline manifest 和 bad cases 的标准路径
 - [x] baseline manifest 汇总 artifact 数量和 retrieval summary
 - [ ] 根据结果决定 hybrid / rerank 默认策略
+
+## Batch 15: 删除旧 /api + Chroma + Agent
+
+- [x] 删除旧 `/api` 路由、schema 和 rag service
+- [x] 删除 Chroma vectorstore、本地 ingest、Agent、Tool、CLI、Streamlit 链路
+- [x] 将系统接口替换为 `/api/v1/health`、`/api/v1/config`、`/api/v1/metrics`
+- [x] 将 embedding provider 提取为 `app/retrieval/embeddings.py`
+- [x] 移除 `langchain-chroma` 和 `streamlit` 依赖
+- [x] 更新 Docker、smoke、前端 API 和测试到 `/api/v1`
+- [x] 更新 README、AI 导航和架构文档，避免后续助手误读旧链路

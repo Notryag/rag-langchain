@@ -13,7 +13,7 @@ from app.retrieval.lexical import lexical_score
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.splitter import split_documents_by_type
 from app.retrieval.types import RetrievedChunk
-from app.retrieval.vectorstore import get_embeddings
+from app.retrieval.embeddings import get_embeddings
 
 DEFAULT_RRF_K = 60
 

@@ -33,8 +33,8 @@ function MessageBubble({
         {!!message.citations?.length && (
           <div className="citations">
             {message.citations.map((citation, index) => (
-              <span className="citation" key={`${citation.label || citation.source}-${index}`}>
-                {citation.label || citation.source || "引用"}
+              <span className="citation" key={`${citation.chunk_id || citation.filename || "ref"}-${index}`}>
+                {citation.filename || "引用"}
               </span>
             ))}
           </div>

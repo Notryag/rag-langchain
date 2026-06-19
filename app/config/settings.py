@@ -56,8 +56,6 @@ class Settings:
     chat_model: str
     embedding_model: str
     embedding_dimension: int
-    vector_db_dir: str
-    collection_name: str
     top_k: int
     retrieval_search_type: str
     retrieval_fetch_k: int
@@ -136,8 +134,6 @@ class Settings:
         required_string_fields = {
             "CHAT_MODEL": self.chat_model,
             "EMBEDDING_MODEL": self.embedding_model,
-            "VECTOR_DB_DIR": self.vector_db_dir,
-            "COLLECTION_NAME": self.collection_name,
             "LOG_DIR": self.log_dir,
             "LOG_FILE_NAME": self.log_file_name,
             "CHECKPOINTER_TYPE": self.checkpointer_type,
@@ -165,8 +161,6 @@ class Settings:
             chat_model=(os.getenv("CHAT_MODEL") or "gpt-4.1-mini").strip(),
             embedding_model=(os.getenv("EMBEDDING_MODEL") or "text-embedding-3-small").strip(),
             embedding_dimension=_get_int_env("EMBEDDING_DIMENSION", 1536),
-            vector_db_dir=(os.getenv("VECTOR_DB_DIR") or "./storage/chroma").strip(),
-            collection_name=(os.getenv("COLLECTION_NAME") or "rag_docs").strip(),
             top_k=_get_int_env("TOP_K", 3),
             retrieval_search_type=(os.getenv("RETRIEVAL_SEARCH_TYPE") or "similarity").strip().lower(),
             retrieval_fetch_k=_get_int_env("RETRIEVAL_FETCH_K", 8),

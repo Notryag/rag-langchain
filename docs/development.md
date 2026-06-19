@@ -9,7 +9,7 @@
 推荐方式:
 
 ```powershell
-uv run python -m evaluation.evaluate_retrieval --limit 2
+uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --limit 2
 ```
 
 原因:
@@ -37,7 +37,7 @@ uv run python -m <module>
 
 - `OPENAI_API_KEY` 是必填项，即使接本地兼容服务也需要显式提供一个非空值。
 - `OPENAI_BASE_URL` 是可选项；走官方 OpenAI 可留空，走兼容网关或本地模型服务时填写。
-- `CHAT_MODEL`、`EMBEDDING_MODEL`、`VECTOR_DB_DIR`、`COLLECTION_NAME`、`LOG_DIR`、`LOG_FILE_NAME` 都有默认值，但不允许为空字符串。
+- `CHAT_MODEL`、`EMBEDDING_MODEL`、`LOG_DIR`、`LOG_FILE_NAME` 都有默认值，但不允许为空字符串。
 - `EMBEDDING_DIMENSION` 默认 `1536`，必须和当前 embedding 模型输出维度一致；例如 `text-embedding-3-small` 是 `1536`，`bge-m3` 通常是 `1024`。
 - `TOP_K`、`RETRIEVAL_FETCH_K`、`CHUNK_SIZE` 必须大于 `0`。
 - `RETRIEVAL_MAX_CONTEXT_CHARS` 必须大于 `0`，用于限制传给模型的检索上下文字符数。
@@ -185,20 +185,9 @@ uv run python scripts/smoke_multitenant.py --request-timeout 240
 ### 检索评测
 
 ```powershell
-uv run python -m evaluation.evaluate_retrieval
-uv run python -m evaluation.evaluate_retrieval --limit 10
-uv run python -m evaluation.evaluate_retrieval --search-type similarity mmr --top-k 3 5 --fetch-k 8 12
-uv run python -m evaluation.evaluate_retrieval --show-passes
-uv run python -m evaluation.evaluate_retrieval --search-type similarity --top-k 3 --fetch-k 8 --reranker off on
-uv run python -m evaluation.evaluate_retrieval --search-type hybrid --top-k 3 --fetch-k 8 --reranker off on
-uv run python -m evaluation.evaluate_retrieval --source 扫地机器人100问2.txt
-uv run python -m evaluation.evaluate_retrieval --metadata-filter-json '{"source":"维护保养.txt"}'
-uv run python -m evaluation.evaluate_retrieval --limit 10 --manifest-output storage/exports/retrieval_eval_manifest.json
 uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --search-type similarity hybrid --reranker off on --limit 10 --bad-cases-out data/eval/pgvector_bad_cases.jsonl --manifest-output storage/exports/pgvector_retrieval_eval_manifest.json
 uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --answer-limit 5
 uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --skip-answer
-uv run python -m evaluation.evaluate_hybrid_need --show-failures
-uv run python -m evaluation.evaluate_hybrid_search --show-changes
 ```
 
 `evaluate_pgvector_retrieval` 使用相同 retrieval eval 样本评测 `/api/v1` 主链路的 PostgreSQL + pgvector 检索。它必须显式传入 `--user-id` 和 `--kb-id`，结果会同时检查 source / keyword 命中和返回 chunk metadata 中的租户范围是否匹配当前用户与知识库。`--search-type similarity hybrid` 可以对比纯向量召回与 pgvector dense + lexical RRF 融合召回，`--reranker off on` 可以对比 embedding + lexical rerank 效果。
@@ -222,7 +211,6 @@ uv run python -m evaluation.run_pgvector_baseline --user-id 2 --kb-id 2 --retrie
 ### 采样回答
 
 ```powershell
-uv run python -m evaluation.generate_answers --limit 5
 uv run python -m evaluation.generate_pgvector_answers --user-id 1 --kb-id 1 --limit 5
 ```
 
@@ -237,26 +225,15 @@ uv run python -m evaluation.evaluate_answers --bad-cases-out data/eval/bad_cases
 ### 抓取单次 Trace
 
 ```powershell
-uv run python -m evaluation.capture_trace "扫地机器人连不上WiFi怎么办"
+旧 Agent trace 入口已删除。请通过 pgvector baseline 和 chat run 记录排查问答。
 ```
 
 ## 统一入口
 
-常用启动方式现在可以统一走 `app.main`:
+常用启动方式现在统一走 `app.main web`:
 
 ```powershell
-uv run python -m app.main cli
-uv run python -m app.main ingest --data-dir ./data/raw
-uv run python -m app.main ingest --data-dir ./data/raw --mode rebuild
-uv run python -m app.main delete-source 维护保养.txt
-uv run python -m app.main streamlit
 uv run python -m app.main web
-```
-
-如果需要自定义 Streamlit 地址或端口:
-
-```powershell
-uv run python -m app.main streamlit --server-address 0.0.0.0 --server-port 8501
 ```
 
 如果需要自定义 FastAPI Web 地址或端口:
@@ -282,7 +259,7 @@ npm install
 npm run dev
 ```
 
-Vite 默认地址为 `http://127.0.0.1:5173`，`/api` 会代理到 `http://127.0.0.1:8000`。
+Vite 默认地址为 `http://127.0.0.1:5173`，前端通过 `/api/v1` 调用 FastAPI。
 
 生产构建:
 
@@ -304,28 +281,7 @@ VITE_API_BASE_URL=https://your-api.example.com
 ```
 
 本地开发不需要设置该变量，Vite 会继续代理 `/api` 到 `http://127.0.0.1:8000`。
-
-## API 检索参数
-
-`POST /api/chat` 与 `POST /api/chat/stream` 支持可选 `retrieval_profile`，用于单次请求覆盖默认检索策略:
-
-```json
-{
-  "message": "扫地机器人连不上 WiFi 怎么办？",
-  "thread_id": "web_xxx",
-  "retrieval_profile": {
-    "search_type": "mmr",
-    "top_k": 4,
-    "fetch_k": 10,
-    "reranker_enabled": true,
-    "max_context_chars": 3000
-  }
-}
-```
-
-不传时使用 `.env` / `settings` 中的默认检索配置。
-
-React Web 控制台侧栏提供对应的检索设置面板，发送消息时会随请求带上当前 profile。
+聊天界面还需要设置 `VITE_API_TOKEN` 和 `VITE_KB_ID`，分别对应登录后的 access token 和当前知识库 ID。
 
 ## 多租户认证 API
 
@@ -465,29 +421,14 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 
 ## 用户反馈
 
-React Web 控制台会在助手回答下方显示有帮助 / 没帮助按钮。提交后，FastAPI 会将反馈追加写入 `FEEDBACK_LOG_PATH` 指向的 JSONL 文件，字段包括 `thread_id`、`message_id`、`rating`、问题、回答、引用和检索参数快照。
-
-也可以直接调用 API:
-
-```json
-POST /api/feedback
-{
-  "thread_id": "web_xxx",
-  "message_id": "assistant_message_id",
-  "rating": "down",
-  "question": "扫地机器人连不上 WiFi 怎么办？",
-  "answer": "检查路由器频段...",
-  "citations": [{"source": "故障排除.txt"}],
-  "metadata": {"search_type": "hybrid"}
-}
-```
+旧 `/api/feedback` 已删除。后续如果需要产品化反馈，应新增 `/api/v1` 反馈接口，并绑定 `user_id / kb_id / session_id / run_id`。
 
 ## 运行指标
 
 FastAPI 提供基础进程内指标:
 
 ```powershell
-curl http://127.0.0.1:8000/api/metrics
+curl http://127.0.0.1:8000/api/v1/metrics
 ```
 
 当前包含:
@@ -506,7 +447,7 @@ curl http://127.0.0.1:8000/api/metrics
 
 ## 注意事项
 
-- `evaluate_retrieval` 依赖本地向量库和 embedding 检索链路。
-- `generate_answers` 与 `capture_trace` 会真实调用模型，需要 `.env` 中的模型配置和 API Key 可用。
+- 旧本地 Chroma 评测入口已删除，检索质量验证使用 `evaluate_pgvector_retrieval`。
+- `generate_pgvector_answers` 会真实调用模型，需要 `.env` 中的模型配置和 API Key 可用。
 - `evaluate_answers` 默认会把未通过样本导出到 `data/eval/bad_cases.jsonl`，便于后续回看 bad case。
 - 如果命令报依赖缺失，先执行 `uv sync`，再重试 `uv run ...`。

@@ -107,8 +107,8 @@ def _unique_default(prefix: str) -> str:
 
 def run_smoke(config: SmokeConfig) -> None:
     client = SmokeClient(config.base_url, request_timeout=config.request_timeout)
-    print(f"[1/8] health {config.base_url}/api/health")
-    health = client.get("/api/health")
+    print(f"[1/8] health {config.base_url}/api/v1/health")
+    health = client.get("/api/v1/health")
     _assert(health == {"status": "ok"}, f"unexpected health response: {health}")
 
     print("[2/8] register user")

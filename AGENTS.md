@@ -7,23 +7,23 @@
 当前项目已经具备最小可运行 RAG 闭环，重点应放在：
 
 1. 质量评测闭环（retrieval / answer eval）
-2. 工程边界收敛（services / agent / retrieval 分层）
+2. 工程边界收敛（services / retrieval / api/v1 分层）
 3. 检索质量迭代（在可评测前提下优化）
 
 ## 代码改动优先级
 
 - 新业务流程优先放 `app/services/`
 - 新检索能力优先放 `app/retrieval/`
-- Agent 行为通过 `app/agent/` + `app/tools/` 组合实现
-- 避免在 `app/cli/` 与 `app/streamlit_app.py` 内堆业务逻辑
+- HTTP 能力优先放 `app/api/v1/`
+- 旧 `app/agent/`、`app/tools/`、`app/cli/` 与 Streamlit 链路已删除，不要恢复为新主线
 
 ## 运行约定
 
 - 统一使用 `uv` 执行：`uv run python -m ...`
 - 常用入口：
-  - `uv run python -m app.main cli`
-  - `uv run python -m app.main ingest --data-dir ./data/raw`
-  - `uv run python -m app.main streamlit`
+  - `uv run python -m app.main web`
+  - `uv run alembic upgrade head`
+  - `uv run python scripts/smoke_multitenant.py --skip-chat`
 
 ## 提交前检查（最小）
 

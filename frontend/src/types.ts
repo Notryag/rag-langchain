@@ -1,9 +1,11 @@
 export type Citation = {
-  rank?: number;
-  source?: string;
+  document_id?: number;
+  filename?: string;
+  chunk_id?: number;
   page?: string | null;
   chunk_index?: number | null;
-  label?: string;
+  content?: string;
+  score?: number;
 };
 
 export type PublicConfig = {
@@ -15,7 +17,6 @@ export type PublicConfig = {
   reranker_enabled: boolean;
   reranker_strategy: string;
   retrieval_max_context_chars: number;
-  collection_name: string;
 };
 
 export type SearchType = "similarity" | "mmr" | "hybrid";
@@ -37,12 +38,12 @@ export type ToolTrace = {
 };
 
 export type ChatResponse = {
-  thread_id: string;
   answer: string;
-  status_lines: string[];
-  citations: Citation[];
+  references: Citation[];
+  session_id: number;
+  run_id: number;
+  cache_hit?: boolean;
   usage: Record<string, unknown> | null;
-  elapsed_ms: number | null;
 };
 
 export type ChatMessage = {
@@ -64,6 +65,10 @@ export type ChatMessage = {
 export type StreamEvent =
   | {
       eventName: "answer";
+      data: { content?: string; answer?: string };
+    }
+  | {
+      eventName: "answer_delta";
       data: { content?: string; answer?: string };
     }
   | {

@@ -30,7 +30,6 @@ function Sidebar({
     return [
       ["模型", config.chat_model],
       ["Embedding", config.embedding_model],
-      ["集合", config.collection_name],
       ["检索", config.retrieval_search_type],
       ["Top K", String(config.top_k)],
       ["Fetch K", String(config.retrieval_fetch_k)],
@@ -59,7 +58,7 @@ function Sidebar({
           </button>
         </div>
         <dl className="meta-list">
-          <MetaRow label="线程" value={threadId || "-"} />
+          <MetaRow label="会话" value={threadId || "-"} />
           <MetaRow label="状态" value={apiStatus} tone={apiStatus === "可用" ? "ok" : "bad"} />
         </dl>
       </section>

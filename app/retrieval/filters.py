@@ -28,12 +28,12 @@ def _normalize_sequence(value: Sequence[Any], *, field_name: str) -> list[Metada
 
 
 def normalize_metadata_filter(metadata_filter: Mapping[str, Any] | None) -> MetadataFilter | None:
-    """Normalize simple metadata filters into Chroma-compatible where filters.
+    """Normalize simple metadata filters for retrieval adapters.
 
     Supported input forms:
     - {"source": "file.txt"} for equality match
     - {"source": ["a.txt", "b.txt"]} for $in match
-    - {"page": {"$eq": 1}} for explicit Chroma operators
+    - {"page": {"$eq": 1}} for explicit operators
     """
     if not metadata_filter:
         return None

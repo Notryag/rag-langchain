@@ -16,7 +16,7 @@
 
 长期目标不是做一个“能回答问题”的 demo，而是演进为一个多租户企业知识库 RAG 系统。
 
-新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力和架构收口主任务已经落地: `/api/v1 + pgvector` 是产品主线，旧 Chroma/Agent 链路定位为 legacy demo / evaluation 基线，统一检索 DTO、chat run 生命周期、service 层 token SSE、pgvector retrieval / answer eval、hybrid、rerank 和上下文压缩已经具备。详细计划见 [target-architecture.md](target-architecture.md)。
+新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力和架构收口主任务已经落地: `/api/v1 + pgvector` 是唯一产品主线，旧 Chroma/Agent 链路已经删除，chat run 生命周期、service 层 token SSE、pgvector retrieval / answer eval、hybrid、rerank 和上下文压缩已经具备。详细计划见 [target-architecture.md](target-architecture.md)。
 
 ### 目标一: 可验证的 RAG 系统
 
@@ -66,48 +66,31 @@
 
 ```text
 app/
-  agent/
-    create_agent.py
-    prompts.py
-    middleware.py
-    state.py
   retrieval/
-    ingest.py
     loaders.py
     splitter.py
     embeddings.py
-    vectorstore.py
-    retriever.py
+    pgvector_store.py
     reranker.py
     formatter.py
     citations.py
-  tools/
-    retrieve_context.py
-    health.py
   memory/
     checkpointer.py
-    thread_store.py
   services/
-    rag_service.py
-    ingest_service.py
+    chat_service.py
+    document_service.py
   api/
-    schemas.py
-    routes_chat.py
-    routes_ingest.py
-    routes_health.py
+    v1/
 evaluation/
     dataset.py
-    evaluate_retrieval.py
-    generate_answers.py
+    evaluate_pgvector_retrieval.py
+    generate_pgvector_answers.py
     evaluate_answers.py
-    capture_trace.py
 ```
 
 架构原则:
 
-- `agent/` 只负责模型、工具、prompt、state
-- `retrieval/` 只负责入库、召回、重排、格式化
-- `tools/` 负责暴露 agent 可调用能力
+- `retrieval/` 只负责加载、切分、召回、重排、格式化
 - `services/` 负责业务编排
 - `evaluation/` 负责质量验证
 
@@ -121,7 +104,7 @@ evaluation/
 
 - [x] 明确 `/api/v1 + pgvector` 是产品主链路
 - [x] 抽统一 retrieval interface / DTO
-- [x] 将旧 Chroma/Agent 链路降级为 legacy demo / eval 基线
+- [x] 删除旧 Chroma/Agent 链路
 - [x] 增加 chat run 生命周期
 - [x] 将 `/api/v1` SSE 升级为 service 层 token 级 streaming
 

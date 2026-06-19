@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from app.config.settings import settings
 from app.db.session import get_session_factory
-from app.retrieval.vectorstore import get_embeddings
+from app.retrieval.embeddings import get_embeddings
 
 
 @dataclass(frozen=True)

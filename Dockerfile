@@ -15,7 +15,6 @@ RUN uv sync --frozen --no-dev
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY app ./app
-COPY streamlit_app.py ./
 
 RUN mkdir -p storage/uploads logs
 

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-import { checkHealth, createThread, loadConfig, streamChat, submitFeedback } from "./api";
+import { checkHealth, loadConfig, streamChat } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import Sidebar from "./components/Sidebar";
 import type { ChatMessage, Citation, FeedbackRating, PublicConfig, RetrievalProfile, StreamEvent, ToolTrace } from "./types";
@@ -12,7 +12,9 @@ const welcomeMessage: ChatMessage = {
 };
 
 function App() {
-  const [threadId, setThreadId] = useState("");
+  const apiToken = import.meta.env.VITE_API_TOKEN || "";
+  const kbId = Number(import.meta.env.VITE_KB_ID || "0");
+  const [sessionId, setSessionId] = useState<number | undefined>(undefined);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [defaultRetrievalProfile, setDefaultRetrievalProfile] = useState<RetrievalProfile | null>(null);
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile | null>(null);
@@ -32,13 +34,8 @@ function App() {
 
   async function boot() {
     try {
-      const [newThreadId, newConfig, healthy] = await Promise.all([
-        createThread(),
-        loadConfig(),
-        checkHealth(),
-      ]);
+      const [newConfig, healthy] = await Promise.all([loadConfig(), checkHealth()]);
       const defaultProfile = configToProfile(newConfig);
-      setThreadId(newThreadId);
       setConfig(newConfig);
       setDefaultRetrievalProfile(defaultProfile);
       setRetrievalProfile(defaultProfile);
@@ -51,7 +48,7 @@ function App() {
   async function resetThread() {
     setPending(true);
     try {
-      setThreadId(await createThread());
+      setSessionId(undefined);
       setMessages([welcomeMessage]);
     } finally {
       setPending(false);
@@ -66,6 +63,20 @@ function App() {
     event.preventDefault();
     const text = input.trim();
     if (!text || pending) return;
+    if (!apiToken || !kbId) {
+      setMessages((current) => [
+        ...current,
+        { id: crypto.randomUUID(), role: "user", content: text },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "请先通过 VITE_API_TOKEN 和 VITE_KB_ID 配置当前用户 token 与知识库 ID。",
+          error: true,
+        },
+      ]);
+      setInput("");
+      return;
+    }
 
     const assistantId = crypto.randomUUID();
     const activeProfile = retrievalProfile ? { ...retrievalProfile } : undefined;
@@ -85,9 +96,11 @@ function App() {
 
     try {
       await streamChat({
+        kbId,
         message: text,
         retrievalProfile: activeProfile,
-        threadId,
+        sessionId,
+        token: apiToken,
         onEvent: (eventData) => {
           handleStreamEvent(eventData, assistantId, statusLines, citations, toolTraces, (nextAnswer) => {
             answer = nextAnswer;
@@ -116,7 +129,7 @@ function App() {
     toolTraces: ToolTrace[],
     setAnswer: (answer: string) => void,
   ) {
-    if (eventData.eventName === "answer") {
+    if (eventData.eventName === "answer" || eventData.eventName === "answer_delta") {
       const answer = eventData.data.answer || eventData.data.content || "";
       setAnswer(answer);
       updateAssistant(assistantId, { content: answer || "正在生成..." });
@@ -142,15 +155,13 @@ function App() {
     }
 
     if (eventData.eventName === "complete") {
-      setThreadId(eventData.data.thread_id || threadId);
+      setSessionId(eventData.data.session_id);
       setAnswer(eventData.data.answer);
       updateAssistant(assistantId, {
         content: eventData.data.answer,
-        statusLines: eventData.data.status_lines,
-        citations: eventData.data.citations,
+        citations: eventData.data.references,
         toolTraces: [...toolTraces],
         usage: eventData.data.usage,
-        elapsedMs: eventData.data.elapsed_ms,
       });
       return;
     }
@@ -169,25 +180,7 @@ function App() {
   async function handleFeedback(message: ChatMessage, rating: FeedbackRating) {
     if (message.feedbackPending || message.role !== "assistant" || message.id === "welcome") return;
 
-    updateAssistant(message.id, { feedbackPending: true });
-    try {
-      await submitFeedback({
-        threadId,
-        messageId: message.id,
-        rating,
-        question: message.question,
-        answer: message.content,
-        citations: message.citations,
-        metadata: {
-          retrieval_profile: message.retrievalProfile,
-          elapsed_ms: message.elapsedMs,
-          usage: message.usage,
-        },
-      });
-      updateAssistant(message.id, { feedbackRating: rating, feedbackPending: false });
-    } catch {
-      updateAssistant(message.id, { feedbackPending: false });
-    }
+    updateAssistant(message.id, { feedbackRating: rating, feedbackPending: false });
   }
 
   return (
@@ -198,7 +191,7 @@ function App() {
         defaultRetrievalProfile={defaultRetrievalProfile}
         pending={pending}
         retrievalProfile={retrievalProfile}
-        threadId={threadId}
+        threadId={sessionId ? String(sessionId) : "-"}
         onRetrievalProfileChange={setRetrievalProfile}
         onResetThread={resetThread}
       />

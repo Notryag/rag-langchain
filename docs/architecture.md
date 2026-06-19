@@ -1,166 +1,91 @@
 # 架构说明
 
-这份文档只说明当前项目里最重要的职责边界，避免后续继续把逻辑堆进 UI 或 agent prompt。
+这份文档说明当前项目最重要的职责边界。AI 助手接手任务时先读 [ai-context.md](ai-context.md)，再按任务渐进读取相关文件。
 
-如果你是 AI 助手或刚接手任务，先读 [ai-context.md](ai-context.md)。那份文档是渐进式入口，会告诉你不同任务应该继续读哪些文件，避免一次性塞入过多上下文。
+## 主链路
 
-## 主链路分层
-
-当前主链路建议按下面的方式理解:
+当前唯一产品主链路:
 
 ```text
-CLI / Streamlit / FastAPI API / Eval
-        |
-    services/
-        |
-      agent/
-      tools/
-        |
-   retrieval/
+HTTP /api/v1
+  -> app/api/v1/
+  -> app/services/
+  -> app/db/models/
+  -> PostgreSQL + pgvector
+  -> Redis / Celery
 ```
 
-核心原则:
+旧 `/api + Chroma + Agent + CLI + Streamlit` 已删除。
 
-- UI 层只负责交互和展示，不负责拼业务流程。
-- `frontend/` 只负责 React 页面状态与展示，所有问答能力通过 FastAPI API 进入 service。
-- `app/api/` 只负责 HTTP 协议、SSE 流式输出和响应序列化，不承载 RAG 业务判断。
-- `services/` 负责编排一次问答的输入、流式事件、结果聚合。
-- `agent/` 负责模型装配、prompt 策略、middleware。
-- `memory/` 负责会话状态 checkpointer 的创建与持久化策略。
-- `tools/` 负责把底层能力暴露给 agent 调用。
-- `retrieval/` 负责向量库、检索、入库、引用格式化这些纯检索能力。
-- 检索格式化阶段负责上下文去重、裁剪和输出长度控制，不把完整 chunk 原样灌给模型。
-- citation 解析与结构化单独放在 retrieval 模块内，避免 UI 和 service 自己拼 citation dict。
-- reranker 也属于 retrieval 层能力，负责对初筛候选进行二次排序，不进入 agent 决策层。
-- metadata 过滤属于 retrieval 层能力，当前通过 `source/page/chunk_index/content_hash` 等入库 metadata 约束候选范围。
+## 分层边界
 
-## Prompt 策略
+- `app/api/`: FastAPI 应用装配、HTTP 协议、SSE 序列化、错误处理、限流。
+- `app/api/v1/`: 产品化多租户接口。
+- `app/services/`: 业务编排，包含认证、知识库、文档、问答、缓存、日志。
+- `app/retrieval/`: 文档加载、切分、embedding provider、pgvector 检索、hybrid、rerank、引用格式化。
+- `app/db/`: SQLAlchemy Base、session、ORM models。
+- `app/workers/`: Celery app 与异步文档处理任务。
+- `evaluation/`: pgvector retrieval / answer eval、baseline 和 bad case 输出。
+- `frontend/`: React 控制台，只通过 `/api/v1` 调用后端。
 
-当前 prompt 分成两层:
+## 多租户原则
 
-### 静态基线
+- 任何知识库、文档、chunk、聊天会话、消息查询都必须绑定当前用户。
+- pgvector 检索必须在 SQL 条件中包含 `user_id + kb_id`。
+- 不允许先全局召回再在 Python 层过滤权限。
+- references 必须来自实际召回 chunks，并随 assistant message 保存。
 
-位置:
+## 问答路径
 
-- `app/agent/prompts.py`
+```text
+POST /api/v1/kbs/{kb_id}/chat
+  -> ChatService.ask()
+  -> pgvector retrieve(user_id, kb_id)
+  -> context compression
+  -> model answer
+  -> save chat_messages + chat_runs
+  -> return answer / references / session_id / run_id / usage
+```
 
-职责:
+SSE 路径由 `ChatService.stream()` 产生 `answer_delta / complete / error`，API 层只负责序列化事件。
 
-- 定义长期稳定的系统角色
-- 约束回答必须基于检索上下文
-- 约束不足信息时要拒答
-- 明确忽略文档内嵌指令
+## 文档处理路径
 
-这部分应该保持稳定，不应该随着单次 bad case 临时堆规则。
+```text
+upload
+  -> documents.status = pending
+  -> Celery documents.process
+  -> parse
+  -> split
+  -> embed
+  -> document_chunks.embedding(pgvector)
+  -> documents.status = completed / failed
+```
 
-### 动态运行时上下文
-
-位置:
-
-- `app/agent/prompt_strategy.py`
-- `app/middleware/prompt_with_context.py`
-
-职责:
-
-- 注入当前线程 id
-- 注入当前对话是首轮还是追问
-- 注入当前检索参数，例如 `search_type / top_k / fetch_k`
-- 强化当前轮次的执行策略，而不是替代静态 prompt
-
-动态 prompt 更适合放“当前运行态信息”和“当前链路策略”，不适合放大段固定规则。
-
-## Tool 与 Agent 边界
-
-### 哪些逻辑属于 tool
-
-以 `app/tools/retrieve_context.py` 为例，tool 只负责:
-
-- 接收 agent 给出的查询
-- 调用 retrieval 层获取 chunks
-- 返回带引用标记的上下文
-- 记录工具调用日志
-
-tool 不应该负责:
-
-- 直接回答用户问题
-- 决定最终拒答还是作答
-- 维护会话级业务状态
-- 拼 UI 展示文案
-
-### 哪些逻辑属于 agent
-
-agent 负责:
-
-- 判断是否需要调用 tool
-- 读取 tool 返回的上下文
-- 综合当前用户问题和检索结果生成最终回答
-- 决定引用、拒答、追问时的回答策略
-
-agent 不应该负责:
-
-- 直接执行向量检索细节
-- 直接管理向量库初始化和缓存
-- 直接处理 CLI / Streamlit / FastAPI / React 的展示事件
-
-## Service 与 UI 边界
-
-`app/services/rag_service.py` 现在是主业务入口。
-
-它负责:
-
-- 发起一次问答
-- 聚合底层流事件
-- 提供统一的 `ask` / `stream` 输出结构
-- 通过 `app/services/rag_types.py` 暴露稳定的 response 与 stream event 类型
-
-CLI、Streamlit、FastAPI API、React 前端和 evaluation 只消费这些结果，不再自己理解底层 agent 协议。
-
-## 多租户演进
-
-项目下一阶段会从单用户本地 RAG 演进为多租户企业知识库 RAG。详细目标、表结构、API 设计和批次计划见 [multitenant-rag.md](multitenant-rag.md)。
-
-第一批改造先引入数据库地基，并保持与现有 Chroma 主链路并存:
-
-- `app/db/`: SQLAlchemy Base、session provider 和 ORM 模型
-- `migrations/`: Alembic migration 环境
-- PostgreSQL + pgvector: 后续承载业务数据和向量检索
-- Redis + Celery: 后续承载异步文档处理
-
-迁移期间仍需遵守当前边界: API 只做协议，service 做业务编排，retrieval 做检索能力，权限过滤必须进入数据库查询条件。
+同步处理接口复用同一套 service 逻辑，用于本地调试和 worker 失败后的兜底。
 
 ## 当前文件映射
 
-- `app/main.py`: 统一入口
-- `app/api/main.py`: FastAPI 应用装配与 React 构建产物托管
-- `app/api/routes.py`: HTTP API 路由、SSE 输出与响应序列化
-- `app/db/base.py`: SQLAlchemy declarative base
-- `app/db/session.py`: SQLAlchemy engine 和 session provider
-- `app/db/models/`: 多租户核心 ORM 模型
-- `migrations/`: Alembic migration 环境
-- `frontend/`: React + Vite + TypeScript 前端
-- `app/services/rag_service.py`: 主链路编排
-- `app/services/rag_types.py`: service 层 response 与 stream event 协议
-- `app/services/feedback_service.py`: 用户反馈 JSONL 记录服务
-- `app/services/metrics_service.py`: 基础进程内运行指标
-- `app/agent/create_agent.py`: agent 装配入口
-- `app/agent/prompts.py`: 静态 prompt
-- `app/agent/prompt_strategy.py`: 动态 prompt 策略
-- `app/middleware/prompt_with_context.py`: 动态 prompt middleware
-- `app/memory/checkpointer.py`: LangGraph 会话状态 checkpointer provider
-- `app/tools/retrieve_context.py`: agent 可调用检索 tool
-- `app/retrieval/loaders.py`: 文档加载入口
-- `app/retrieval/splitter.py`: 按文档类型选择 chunk 切分策略
-- `app/retrieval/filters.py`: metadata 过滤参数规范化
-- `app/retrieval/lexical.py`: query 词面信号召回与排序
-- `app/retrieval/hybrid.py`: dense 与 lexical 候选融合
-- `app/retrieval/reranker.py`: 候选结果二次排序
-- `app/retrieval/`: 入库、向量库、检索与引用格式化
+- `app/main.py`: 统一启动入口，目前保留 `web`。
+- `app/api/main.py`: FastAPI app、路由装配、React dist 托管。
+- `app/api/v1/system.py`: `/api/v1/health`、`/api/v1/config`、`/api/v1/metrics`。
+- `app/api/v1/auth.py`: 注册、登录、当前用户。
+- `app/api/v1/knowledge_bases.py`: 知识库 CRUD。
+- `app/api/v1/documents.py`: 上传、列表、详情、删除、处理。
+- `app/api/v1/chat.py`: 同步问答、SSE、聊天记录。
+- `app/services/chat_service.py`: 问答主编排。
+- `app/services/document_service.py`: 文档处理主编排。
+- `app/retrieval/pgvector_store.py`: pgvector 检索、hybrid、rerank。
+- `app/retrieval/embeddings.py`: embedding 初始化。
+- `app/retrieval/loaders.py`: 文档加载。
+- `app/retrieval/splitter.py`: 文本切分。
+- `migrations/`: Alembic migration。
 
 ## 当前结论
 
-短期内最重要的是保持这些边界稳定:
+后续新增能力应保持:
 
-- 新增业务能力优先落到 `services/`
-- 新增检索能力优先落到 `retrieval/`
-- 新增 agent 行为优先通过 prompt / middleware / tool 装配实现
-- 不要把业务判断重新散回 CLI、Streamlit、FastAPI、React 或单个 tool
+- 新业务流程进 `app/services/`。
+- 新检索能力进 `app/retrieval/`。
+- 新 HTTP 能力进 `app/api/v1/`。
+- 数据变更同步 model、migration、schema、测试和文档。

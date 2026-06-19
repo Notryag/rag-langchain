@@ -5,7 +5,7 @@ from typing import Any, Mapping
 from app.config.settings import settings
 from app.retrieval.citations import Citation, build_citation_label
 from app.retrieval.normalizers import normalize_chunk_index, normalize_page, single_line_preview
-from app.retrieval.retriever import RetrievedChunk
+from app.retrieval.types import RetrievedChunk
 
 _CHUNK_PREVIEW_WIDTH = 1200
 _MIN_CONTENT_PREVIEW_WIDTH = 80
