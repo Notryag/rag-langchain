@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.auth import get_current_user
+from app.api.errors import ApiError
 from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.document import DocumentProcessResponse, DocumentRead
 from app.services.document_service import DocumentNotFoundError, DocumentService, get_document_service
-from app.services.kb_service import KnowledgeBaseNotFoundError
 from app.workers.tasks import get_document_task_dispatcher
 
 router = APIRouter(tags=["documents"])
@@ -27,17 +27,14 @@ async def upload_document(
     dispatch_document_processing=Depends(get_document_task_dispatcher),
 ) -> DocumentRead:
     content = await file.read()
-    try:
-        document = document_service.create_upload(
-            session,
-            user_id=current_user.id,
-            kb_id=kb_id,
-            filename=file.filename or "upload.bin",
-            content_type=file.content_type,
-            content=content,
-        )
-    except KnowledgeBaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    document = document_service.create_upload(
+        session,
+        user_id=current_user.id,
+        kb_id=kb_id,
+        filename=file.filename or "upload.bin",
+        content_type=file.content_type,
+        content=content,
+    )
 
     try:
         dispatch_document_processing(document.id)
@@ -53,10 +50,7 @@ def list_documents(
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
 ) -> list[DocumentRead]:
-    try:
-        documents = document_service.list_for_kb(session, user_id=current_user.id, kb_id=kb_id)
-    except KnowledgeBaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    documents = document_service.list_for_kb(session, user_id=current_user.id, kb_id=kb_id)
     return [DocumentRead.model_validate(document) for document in documents]
 
 
@@ -67,10 +61,7 @@ def get_document(
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
 ) -> DocumentRead:
-    try:
-        document = document_service.get_for_user(session, user_id=current_user.id, document_id=document_id)
-    except DocumentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    document = document_service.get_for_user(session, user_id=current_user.id, document_id=document_id)
     return DocumentRead.model_validate(document)
 
 
@@ -81,10 +72,7 @@ def delete_document(
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
 ) -> Response:
-    try:
-        document_service.delete(session, user_id=current_user.id, document_id=document_id)
-    except DocumentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    document_service.delete(session, user_id=current_user.id, document_id=document_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -101,10 +89,14 @@ def process_document(
             user_id=current_user.id,
             document_id=document_id,
         )
-    except DocumentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except DocumentNotFoundError:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise ApiError(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code="document_processing_failed",
+            message=str(exc),
+        ) from exc
     return DocumentProcessResponse(
         document=DocumentRead.model_validate(document),
         parsed_units=chunk_count,

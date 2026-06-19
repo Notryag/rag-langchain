@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.v1.auth import get_current_user
 from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.chat import ChatAnswerResponse, ChatMessageRead, ChatRequest, ChatSessionRead
-from app.services.chat_service import ChatService, ChatSessionNotFoundError, get_chat_service
-from app.services.kb_service import KnowledgeBaseNotFoundError
+from app.services.chat_service import ChatService, get_chat_service
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
@@ -21,16 +20,13 @@ def chat(
     session: Session = Depends(get_db_session),
     chat_service: ChatService = Depends(get_chat_service),
 ) -> ChatAnswerResponse:
-    try:
-        answer = chat_service.ask(
-            session,
-            user_id=current_user.id,
-            kb_id=kb_id,
-            question=payload.question.strip(),
-            session_id=payload.session_id,
-        )
-    except (KnowledgeBaseNotFoundError, ChatSessionNotFoundError) as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    answer = chat_service.ask(
+        session,
+        user_id=current_user.id,
+        kb_id=kb_id,
+        question=payload.question.strip(),
+        session_id=payload.session_id,
+    )
     return ChatAnswerResponse(answer=answer.answer, references=answer.references, session_id=answer.session_id)
 
 
@@ -53,8 +49,5 @@ def list_chat_messages(
     session: Session = Depends(get_db_session),
     chat_service: ChatService = Depends(get_chat_service),
 ) -> list[ChatMessageRead]:
-    try:
-        messages = chat_service.list_messages(session, user_id=current_user.id, session_id=session_id)
-    except ChatSessionNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    messages = chat_service.list_messages(session, user_id=current_user.id, session_id=session_id)
     return [ChatMessageRead.model_validate(message) for message in messages]

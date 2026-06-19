@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.auth import get_current_user
 from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.knowledge_base import KnowledgeBaseCreate, KnowledgeBaseRead, KnowledgeBaseUpdate
-from app.services.kb_service import KnowledgeBaseNotFoundError, KnowledgeBaseService, get_kb_service
+from app.services.kb_service import KnowledgeBaseService, get_kb_service
 
 router = APIRouter(prefix="/api/v1/kbs", tags=["knowledge_bases"])
 
@@ -39,10 +39,7 @@ def get_knowledge_base(
     session: Session = Depends(get_db_session),
     kb_service: KnowledgeBaseService = Depends(get_kb_service),
 ) -> KnowledgeBaseRead:
-    try:
-        knowledge_base = kb_service.get_for_user(session, user_id=current_user.id, kb_id=kb_id)
-    except KnowledgeBaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    knowledge_base = kb_service.get_for_user(session, user_id=current_user.id, kb_id=kb_id)
     return KnowledgeBaseRead.model_validate(knowledge_base)
 
 
@@ -54,10 +51,7 @@ def update_knowledge_base(
     session: Session = Depends(get_db_session),
     kb_service: KnowledgeBaseService = Depends(get_kb_service),
 ) -> KnowledgeBaseRead:
-    try:
-        knowledge_base = kb_service.update(session, user_id=current_user.id, kb_id=kb_id, payload=payload)
-    except KnowledgeBaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    knowledge_base = kb_service.update(session, user_id=current_user.id, kb_id=kb_id, payload=payload)
     return KnowledgeBaseRead.model_validate(knowledge_base)
 
 
@@ -68,8 +62,5 @@ def delete_knowledge_base(
     session: Session = Depends(get_db_session),
     kb_service: KnowledgeBaseService = Depends(get_kb_service),
 ) -> Response:
-    try:
-        kb_service.delete(session, user_id=current_user.id, kb_id=kb_id)
-    except KnowledgeBaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    kb_service.delete(session, user_id=current_user.id, kb_id=kb_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

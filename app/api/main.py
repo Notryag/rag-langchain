@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.errors import register_error_handlers
 from app.api.routes import router as api_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
@@ -26,6 +27,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="LangChain RAG API", version="0.1.0", lifespan=lifespan)
+register_error_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,

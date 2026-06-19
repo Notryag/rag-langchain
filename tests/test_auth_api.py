@@ -59,6 +59,7 @@ class AuthApiTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["code"], "auth_conflict")
 
     def test_login(self) -> None:
         class FakeAuthService:
@@ -99,6 +100,7 @@ class AuthApiTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"]["code"], "invalid_credentials")
 
     def test_me(self) -> None:
         app.dependency_overrides[auth_routes.get_current_user] = lambda: SimpleNamespace(

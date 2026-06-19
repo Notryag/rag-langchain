@@ -92,6 +92,7 @@ class ChatApiTests(unittest.TestCase):
         response = self.client.post("/api/v1/kbs/2/chat", json={"question": "问题", "session_id": 404})
 
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["error"]["code"], "chat_session_not_found")
 
     def test_list_chat_sessions(self) -> None:
         class FakeChatService:

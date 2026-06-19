@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from app.api.errors import ApiError
 from app.core.security import decode_access_token
 from app.db.models.user import User
 from app.db.session import get_db_session
@@ -23,17 +24,19 @@ def get_current_user(
         payload = decode_access_token(token)
         user_id = int(payload.get("sub", ""))
     except (TypeError, ValueError):
-        raise HTTPException(
+        raise ApiError(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            code="invalid_credentials",
+            message="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     user = auth_service.get_user_by_id(session, user_id)
     if user is None:
-        raise HTTPException(
+        raise ApiError(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            code="invalid_credentials",
+            message="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -48,7 +51,11 @@ def register(
     try:
         user = auth_service.register(session, payload)
     except AuthError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise ApiError(
+            status_code=status.HTTP_409_CONFLICT,
+            code="auth_conflict",
+            message=str(exc),
+        ) from exc
     return UserRead.model_validate(user)
 
 
@@ -65,7 +72,12 @@ def login(
             password=payload.password,
         )
     except AuthError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+        raise ApiError(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="invalid_credentials",
+            message=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
 
 
 @router.get("/me", response_model=UserRead)

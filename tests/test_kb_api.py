@@ -127,6 +127,7 @@ class KnowledgeBaseApiTests(unittest.TestCase):
         response = self.client.get("/api/v1/kbs/404")
 
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["error"]["code"], "knowledge_base_not_found")
 
 
 if __name__ == "__main__":

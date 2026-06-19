@@ -86,6 +86,7 @@ class DocumentApiTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["error"]["code"], "knowledge_base_not_found")
         self.assertEqual(self.dispatched_document_ids, [])
 
     def test_list_documents(self) -> None:
@@ -165,6 +166,19 @@ class DocumentApiTests(unittest.TestCase):
         response = self.client.get("/api/v1/documents/404")
 
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["error"]["code"], "document_not_found")
+
+    def test_process_document_failure_returns_structured_error(self) -> None:
+        class FakeDocumentService:
+            def process_sync(self, session, *, user_id, document_id):
+                raise RuntimeError("unsupported file")
+
+        app.dependency_overrides[document_routes.get_document_service] = lambda: FakeDocumentService()
+
+        response = self.client.post("/api/v1/documents/3/process")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["error"]["code"], "document_processing_failed")
 
 
 if __name__ == "__main__":
