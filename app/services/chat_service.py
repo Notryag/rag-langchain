@@ -103,6 +103,9 @@ class ChatService:
                     kb_id=kb_id,
                     query=question,
                     top_k=settings.top_k,
+                    search_type=settings.retrieval_search_type,
+                    fetch_k=settings.retrieval_fetch_k,
+                    reranker_enabled=settings.reranker_enabled,
                 )
                 references = [chunk.to_reference() for chunk in chunks]
                 answer, usage = self._generate_answer(question=question, references=references)
@@ -193,6 +196,9 @@ class ChatService:
                     kb_id=kb_id,
                     query=question,
                     top_k=settings.top_k,
+                    search_type=settings.retrieval_search_type,
+                    fetch_k=settings.retrieval_fetch_k,
+                    reranker_enabled=settings.reranker_enabled,
                 )
                 references = [chunk.to_reference() for chunk in chunks]
                 answer_parts: list[str] = []

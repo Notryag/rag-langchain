@@ -22,12 +22,14 @@ class PgVectorRetrievalEvalConfig:
     top_k: int
     search_type: str
     fetch_k: int
+    reranker_enabled: bool
 
     @property
     def label(self) -> str:
+        reranker = "on" if self.reranker_enabled else "off"
         return (
             f"user_id={self.user_id} kb_id={self.kb_id} "
-            f"search_type={self.search_type} top_k={self.top_k} fetch_k={self.fetch_k}"
+            f"search_type={self.search_type} top_k={self.top_k} fetch_k={self.fetch_k} reranker={reranker}"
         )
 
 
@@ -98,6 +100,7 @@ def result_to_bad_case(result: PgVectorRetrievalEvalResult) -> dict[str, Any]:
             "search_type": result.config.search_type,
             "top_k": result.config.top_k,
             "fetch_k": result.config.fetch_k,
+            "reranker_enabled": result.config.reranker_enabled,
         },
         "expected_sources": result.sample.expected_sources,
         "expected_keywords": result.sample.expected_keywords,
@@ -146,6 +149,13 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--top-k", type=int, default=settings.top_k, help="Number of chunks to retrieve.")
     parser.add_argument("--fetch-k", type=int, default=settings.retrieval_fetch_k, help="Candidate count for hybrid.")
+    parser.add_argument(
+        "--reranker",
+        nargs="+",
+        default=["off"],
+        choices=["off", "on"],
+        help="Compare pgvector retrieval with reranker disabled/enabled.",
+    )
     parser.add_argument("--limit", type=int, default=None, help="Only evaluate the first N samples.")
     parser.add_argument("--show-passes", action="store_true", help="Print passing samples as well.")
     parser.add_argument("--bad-cases-out", default=None, help="Optional JSONL output for failed samples.")
@@ -220,6 +230,7 @@ def _write_manifest(
                 "search_type": config.search_type,
                 "top_k": config.top_k,
                 "fetch_k": config.fetch_k,
+                "reranker_enabled": config.reranker_enabled,
             },
             "summary": summary,
         },
@@ -237,56 +248,61 @@ def main() -> None:
     session_factory = get_session_factory()
     all_results: list[PgVectorRetrievalEvalResult] = []
     for search_type in args.search_type:
-        config = PgVectorRetrievalEvalConfig(
-            user_id=args.user_id,
-            kb_id=args.kb_id,
-            top_k=args.top_k,
-            search_type=search_type,
-            fetch_k=max(args.fetch_k, args.top_k),
-        )
-        with session_factory() as session:
-            results = [
-                evaluate_pgvector_sample(
-                    sample,
-                    config,
-                    retrieve_pgvector_retrieved_chunks(
-                        session,
-                        user_id=config.user_id,
-                        kb_id=config.kb_id,
-                        query=sample.query,
-                        top_k=config.top_k,
-                        search_type=config.search_type,
-                        fetch_k=config.fetch_k,
-                    ),
-                )
-                for sample in samples
-            ]
-
-        all_results.extend(results)
-        summary = summarize(results)
-        print(f"\n=== PgVector Retrieval Eval | {config.label} ===")
-        print(
-            "summary total={total} scored={scored} skipped={skipped} "
-            "source_hit={source_hit} source_hit_rate={source_hit_rate:.2%} "
-            "permission_ok={permission_ok} permission_ok_rate={permission_ok_rate:.2%} "
-            "passed={passed} pass_rate={pass_rate:.2%}".format(**summary)
-        )
-        for result in results:
-            if result.passed and not args.show_passes:
-                continue
-            _print_result(result)
-
-        if args.manifest_output:
-            output_path = Path(args.manifest_output)
-            manifest_path = output_path.with_name(f"{output_path.stem}_{search_type}{output_path.suffix}")
-            _write_manifest(
-                manifest_path,
-                args=args,
-                config=config,
-                summary=summary,
-                sample_count=len(samples),
+        for reranker_mode in args.reranker:
+            reranker_enabled = reranker_mode == "on"
+            config = PgVectorRetrievalEvalConfig(
+                user_id=args.user_id,
+                kb_id=args.kb_id,
+                top_k=args.top_k,
+                search_type=search_type,
+                fetch_k=max(args.fetch_k, args.top_k),
+                reranker_enabled=reranker_enabled,
             )
-            print(f"manifest_written={manifest_path.as_posix()}")
+            with session_factory() as session:
+                results = [
+                    evaluate_pgvector_sample(
+                        sample,
+                        config,
+                        retrieve_pgvector_retrieved_chunks(
+                            session,
+                            user_id=config.user_id,
+                            kb_id=config.kb_id,
+                            query=sample.query,
+                            top_k=config.top_k,
+                            search_type=config.search_type,
+                            fetch_k=config.fetch_k,
+                            reranker_enabled=config.reranker_enabled,
+                        ),
+                    )
+                    for sample in samples
+                ]
+
+            all_results.extend(results)
+            summary = summarize(results)
+            print(f"\n=== PgVector Retrieval Eval | {config.label} ===")
+            print(
+                "summary total={total} scored={scored} skipped={skipped} "
+                "source_hit={source_hit} source_hit_rate={source_hit_rate:.2%} "
+                "permission_ok={permission_ok} permission_ok_rate={permission_ok_rate:.2%} "
+                "passed={passed} pass_rate={pass_rate:.2%}".format(**summary)
+            )
+            for result in results:
+                if result.passed and not args.show_passes:
+                    continue
+                _print_result(result)
+
+            if args.manifest_output:
+                output_path = Path(args.manifest_output)
+                suffix = f"{search_type}_reranker_{reranker_mode}"
+                manifest_path = output_path.with_name(f"{output_path.stem}_{suffix}{output_path.suffix}")
+                _write_manifest(
+                    manifest_path,
+                    args=args,
+                    config=config,
+                    summary=summary,
+                    sample_count=len(samples),
+                )
+                print(f"manifest_written={manifest_path.as_posix()}")
 
     if args.bad_cases_out:
         _write_bad_cases(args.bad_cases_out, all_results)

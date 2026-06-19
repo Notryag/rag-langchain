@@ -117,8 +117,11 @@ class HotQuestionCacheTests(unittest.TestCase):
         retriever_calls = []
         model = FakeModel()
 
-        def retriever(session, *, user_id, kb_id, query, top_k):
+        retriever_kwargs = []
+
+        def retriever(session, *, user_id, kb_id, query, top_k, **kwargs):
             retriever_calls.append(query)
+            retriever_kwargs.append(kwargs)
             return [FakeChunk()]
 
         service = ChatService(
@@ -138,6 +141,9 @@ class HotQuestionCacheTests(unittest.TestCase):
         self.assertTrue(second.usage["cached"])
         self.assertEqual(second.usage["total_tokens"], 10)
         self.assertEqual(retriever_calls, ["怎么计费？"])
+        self.assertIn("search_type", retriever_kwargs[0])
+        self.assertIn("fetch_k", retriever_kwargs[0])
+        self.assertIn("reranker_enabled", retriever_kwargs[0])
         self.assertEqual(model.calls, 1)
         self.assertEqual(len([item for item in session.added if isinstance(item, ChatMessage)]), 4)
         runs = [item for item in session.added if isinstance(item, ChatRun)]
@@ -153,7 +159,7 @@ class HotQuestionCacheTests(unittest.TestCase):
             def to_reference(self):
                 return {"filename": "manual.txt", "chunk_index": 1, "content": long_content}
 
-        def retriever(session, *, user_id, kb_id, query, top_k):
+        def retriever(session, *, user_id, kb_id, query, top_k, **kwargs):
             return [LongChunk()]
 
         model = FakeModel()
@@ -172,7 +178,7 @@ class HotQuestionCacheTests(unittest.TestCase):
         self.assertEqual(answer.references[0]["content"], long_content)
 
     def test_chat_service_marks_run_failed_when_retriever_fails(self) -> None:
-        def failing_retriever(session, *, user_id, kb_id, query, top_k):
+        def failing_retriever(session, *, user_id, kb_id, query, top_k, **kwargs):
             raise RuntimeError("retriever failed")
 
         service = ChatService(
@@ -195,7 +201,7 @@ class HotQuestionCacheTests(unittest.TestCase):
         cache = InMemoryHotQuestionCache()
         model = FakeStreamingModel()
 
-        def retriever(session, *, user_id, kb_id, query, top_k):
+        def retriever(session, *, user_id, kb_id, query, top_k, **kwargs):
             return [FakeChunk()]
 
         service = ChatService(
@@ -221,7 +227,7 @@ class HotQuestionCacheTests(unittest.TestCase):
         cache = InMemoryHotQuestionCache()
         model = FakeStreamingModel()
 
-        def retriever(session, *, user_id, kb_id, query, top_k):
+        def retriever(session, *, user_id, kb_id, query, top_k, **kwargs):
             return [FakeChunk()]
 
         service = ChatService(

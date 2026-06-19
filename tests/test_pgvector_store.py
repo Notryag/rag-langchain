@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from langchain_core.documents import Document as LangChainDocument
 
@@ -11,6 +12,7 @@ from app.retrieval.pgvector_store import (
     retrieve_pgvector_hybrid_chunks,
     retrieve_pgvector_lexical_chunks,
     retrieve_pgvector_retrieved_chunks,
+    rerank_pgvector_chunks,
 )
 
 
@@ -193,6 +195,71 @@ class PgVectorStoreTests(unittest.TestCase):
 
         self.assertEqual([chunk.filename for chunk in results], ["dense.pdf", "lexical.pdf"])
         self.assertEqual(len(session.executed), 2)
+
+    def test_rerank_pgvector_chunks_preserves_original_chunk_payloads(self) -> None:
+        first = SimpleNamespace(
+            chunk_id=7,
+            document_id=9,
+            filename="first.pdf",
+            chunk_index=1,
+            content="一般内容",
+            metadata={"user_id": 2, "kb_id": 3},
+            distance=0.1,
+        )
+        second = SimpleNamespace(
+            chunk_id=8,
+            document_id=10,
+            filename="second.pdf",
+            chunk_index=1,
+            content="计费规则包括调用次数",
+            metadata={"user_id": 2, "kb_id": 3},
+            distance=0.2,
+        )
+
+        def fake_rerank(query, documents, *, top_k):
+            return [documents[1], documents[0]][:top_k]
+
+        with patch("app.retrieval.pgvector_store.rerank_documents", side_effect=fake_rerank):
+            results = rerank_pgvector_chunks("怎么计费", [first, second], top_k=2)
+
+        self.assertEqual([chunk.filename for chunk in results], ["second.pdf", "first.pdf"])
+
+    def test_retrieve_pgvector_chunks_fetches_candidates_before_rerank(self) -> None:
+        chunks = [
+            SimpleNamespace(
+                id=7,
+                document_id=9,
+                chunk_index=1,
+                content="第一",
+                chunk_metadata={"user_id": 2, "kb_id": 3},
+            ),
+            SimpleNamespace(
+                id=8,
+                document_id=10,
+                chunk_index=1,
+                content="第二",
+                chunk_metadata={"user_id": 2, "kb_id": 3},
+            ),
+        ]
+        session = FakeSession(execute_result=[(chunks[0], "first.pdf", 0.1), (chunks[1], "second.pdf", 0.2)])
+
+        def fake_rerank(query, documents, *, top_k):
+            return [documents[1]]
+
+        with patch("app.retrieval.pgvector_store.rerank_documents", side_effect=fake_rerank):
+            results = retrieve_pgvector_chunks(
+                session,
+                user_id=2,
+                kb_id=3,
+                query="怎么计费",
+                top_k=1,
+                fetch_k=2,
+                reranker_enabled=True,
+                embeddings=FakeEmbeddings(),
+            )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].filename, "second.pdf")
 
 
 if __name__ == "__main__":

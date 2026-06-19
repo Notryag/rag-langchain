@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.document import Document, DocumentChunk
 from app.retrieval.lexical import lexical_score
+from app.retrieval.reranker import rerank_documents
 from app.retrieval.splitter import split_documents_by_type
 from app.retrieval.types import RetrievedChunk
 from app.retrieval.vectorstore import get_embeddings
@@ -52,6 +53,7 @@ def retrieve_pgvector_retrieved_chunks(
     top_k: int,
     search_type: str = "similarity",
     fetch_k: int | None = None,
+    reranker_enabled: bool = False,
     embeddings=None,
 ) -> list[RetrievedChunk]:
     return [
@@ -65,6 +67,7 @@ def retrieve_pgvector_retrieved_chunks(
                 top_k=top_k,
                 search_type=search_type,
                 fetch_k=fetch_k,
+                reranker_enabled=reranker_enabled,
                 embeddings=embeddings,
             ),
             start=1,
@@ -110,19 +113,22 @@ def retrieve_pgvector_chunks(
     top_k: int,
     search_type: str = "similarity",
     fetch_k: int | None = None,
+    reranker_enabled: bool = False,
     embeddings=None,
 ) -> list[PgVectorRetrievedChunk]:
+    candidate_k = max(fetch_k or top_k, top_k) if reranker_enabled else top_k
     normalized_search_type = search_type.strip().lower()
     if normalized_search_type == "hybrid":
-        return retrieve_pgvector_hybrid_chunks(
+        chunks = retrieve_pgvector_hybrid_chunks(
             session,
             user_id=user_id,
             kb_id=kb_id,
             query=query,
-            top_k=top_k,
+            top_k=candidate_k,
             fetch_k=fetch_k,
             embeddings=embeddings,
         )
+        return rerank_pgvector_chunks(query, chunks, top_k=top_k) if reranker_enabled else chunks[:top_k]
     if normalized_search_type != "similarity":
         raise ValueError(f"Unsupported pgvector search_type: {search_type}")
 
@@ -133,7 +139,7 @@ def retrieve_pgvector_chunks(
         .join(Document, Document.id == DocumentChunk.document_id)
         .where(DocumentChunk.user_id == user_id, DocumentChunk.kb_id == kb_id)
         .order_by(distance)
-        .limit(top_k)
+        .limit(candidate_k)
     )
 
     results: list[PgVectorRetrievedChunk] = []
@@ -149,7 +155,7 @@ def retrieve_pgvector_chunks(
                 distance=float(score) if score is not None else None,
             )
         )
-    return results
+    return rerank_pgvector_chunks(query, results, top_k=top_k) if reranker_enabled else results[:top_k]
 
 
 def retrieve_pgvector_lexical_chunks(
@@ -169,10 +175,7 @@ def retrieve_pgvector_lexical_chunks(
     scored: list[tuple[int, int, PgVectorRetrievedChunk]] = []
     for chunk, filename in session.execute(statement):
         metadata = dict(chunk.chunk_metadata or {})
-        score = lexical_score(
-            query,
-            LangChainDocument(page_content=chunk.content, metadata=metadata),
-        )
+        score = _pgvector_lexical_score(query, chunk.content)
         if score <= 0:
             continue
         scored.append(
@@ -250,6 +253,41 @@ def _rrf_fuse_pgvector_chunks(
 
 def _pgvector_chunk_key(chunk: PgVectorRetrievedChunk) -> tuple[Any, ...]:
     return (chunk.chunk_id, chunk.document_id, chunk.chunk_index)
+
+
+def rerank_pgvector_chunks(
+    query: str,
+    chunks: list[PgVectorRetrievedChunk],
+    *,
+    top_k: int,
+) -> list[PgVectorRetrievedChunk]:
+    if not chunks:
+        return []
+
+    docs = [
+        LangChainDocument(
+            page_content=chunk.content,
+            metadata={
+                **chunk.metadata,
+                "source": chunk.filename,
+                "chunk_id": chunk.chunk_id,
+                "document_id": chunk.document_id,
+                "chunk_index": chunk.chunk_index,
+            },
+        )
+        for chunk in chunks
+    ]
+    reranked_docs = rerank_documents(query, docs, top_k=top_k)
+    chunk_by_key = {(chunk.document_id, chunk.chunk_index): chunk for chunk in chunks}
+    return [
+        chunk_by_key[(doc.metadata["document_id"], doc.metadata["chunk_index"])]
+        for doc in reranked_docs
+    ]
+
+
+def _pgvector_lexical_score(query: str, content: str) -> int:
+    doc = LangChainDocument(page_content=content, metadata={})
+    return lexical_score(query, doc)
 
 
 def _prepare_split_docs(*, document: Document, parsed_docs: list[LangChainDocument]) -> list[LangChainDocument]:
