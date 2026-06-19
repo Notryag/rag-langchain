@@ -37,12 +37,19 @@ class DocumentApiTests(unittest.TestCase):
         app.dependency_overrides.clear()
         self.client = TestClient(app)
         self.current_user = SimpleNamespace(id=1, username="alice", email="alice@example.com")
+        self.operation_logs: list[dict] = []
         app.dependency_overrides[auth_routes.get_current_user] = lambda: self.current_user
         app.dependency_overrides[document_routes.get_db_session] = lambda: object()
         self.dispatched_document_ids: list[int] = []
         app.dependency_overrides[document_routes.get_document_task_dispatcher] = (
             lambda: self.dispatched_document_ids.append
         )
+
+        class FakeOperationLogService:
+            def record(inner_self, session, **kwargs):
+                self.operation_logs.append(kwargs)
+
+        app.dependency_overrides[document_routes.get_operation_log_service] = lambda: FakeOperationLogService()
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
@@ -72,6 +79,8 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(fake_service.kb_id, 2)
         self.assertEqual(fake_service.content, b"hello")
         self.assertEqual(self.dispatched_document_ids, [3])
+        self.assertEqual(self.operation_logs[0]["action"], "document.upload")
+        self.assertEqual(self.operation_logs[0]["resource_id"], 3)
 
     def test_upload_document_rejects_missing_kb(self) -> None:
         class FakeDocumentService:
@@ -137,6 +146,7 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.document_id, 3)
+        self.assertEqual(self.operation_logs[0]["action"], "document.delete")
 
     def test_process_document(self) -> None:
         class FakeDocumentService:
@@ -155,6 +165,8 @@ class DocumentApiTests(unittest.TestCase):
         self.assertEqual(response.json()["chunk_count"], 1)
         self.assertEqual(response.json()["document"]["status"], "completed")
         self.assertEqual(fake_service.user_id, 1)
+        self.assertEqual(self.operation_logs[0]["action"], "document.process")
+        self.assertEqual(self.operation_logs[0]["details"]["chunk_count"], 1)
 
     def test_missing_document_returns_404(self) -> None:
         class FakeDocumentService:

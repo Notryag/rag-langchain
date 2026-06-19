@@ -11,6 +11,7 @@ from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.document import DocumentProcessResponse, DocumentRead
 from app.services.document_service import DocumentNotFoundError, DocumentService, get_document_service
+from app.services.operation_log_service import OperationLogService, get_operation_log_service
 from app.workers.tasks import get_document_task_dispatcher
 
 router = APIRouter(tags=["documents"])
@@ -24,6 +25,7 @@ async def upload_document(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
     dispatch_document_processing=Depends(get_document_task_dispatcher),
 ) -> DocumentRead:
     content = await file.read()
@@ -40,6 +42,14 @@ async def upload_document(
         dispatch_document_processing(document.id)
     except Exception:
         logger.exception("文档异步处理任务投递失败。document_id=%s", document.id)
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="document.upload",
+        resource_type="document",
+        resource_id=document.id,
+        details={"kb_id": kb_id, "filename": document.filename, "content_type": document.content_type},
+    )
     return DocumentRead.model_validate(document)
 
 
@@ -71,8 +81,16 @@ def delete_document(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> Response:
     document_service.delete(session, user_id=current_user.id, document_id=document_id)
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="document.delete",
+        resource_type="document",
+        resource_id=document_id,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -82,6 +100,7 @@ def process_document(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     document_service: DocumentService = Depends(get_document_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> DocumentProcessResponse:
     try:
         document, chunk_count = document_service.process_sync(
@@ -97,6 +116,14 @@ def process_document(
             code="document_processing_failed",
             message=str(exc),
         ) from exc
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="document.process",
+        resource_type="document",
+        resource_id=document.id,
+        details={"kb_id": document.kb_id, "chunk_count": chunk_count, "status": document.status.value},
+    )
     return DocumentProcessResponse(
         document=DocumentRead.model_validate(document),
         parsed_units=chunk_count,

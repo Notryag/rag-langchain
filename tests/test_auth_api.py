@@ -15,6 +15,13 @@ class AuthApiTests(unittest.TestCase):
     def setUp(self) -> None:
         app.dependency_overrides.clear()
         self.client = TestClient(app)
+        self.operation_logs: list[dict] = []
+
+        class FakeOperationLogService:
+            def record(inner_self, session, **kwargs):
+                self.operation_logs.append(kwargs)
+
+        app.dependency_overrides[auth_routes.get_operation_log_service] = lambda: FakeOperationLogService()
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
@@ -40,6 +47,8 @@ class AuthApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json(), {"id": 1, "username": "alice", "email": "alice@example.com"})
+        self.assertEqual(self.operation_logs[0]["action"], "auth.register")
+        self.assertEqual(self.operation_logs[0]["resource_id"], 1)
 
     def test_register_conflict(self) -> None:
         class FakeAuthService:
@@ -85,6 +94,7 @@ class AuthApiTests(unittest.TestCase):
         self.assertEqual(response.json()["token_type"], "bearer")
         self.assertEqual(response.json()["user"]["username"], "alice")
         self.assertEqual(fake_service.username_or_email, "alice")
+        self.assertEqual(self.operation_logs[0]["action"], "auth.login")
 
     def test_login_rejects_invalid_credentials(self) -> None:
         class FakeAuthService:

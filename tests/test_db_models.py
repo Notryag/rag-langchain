@@ -20,9 +20,23 @@ class DbModelTests(unittest.TestCase):
                 "document_chunks",
                 "chat_sessions",
                 "chat_messages",
+                "operation_logs",
             },
             set(Base.metadata.tables),
         )
+
+    def test_operation_logs_keep_actor_resource_and_details(self) -> None:
+        table = Base.metadata.tables["operation_logs"]
+
+        self.assertIn("user_id", table.columns)
+        self.assertIn("action", table.columns)
+        self.assertIn("resource_type", table.columns)
+        self.assertIn("resource_id", table.columns)
+        self.assertIn("details", table.columns)
+
+        index_names = {index.name for index in table.indexes}
+        self.assertIn("ix_operation_logs_user_created", index_names)
+        self.assertIn("ix_operation_logs_resource", index_names)
 
     def test_document_status_values(self) -> None:
         self.assertEqual(

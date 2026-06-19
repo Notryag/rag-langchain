@@ -10,6 +10,7 @@ from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.auth import TokenResponse, UserCreate, UserLogin, UserRead
 from app.services.auth_service import AuthError, AuthService, get_auth_service
+from app.services.operation_log_service import OperationLogService, get_operation_log_service
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -47,6 +48,7 @@ def register(
     payload: UserCreate,
     session: Session = Depends(get_db_session),
     auth_service: AuthService = Depends(get_auth_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> UserRead:
     try:
         user = auth_service.register(session, payload)
@@ -56,6 +58,14 @@ def register(
             code="auth_conflict",
             message=str(exc),
         ) from exc
+    operation_log_service.record(
+        session,
+        user_id=user.id,
+        action="auth.register",
+        resource_type="user",
+        resource_id=user.id,
+        details={"username": user.username, "email": user.email},
+    )
     return UserRead.model_validate(user)
 
 
@@ -64,9 +74,10 @@ def login(
     payload: UserLogin,
     session: Session = Depends(get_db_session),
     auth_service: AuthService = Depends(get_auth_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> TokenResponse:
     try:
-        return auth_service.login(
+        token_response = auth_service.login(
             session,
             username_or_email=payload.username_or_email,
             password=payload.password,
@@ -78,6 +89,15 @@ def login(
             message=str(exc),
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+    operation_log_service.record(
+        session,
+        user_id=token_response.user.id,
+        action="auth.login",
+        resource_type="user",
+        resource_id=token_response.user.id,
+        details={"username_or_email": payload.username_or_email.strip().lower()},
+    )
+    return token_response
 
 
 @router.get("/me", response_model=UserRead)

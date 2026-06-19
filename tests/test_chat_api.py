@@ -47,8 +47,15 @@ class ChatApiTests(unittest.TestCase):
         app.dependency_overrides.clear()
         self.client = TestClient(app)
         self.current_user = SimpleNamespace(id=1, username="alice", email="alice@example.com")
+        self.operation_logs: list[dict] = []
         app.dependency_overrides[auth_routes.get_current_user] = lambda: self.current_user
         app.dependency_overrides[chat_routes.get_db_session] = lambda: object()
+
+        class FakeOperationLogService:
+            def record(inner_self, session, **kwargs):
+                self.operation_logs.append(kwargs)
+
+        app.dependency_overrides[chat_routes.get_operation_log_service] = lambda: FakeOperationLogService()
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
@@ -81,6 +88,8 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(fake_service.kb_id, 2)
         self.assertEqual(fake_service.question, "怎么计费？")
         self.assertEqual(fake_service.session_id, 12)
+        self.assertEqual(self.operation_logs[0]["action"], "chat.ask")
+        self.assertEqual(self.operation_logs[0]["details"]["reference_count"], 1)
 
     def test_chat_returns_404_for_missing_session(self) -> None:
         class FakeChatService:

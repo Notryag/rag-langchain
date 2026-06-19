@@ -8,6 +8,7 @@ from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.knowledge_base import KnowledgeBaseCreate, KnowledgeBaseRead, KnowledgeBaseUpdate
 from app.services.kb_service import KnowledgeBaseService, get_kb_service
+from app.services.operation_log_service import OperationLogService, get_operation_log_service
 
 router = APIRouter(prefix="/api/v1/kbs", tags=["knowledge_bases"])
 
@@ -18,8 +19,17 @@ def create_knowledge_base(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     kb_service: KnowledgeBaseService = Depends(get_kb_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> KnowledgeBaseRead:
     knowledge_base = kb_service.create(session, user_id=current_user.id, payload=payload)
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="kb.create",
+        resource_type="knowledge_base",
+        resource_id=knowledge_base.id,
+        details={"name": knowledge_base.name},
+    )
     return KnowledgeBaseRead.model_validate(knowledge_base)
 
 
@@ -50,8 +60,17 @@ def update_knowledge_base(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     kb_service: KnowledgeBaseService = Depends(get_kb_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> KnowledgeBaseRead:
     knowledge_base = kb_service.update(session, user_id=current_user.id, kb_id=kb_id, payload=payload)
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="kb.update",
+        resource_type="knowledge_base",
+        resource_id=knowledge_base.id,
+        details={"name": knowledge_base.name},
+    )
     return KnowledgeBaseRead.model_validate(knowledge_base)
 
 
@@ -61,6 +80,14 @@ def delete_knowledge_base(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     kb_service: KnowledgeBaseService = Depends(get_kb_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> Response:
     kb_service.delete(session, user_id=current_user.id, kb_id=kb_id)
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="kb.delete",
+        resource_type="knowledge_base",
+        resource_id=kb_id,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

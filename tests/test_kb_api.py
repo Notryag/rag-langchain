@@ -31,8 +31,15 @@ class KnowledgeBaseApiTests(unittest.TestCase):
         app.dependency_overrides.clear()
         self.client = TestClient(app)
         self.current_user = SimpleNamespace(id=1, username="alice", email="alice@example.com")
+        self.operation_logs: list[dict] = []
         app.dependency_overrides[auth_routes.get_current_user] = lambda: self.current_user
         app.dependency_overrides[kb_routes.get_db_session] = lambda: object()
+
+        class FakeOperationLogService:
+            def record(inner_self, session, **kwargs):
+                self.operation_logs.append(kwargs)
+
+        app.dependency_overrides[kb_routes.get_operation_log_service] = lambda: FakeOperationLogService()
 
     def tearDown(self) -> None:
         app.dependency_overrides.clear()
@@ -52,6 +59,8 @@ class KnowledgeBaseApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["name"], "产品知识库")
         self.assertEqual(fake_service.user_id, 1)
+        self.assertEqual(self.operation_logs[0]["action"], "kb.create")
+        self.assertEqual(self.operation_logs[0]["resource_id"], 10)
 
     def test_list_knowledge_bases(self) -> None:
         class FakeKbService:
@@ -101,6 +110,7 @@ class KnowledgeBaseApiTests(unittest.TestCase):
         self.assertEqual(response.json()["name"], "售后知识库")
         self.assertEqual(fake_service.kb_id, 12)
         self.assertEqual(fake_service.user_id, 1)
+        self.assertEqual(self.operation_logs[0]["action"], "kb.update")
 
     def test_delete_knowledge_base(self) -> None:
         class FakeKbService:
@@ -116,6 +126,8 @@ class KnowledgeBaseApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(fake_service.kb_id, 12)
         self.assertEqual(fake_service.user_id, 1)
+        self.assertEqual(self.operation_logs[0]["action"], "kb.delete")
+        self.assertEqual(self.operation_logs[0]["resource_id"], 12)
 
     def test_returns_404_when_knowledge_base_is_missing(self) -> None:
         class FakeKbService:

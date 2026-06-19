@@ -8,6 +8,7 @@ from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.chat import ChatAnswerResponse, ChatMessageRead, ChatRequest, ChatSessionRead
 from app.services.chat_service import ChatService, get_chat_service
+from app.services.operation_log_service import OperationLogService, get_operation_log_service
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
@@ -19,6 +20,7 @@ def chat(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db_session),
     chat_service: ChatService = Depends(get_chat_service),
+    operation_log_service: OperationLogService = Depends(get_operation_log_service),
 ) -> ChatAnswerResponse:
     answer = chat_service.ask(
         session,
@@ -26,6 +28,14 @@ def chat(
         kb_id=kb_id,
         question=payload.question.strip(),
         session_id=payload.session_id,
+    )
+    operation_log_service.record(
+        session,
+        user_id=current_user.id,
+        action="chat.ask",
+        resource_type="chat_session",
+        resource_id=answer.session_id,
+        details={"kb_id": kb_id, "reference_count": len(answer.references)},
     )
     return ChatAnswerResponse(answer=answer.answer, references=answer.references, session_id=answer.session_id)
 
