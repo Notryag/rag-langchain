@@ -106,6 +106,9 @@ docker compose up -d
 # 执行数据库迁移
 uv run alembic upgrade head
 
+# 多租户端到端 smoke
+uv run python scripts/smoke_multitenant.py --skip-chat
+
 # 采样生成回答
 uv run python -m evaluation.generate_answers --limit 10
 

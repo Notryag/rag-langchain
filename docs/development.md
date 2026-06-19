@@ -87,6 +87,45 @@ uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
 uv run python -m unittest tests.test_api
 ```
 
+### 多租户端到端 Smoke
+
+先启动依赖和数据库迁移:
+
+```powershell
+docker compose up -d
+uv run alembic upgrade head
+```
+
+再分别启动 API 和 Celery worker:
+
+```powershell
+uv run python -m app.main web
+uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
+```
+
+执行端到端 smoke:
+
+```powershell
+uv run python scripts/smoke_multitenant.py
+```
+
+该脚本会依次执行:
+
+1. 健康检查
+2. 用户注册 / 登录
+3. 创建知识库
+4. 上传 txt 文档
+5. 等待异步处理完成
+6. 如果异步处理未完成，默认调用同步处理接口兜底
+7. 调用问答接口并检查 references
+8. 查询聊天会话和消息记录
+
+如果当前环境没有可用模型配置，可先跳过问答调用，只验证认证、知识库、上传和处理链路:
+
+```powershell
+uv run python scripts/smoke_multitenant.py --skip-chat
+```
+
 ### 检索评测
 
 ```powershell
