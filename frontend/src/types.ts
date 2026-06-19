@@ -1,4 +1,6 @@
 export type Citation = {
+  rank?: number;
+  source?: string;
   document_id?: number;
   filename?: string;
   chunk_id?: number;
@@ -71,6 +73,7 @@ export type ToolTrace = {
   toolName?: string;
   statusLine?: string;
   content: string;
+  citations?: Citation[];
 };
 
 export type ChatResponse = {

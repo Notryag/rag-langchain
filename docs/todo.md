@@ -10,7 +10,7 @@
 /api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。当前最短板是前端还没有充分展示 Agent 的 `tool_call` / `tool_result` 和检索到的 chunks。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前最短板是前端还没有会话历史加载，以及后端还缺一个“只检索不问 AI”的 preview/debug 接口。
 
 ## 当前优先级
 
@@ -116,9 +116,11 @@ frontend/src/components/StatusBadge.tsx
 - [x] 聊天使用当前选中知识库，不再手动填 `kb_id`
 - [ ] 新会话、历史会话列表、消息加载
 - [x] SSE 展示 `answer_delta / complete / error`
-- [ ] 引用来源展示 filename、chunk_index、content 预览
+- [x] SSE 展示 Agent `tool_call / tool_result`
+- [x] 引用来源展示 filename/source、chunk_index、content 预览
 - [x] 发送中、错误、空 references 的状态处理
 - [ ] 保留 usage 展示，但不阻塞主要聊天体验
+- [ ] 增加只检索不问 AI 的 preview 接口，用于直接查看 pgvector 命中的 chunks
 
 建议组件:
 

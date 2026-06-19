@@ -655,6 +655,18 @@ button {
   gap: 6px;
 }
 
+.reference-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.reference-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .profile-snapshot {
   display: flex;
   flex-wrap: wrap;
@@ -715,12 +727,64 @@ button {
 }
 
 .tool-trace summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   min-height: 34px;
   padding: 8px 10px;
   color: var(--text);
   cursor: pointer;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.tool-trace summary small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.retrieved-snippets {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.retrieved-snippets.compact {
+  padding: 0;
+  border-top: 0;
+}
+
+.retrieved-snippet {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.snippet-label {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.retrieved-snippet p {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.snippet-empty {
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
 }
 
 .tool-trace pre {

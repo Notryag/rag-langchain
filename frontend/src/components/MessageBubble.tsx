@@ -1,6 +1,43 @@
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 
-import type { ChatMessage, FeedbackRating } from "../types";
+import type { ChatMessage, Citation, FeedbackRating, ToolTrace } from "../types";
+
+type RetrievedSnippet = {
+  label: string;
+  content: string;
+  citation?: Citation;
+};
+
+function citationTitle(citation: Citation) {
+  const filename = citation.filename || citation.source || "引用";
+  const parts = [filename];
+  if (citation.page) parts.push(`p.${citation.page}`);
+  if (citation.chunk_index !== undefined && citation.chunk_index !== null) parts.push(`chunk ${citation.chunk_index}`);
+  return parts.join(" · ");
+}
+
+function parseToolSnippets(trace: ToolTrace): RetrievedSnippet[] {
+  if (!trace.content || trace.content === "No relevant context found.") return [];
+  const sections = trace.content
+    .split(/\n{2,}/)
+    .map((section) => section.trim())
+    .filter(Boolean)
+    .filter((section) => !section.startsWith("Context summary:"));
+
+  return sections
+    .map((section) => {
+      const [header, ...bodyParts] = section.split("\n");
+      const body = bodyParts.join("\n").trim();
+      const rank = Number(header.match(/^\[(\d+)\]/)?.[1]);
+      const citation = Number.isFinite(rank) ? trace.citations?.find((item) => item.rank === rank) : undefined;
+      return {
+        label: citation ? citationTitle(citation) : header.replace(/^\[\d+\]\s*/, ""),
+        content: body || section,
+        citation,
+      };
+    })
+    .filter((snippet) => snippet.content);
+}
 
 function MessageBubble({
   message,
@@ -31,19 +68,41 @@ function MessageBubble({
           </div>
         )}
         {!!message.citations?.length && (
-          <div className="citations">
-            {message.citations.map((citation, index) => (
-              <span className="citation" key={`${citation.chunk_id || citation.filename || "ref"}-${index}`}>
-                {citation.filename || "引用"}
-              </span>
-            ))}
+          <div className="reference-panel">
+            <div className="reference-title">引用片段</div>
+            <div className="citations">
+              {message.citations.map((citation, index) => (
+                <span
+                  className="citation"
+                  key={`${citation.chunk_id || citation.filename || citation.source || "ref"}-${index}`}
+                >
+                  {citationTitle(citation)}
+                </span>
+              ))}
+            </div>
+            {message.citations.some((citation) => citation.content) && (
+              <div className="retrieved-snippets compact">
+                {message.citations
+                  .filter((citation) => citation.content)
+                  .map((citation, index) => (
+                    <div className="retrieved-snippet" key={`${citationTitle(citation)}-${index}`}>
+                      <div className="snippet-label">{citationTitle(citation)}</div>
+                      <p>{citation.content}</p>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
         {!!message.toolTraces?.length && (
           <div className="tool-traces">
             {message.toolTraces.map((trace, index) => (
               <details className="tool-trace" key={`${trace.toolName || "tool"}-${index}`}>
-                <summary>{trace.toolName || trace.statusLine || "tool_result"}</summary>
+                <summary>
+                  <span>{trace.statusLine || trace.toolName || "tool_result"}</span>
+                  {!!trace.citations?.length && <small>{trace.citations.length} 个片段</small>}
+                </summary>
+                <SnippetList trace={trace} />
                 <pre>{trace.content}</pre>
               </details>
             ))}
@@ -80,6 +139,22 @@ function MessageBubble({
         )}
       </div>
     </article>
+  );
+}
+
+function SnippetList({ trace }: { trace: ToolTrace }) {
+  const snippets = parseToolSnippets(trace);
+  if (!snippets.length) return <div className="snippet-empty">没有命中可用片段</div>;
+
+  return (
+    <div className="retrieved-snippets">
+      {snippets.map((snippet, index) => (
+        <div className="retrieved-snippet" key={`${snippet.label}-${index}`}>
+          <div className="snippet-label">{snippet.label}</div>
+          <p>{snippet.content}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 

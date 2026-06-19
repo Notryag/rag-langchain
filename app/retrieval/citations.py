@@ -18,8 +18,10 @@ _CITATION_LINE_RE = re.compile(
 class Citation(TypedDict):
     rank: int
     source: str
+    filename: NotRequired[str]
     page: str | None
     chunk_index: int | None
+    content: NotRequired[str]
     label: NotRequired[str]
 
 def build_citation_label(*, source: str, page: str | None, chunk_index: int | None) -> str:
@@ -62,3 +64,19 @@ def _match_to_citation(match: re.Match[str]) -> Citation:
 
 def extract_citations_from_text(text: str) -> list[Citation]:
     return [_match_to_citation(match) for match in _CITATION_LINE_RE.finditer(text)]
+
+
+def extract_references_from_text(text: str) -> list[Citation]:
+    citations_by_rank = {citation["rank"]: citation for citation in extract_citations_from_text(text)}
+    references: list[Citation] = []
+    for section in [part.strip() for part in text.split("\n\n") if part.strip()]:
+        header, _, content = section.partition("\n")
+        match = _CITATION_LINE_RE.match(header)
+        if match is None:
+            continue
+        rank = int(match.group("rank"))
+        citation = dict(citations_by_rank.get(rank) or _match_to_citation(match))
+        citation["filename"] = citation["source"]
+        citation["content"] = content.strip()
+        references.append(citation)
+    return references

@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from sqlalchemy.orm import Session
 
 from app.agent.create_agent import build_agent
-from app.retrieval.citations import extract_citations_from_text
+from app.retrieval.citations import extract_references_from_text
 from app.retrieval.profile import RetrievalProfile
 
 logger = logging.getLogger(__name__)
@@ -317,7 +317,7 @@ class AgentChatClient:
                                     "name": getattr(msg, "name", None),
                                     "tool_call_id": getattr(msg, "tool_call_id", None),
                                     "id": msg_id,
-                                    "citations": extract_citations_from_text(tool_content),
+                                    "citations": extract_references_from_text(tool_content),
                                 },
                             )
                 continue

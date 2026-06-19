@@ -321,6 +321,7 @@ function App() {
           toolName: eventData.data.tool_name,
           statusLine: eventData.data.status_line,
           content: eventData.data.content,
+          citations: eventData.data.citations || [],
         });
       }
       updateAssistant(assistantId, {
