@@ -39,8 +39,9 @@
 
 - [x] 增加 `/api/v1/auth/register`、`/api/v1/auth/login`、`/api/v1/auth/me` 前端 API 方法
 - [x] 增加 `/api/v1/kbs` 创建、列表前端 API 方法
-- [ ] 增加知识库编辑、删除前端 API 方法
-- [ ] 增加文档上传、列表、详情、删除、手动处理 API 方法
+- [x] 增加知识库编辑、删除前端 API 方法
+- [x] 增加文档上传、列表、删除、手动处理 API 方法
+- [ ] 增加文档详情前端 API 方法
 - [x] 增加聊天 SSE API 方法
 - [x] 统一 Bearer token 注入和基础错误处理
 - [x] 将 token 保存到 `localStorage`
@@ -78,11 +79,11 @@ frontend/src/components/RegisterForm.tsx
 
 - [x] 展示当前用户知识库列表
 - [x] 创建默认知识库
-- [ ] 创建自定义知识库
-- [ ] 编辑知识库名称和描述
-- [ ] 删除知识库前二次确认
-- [ ] 选择当前知识库后加载文档和聊天区域
-- [ ] 空知识库状态给出创建入口
+- [x] 创建自定义知识库
+- [x] 编辑知识库名称和描述
+- [x] 删除知识库前二次确认
+- [x] 选择当前知识库后加载文档和聊天区域
+- [x] 空知识库状态给出创建入口
 
 建议组件:
 
@@ -94,12 +95,12 @@ frontend/src/components/EmptyState.tsx
 
 ## Batch F4: 文档上传和状态追踪
 
-- [ ] 支持选择文件上传到当前知识库
-- [ ] 展示文档列表: 文件名、content type、状态、错误信息、更新时间
-- [ ] 支持 pending / processing / completed / failed 状态样式
-- [ ] 支持手动触发处理 `/api/v1/documents/{document_id}/process`
-- [ ] 支持删除文档
-- [ ] 上传或处理后自动刷新文档列表
+- [x] 支持选择文件上传到当前知识库
+- [x] 展示文档列表: 文件名、content type、状态、错误信息、更新时间
+- [x] 支持 pending / processing / completed / failed 状态样式
+- [x] 支持手动触发处理 `/api/v1/documents/{document_id}/process`
+- [x] 支持删除文档
+- [x] 上传或处理后自动刷新文档列表
 
 建议组件:
 
@@ -112,11 +113,11 @@ frontend/src/components/StatusBadge.tsx
 
 ## Batch F5: 聊天体验收口
 
-- [ ] 聊天使用当前选中知识库，不再手动填 `kb_id`
+- [x] 聊天使用当前选中知识库，不再手动填 `kb_id`
 - [ ] 新会话、历史会话列表、消息加载
-- [ ] SSE 展示 `answer_delta / complete / error`
+- [x] SSE 展示 `answer_delta / complete / error`
 - [ ] 引用来源展示 filename、chunk_index、content 预览
-- [ ] 发送中、错误、空 references 的状态处理
+- [x] 发送中、错误、空 references 的状态处理
 - [ ] 保留 usage 展示，但不阻塞主要聊天体验
 
 建议组件:

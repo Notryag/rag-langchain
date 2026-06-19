@@ -1,13 +1,29 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-import { checkHealth, createKnowledgeBase, listKnowledgeBases, loadConfig, loadMe, streamChat } from "./api";
+import {
+  checkHealth,
+  createKnowledgeBase,
+  deleteDocument,
+  deleteKnowledgeBase,
+  listDocuments,
+  listKnowledgeBases,
+  loadConfig,
+  loadMe,
+  processDocument,
+  streamChat,
+  updateKnowledgeBase,
+  uploadDocument,
+} from "./api";
 import AuthPanel from "./components/AuthPanel";
 import ChatPanel from "./components/ChatPanel";
+import DocumentPanel from "./components/DocumentPanel";
+import KbManager from "./components/KbManager";
 import Sidebar from "./components/Sidebar";
 import type {
   ChatMessage,
   Citation,
   FeedbackRating,
+  KnowledgeDocument,
   KnowledgeBase,
   PublicConfig,
   RetrievalProfile,
@@ -29,6 +45,7 @@ function App() {
   const [apiToken, setApiToken] = useState(() => localStorage.getItem(tokenStorageKey) || "");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [activeKbId, setActiveKbId] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState<number | undefined>(undefined);
   const [config, setConfig] = useState<PublicConfig | null>(null);
@@ -50,6 +67,14 @@ function App() {
     if (!apiToken) return;
     void loadWorkspace(apiToken);
   }, [apiToken]);
+
+  useEffect(() => {
+    if (!apiToken || !activeKbId) {
+      setDocuments([]);
+      return;
+    }
+    void refreshDocuments();
+  }, [apiToken, activeKbId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
@@ -75,12 +100,13 @@ function App() {
       const [user, kbs] = await Promise.all([loadMe(token), listKnowledgeBases(token)]);
       setCurrentUser(user);
       setKnowledgeBases(kbs);
-      setActiveKbId((current) => current || kbs[0]?.id || null);
+      setActiveKbId((current) => (current && kbs.some((kb) => kb.id === current) ? current : kbs[0]?.id || null));
     } catch (error) {
       localStorage.removeItem(tokenStorageKey);
       setApiToken("");
       setCurrentUser(null);
       setKnowledgeBases([]);
+      setDocuments([]);
       setActiveKbId(null);
       setWorkspaceError(error instanceof Error ? error.message : "加载用户信息失败");
     } finally {
@@ -99,6 +125,7 @@ function App() {
     setApiToken("");
     setCurrentUser(null);
     setKnowledgeBases([]);
+    setDocuments([]);
     setActiveKbId(null);
     setSessionId(undefined);
     setMessages([welcomeMessage]);
@@ -129,6 +156,77 @@ function App() {
       setMessages([welcomeMessage]);
     } catch (error) {
       setWorkspaceError(error instanceof Error ? error.message : "创建知识库失败");
+    } finally {
+      setWorkspacePending(false);
+    }
+  }
+
+  async function createKb(payload: { name: string; description?: string }) {
+    if (!apiToken) return;
+    const kb = await createKnowledgeBase(apiToken, payload);
+    setKnowledgeBases((current) => [kb, ...current]);
+    setActiveKbId(kb.id);
+    setSessionId(undefined);
+    setMessages([welcomeMessage]);
+  }
+
+  async function updateKb(kb: KnowledgeBase, payload: { name: string; description?: string }) {
+    if (!apiToken) return;
+    const updated = await updateKnowledgeBase(apiToken, kb.id, payload);
+    setKnowledgeBases((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+  }
+
+  async function deleteKb(kb: KnowledgeBase) {
+    if (!apiToken) return;
+    await deleteKnowledgeBase(apiToken, kb.id);
+    setKnowledgeBases((current) => {
+      const next = current.filter((item) => item.id !== kb.id);
+      setActiveKbId(next[0]?.id || null);
+      return next;
+    });
+    setDocuments([]);
+    setSessionId(undefined);
+    setMessages([welcomeMessage]);
+  }
+
+  async function refreshDocuments() {
+    if (!apiToken || !activeKbId) return;
+    setWorkspaceError("");
+    try {
+      setDocuments(await listDocuments(apiToken, activeKbId));
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : "加载文档失败");
+    }
+  }
+
+  async function uploadActiveDocument(file: File) {
+    if (!apiToken || !activeKbId) return;
+    setWorkspacePending(true);
+    try {
+      const document = await uploadDocument(apiToken, activeKbId, file);
+      setDocuments((current) => [document, ...current]);
+    } finally {
+      setWorkspacePending(false);
+    }
+  }
+
+  async function processActiveDocument(document: KnowledgeDocument) {
+    if (!apiToken) return;
+    setWorkspacePending(true);
+    try {
+      const response = await processDocument(apiToken, document.id);
+      setDocuments((current) => current.map((item) => (item.id === document.id ? response.document : item)));
+    } finally {
+      setWorkspacePending(false);
+    }
+  }
+
+  async function deleteActiveDocument(document: KnowledgeDocument) {
+    if (!apiToken) return;
+    setWorkspacePending(true);
+    try {
+      await deleteDocument(apiToken, document.id);
+      setDocuments((current) => current.filter((item) => item.id !== document.id));
     } finally {
       setWorkspacePending(false);
     }
@@ -262,6 +360,8 @@ function App() {
     updateAssistant(message.id, { feedbackRating: rating, feedbackPending: false });
   }
 
+  const activeKb = knowledgeBases.find((kb) => kb.id === activeKbId) || null;
+
   if (!apiToken || !currentUser) {
     return <AuthPanel apiStatus={apiStatus} onAuthenticated={handleAuthenticated} />;
   }
@@ -291,6 +391,27 @@ function App() {
         onResetThread={resetThread}
       />
       <ChatPanel
+        header={
+          <>
+            <KbManager
+              activeKb={activeKb}
+              pending={workspacePending}
+              onCreate={createKb}
+              onDelete={deleteKb}
+              onUpdate={updateKb}
+            />
+            {activeKb && (
+              <DocumentPanel
+                documents={documents}
+                pending={workspacePending}
+                onDelete={deleteActiveDocument}
+                onProcess={processActiveDocument}
+                onRefresh={refreshDocuments}
+                onUpload={uploadActiveDocument}
+              />
+            )}
+          </>
+        }
         input={input}
         messages={messages}
         messagesEndRef={messagesEndRef}

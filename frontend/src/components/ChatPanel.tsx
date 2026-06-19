@@ -1,10 +1,11 @@
 import { RotateCcw, Send, Trash2 } from "lucide-react";
-import type { FormEvent, RefObject } from "react";
+import type { FormEvent, ReactNode, RefObject } from "react";
 
 import type { ChatMessage, FeedbackRating } from "../types";
 import MessageBubble from "./MessageBubble";
 
 type ChatPanelProps = {
+  header?: ReactNode;
   input: string;
   messages: ChatMessage[];
   messagesEndRef: RefObject<HTMLDivElement | null>;
@@ -16,6 +17,7 @@ type ChatPanelProps = {
 };
 
 function ChatPanel({
+  header,
   input,
   messages,
   messagesEndRef,
@@ -37,6 +39,8 @@ function ChatPanel({
           清空
         </button>
       </header>
+
+      {header && <div className="workspace-strip">{header}</div>}
 
       <div className="messages" aria-live="polite">
         {messages.map((message) => (

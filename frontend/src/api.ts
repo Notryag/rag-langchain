@@ -88,9 +88,52 @@ export async function createKnowledgeBase(
   return response.json();
 }
 
+export async function updateKnowledgeBase(
+  token: string,
+  kbId: number,
+  payload: { name?: string; description?: string },
+): Promise<KnowledgeBase> {
+  const response = await request(
+    `/api/v1/kbs/${kbId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+    token,
+  );
+  return response.json();
+}
+
+export async function deleteKnowledgeBase(token: string, kbId: number): Promise<void> {
+  await request(`/api/v1/kbs/${kbId}`, { method: "DELETE" }, token);
+}
+
 export async function listDocuments(token: string, kbId: number): Promise<KnowledgeDocument[]> {
   const response = await request(`/api/v1/kbs/${kbId}/documents`, {}, token);
   return response.json();
+}
+
+export async function uploadDocument(token: string, kbId: number, file: File): Promise<KnowledgeDocument> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await request(
+    `/api/v1/kbs/${kbId}/documents`,
+    {
+      method: "POST",
+      body: formData,
+    },
+    token,
+  );
+  return response.json();
+}
+
+export async function processDocument(token: string, documentId: number): Promise<{ document: KnowledgeDocument }> {
+  const response = await postJson(`/api/v1/documents/${documentId}/process`, {}, token);
+  return response.json();
+}
+
+export async function deleteDocument(token: string, documentId: number): Promise<void> {
+  await request(`/api/v1/documents/${documentId}`, { method: "DELETE" }, token);
 }
 
 export async function streamChat({
