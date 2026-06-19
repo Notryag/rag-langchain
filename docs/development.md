@@ -55,6 +55,9 @@ uv run python -m <module>
 - `JWT_SECRET_KEY` 默认值仅适合本地开发，生产环境必须替换。
 - `ACCESS_TOKEN_EXPIRE_MINUTES` 默认 `60`。
 - `UPLOAD_DIR` 默认 `./storage/uploads`，用于保存上传原始文件。
+- `RATE_LIMIT_ENABLED` 默认 `true`，用于开启 `/api/v1` 接口限流。
+- `RATE_LIMIT_REQUESTS` 默认 `60`，表示一个窗口内允许的请求数。
+- `RATE_LIMIT_WINDOW_SECONDS` 默认 `60`，表示限流窗口秒数。
 - 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令

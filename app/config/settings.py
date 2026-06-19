@@ -80,6 +80,9 @@ class Settings:
     jwt_algorithm: str
     access_token_expire_minutes: int
     upload_dir: str
+    rate_limit_enabled: bool
+    rate_limit_requests: int
+    rate_limit_window_seconds: int
 
     def __post_init__(self) -> None:
         if self.retrieval_search_type not in _SUPPORTED_RETRIEVAL_SEARCH_TYPES:
@@ -107,6 +110,8 @@ class Settings:
             "CHUNK_SIZE": self.chunk_size,
             "ACCESS_TOKEN_EXPIRE_MINUTES": self.access_token_expire_minutes,
             "EMBEDDING_DIMENSION": self.embedding_dimension,
+            "RATE_LIMIT_REQUESTS": self.rate_limit_requests,
+            "RATE_LIMIT_WINDOW_SECONDS": self.rate_limit_window_seconds,
         }
         for field_name, field_value in positive_fields.items():
             if field_value <= 0:
@@ -184,6 +189,9 @@ class Settings:
             jwt_algorithm=(os.getenv("JWT_ALGORITHM") or "HS256").strip(),
             access_token_expire_minutes=_get_int_env("ACCESS_TOKEN_EXPIRE_MINUTES", 60),
             upload_dir=(os.getenv("UPLOAD_DIR") or "./storage/uploads").strip(),
+            rate_limit_enabled=_get_bool_env("RATE_LIMIT_ENABLED", True),
+            rate_limit_requests=_get_int_env("RATE_LIMIT_REQUESTS", 60),
+            rate_limit_window_seconds=_get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60),
         )
 
 

@@ -3,12 +3,13 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.errors import register_error_handlers
+from app.api.rate_limit import enforce_rate_limit
 from app.api.routes import router as api_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
@@ -38,10 +39,10 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-app.include_router(auth_router)
-app.include_router(knowledge_base_router)
-app.include_router(document_router)
-app.include_router(chat_router)
+app.include_router(auth_router, dependencies=[Depends(enforce_rate_limit)])
+app.include_router(knowledge_base_router, dependencies=[Depends(enforce_rate_limit)])
+app.include_router(document_router, dependencies=[Depends(enforce_rate_limit)])
+app.include_router(chat_router, dependencies=[Depends(enforce_rate_limit)])
 
 
 @app.get("/", include_in_schema=False)
