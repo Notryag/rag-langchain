@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config.settings import settings
 from app.db.models.chat import ChatMessage, ChatRole, ChatSession
-from app.retrieval.pgvector_store import retrieve_pgvector_chunks
+from app.retrieval.pgvector_store import retrieve_pgvector_retrieved_chunks
 from app.services.hot_question_cache import (
     CachedChatAnswer,
     InMemoryHotQuestionCache,
@@ -40,7 +40,7 @@ class ChatService:
         self,
         *,
         kb_service: KnowledgeBaseService | None = None,
-        retriever=retrieve_pgvector_chunks,
+        retriever=retrieve_pgvector_retrieved_chunks,
         chat_model=None,
         answer_cache: RedisHotQuestionCache | InMemoryHotQuestionCache | None = None,
     ) -> None:

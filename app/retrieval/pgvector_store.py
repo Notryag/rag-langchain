@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.document import Document, DocumentChunk
 from app.retrieval.splitter import split_documents_by_type
+from app.retrieval.types import RetrievedChunk
 from app.retrieval.vectorstore import get_embeddings
 
 
@@ -22,14 +23,46 @@ class PgVectorRetrievedChunk:
     metadata: dict[str, Any]
     distance: float | None = None
 
+    def to_retrieved_chunk(self, *, rank: int | None = None) -> RetrievedChunk:
+        return RetrievedChunk(
+            rank=rank,
+            content=self.content,
+            source=self.filename,
+            document_id=self.document_id,
+            chunk_id=self.chunk_id,
+            chunk_index=self.chunk_index,
+            metadata=self.metadata,
+            page=str(self.metadata["page"]) if self.metadata.get("page") is not None else None,
+            score=self.distance,
+        )
+
     def to_reference(self) -> dict[str, Any]:
-        return {
-            "document_id": self.document_id,
-            "filename": self.filename,
-            "chunk_id": self.chunk_id,
-            "chunk_index": self.chunk_index,
-            "content": self.content,
-        }
+        return self.to_retrieved_chunk().to_reference()
+
+
+def retrieve_pgvector_retrieved_chunks(
+    session: Session,
+    *,
+    user_id: int,
+    kb_id: int,
+    query: str,
+    top_k: int,
+    embeddings=None,
+) -> list[RetrievedChunk]:
+    return [
+        chunk.to_retrieved_chunk(rank=rank)
+        for rank, chunk in enumerate(
+            retrieve_pgvector_chunks(
+                session,
+                user_id=user_id,
+                kb_id=kb_id,
+                query=query,
+                top_k=top_k,
+                embeddings=embeddings,
+            ),
+            start=1,
+        )
+    ]
 
 
 def ingest_document_chunks(

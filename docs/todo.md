@@ -112,8 +112,8 @@
 
 ## Batch 9: 统一检索接口
 
-- [ ] 定义 retrieval protocol / DTO
-- [ ] 让 pgvector 检索返回统一结构
+- [x] 定义 retrieval protocol / DTO
+- [x] 让 pgvector 检索返回统一结构
 - [ ] 给旧 Chroma 检索加 adapter
 - [ ] 更新 chat service 依赖统一检索接口
 - [ ] 补权限过滤和 adapter 测试
