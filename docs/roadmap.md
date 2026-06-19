@@ -2,6 +2,7 @@
 
 相关文档:
 
+- AI 助手上下文入口: [ai-context.md](ai-context.md)
 - 项目现状: [project-status.md](project-status.md)
 - 架构说明: [architecture.md](architecture.md)
 - 多租户企业知识库 RAG 规划: [multitenant-rag.md](multitenant-rag.md)

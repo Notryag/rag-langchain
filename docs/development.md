@@ -1,5 +1,7 @@
 # 开发与运行约定
 
+如果你是 AI 助手，不确定该读哪些文档时，先看 [ai-context.md](ai-context.md)。本文只负责运行、配置、API 使用和本地验证细节。
+
 ## Python 环境
 
 本项目统一使用 `uv` 执行命令，不直接写死 `.venv\Scripts\python.exe`，也不建议直接使用系统 `python`。

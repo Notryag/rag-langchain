@@ -33,7 +33,6 @@
 
 ## 推荐阅读顺序
 
-1. `readme.md`
-2. `docs/architecture.md`
-3. `docs/architecture-review.md`
-4. `docs/development.md`
+1. `docs/ai-context.md`
+2. `readme.md`
+3. 按任务从 `docs/ai-context.md` 的“按任务渐进读取”继续选择文档

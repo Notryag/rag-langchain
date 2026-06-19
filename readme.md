@@ -140,6 +140,7 @@ docs/          # 架构、路线图、开发说明
 
 ## 文档导航
 
+- AI 助手上下文入口: [docs/ai-context.md](docs/ai-context.md)
 - 架构说明: [docs/architecture.md](docs/architecture.md)
 - 多租户企业知识库 RAG 规划: [docs/multitenant-rag.md](docs/multitenant-rag.md)
 - 架构评审: [docs/architecture-review.md](docs/architecture-review.md)
