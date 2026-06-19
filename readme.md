@@ -18,17 +18,27 @@
 
 ## 快速开始
 
+完整项目一键启动（PostgreSQL / Redis / FastAPI / Celery worker / React 前端静态资源）:
+
+```powershell
+docker compose up -d --build
+```
+
+打开: `http://127.0.0.1:8000`
+
+如果容器内 API / worker 需要访问宿主机 Ollama 或兼容 OpenAI 服务，不要在 `.env` 中使用 `http://127.0.0.1:11434/v1`，应使用:
+
+```env
+OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+```
+
+本机进程开发:
+
 ```powershell
 uv sync
 docker compose up -d postgres redis
 uv run alembic upgrade head
 uv run python -m app.main web
-```
-
-完整后端一键启动:
-
-```powershell
-docker compose up -d
 ```
 
 API 默认地址: `http://127.0.0.1:8000`

@@ -97,21 +97,35 @@ uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
 uv run python -m unittest tests.test_api
 ```
 
-### 多租户端到端 Smoke
+### 完整项目一键启动
 
-方式一：一键启动完整后端（PostgreSQL / Redis / FastAPI / Celery worker）:
+一条命令启动 PostgreSQL、Redis、FastAPI、Celery worker，并在 FastAPI 中托管 React 构建产物:
 
 ```powershell
-docker compose up -d
-uv run python scripts/smoke_multitenant.py
+docker compose up -d --build
 ```
 
-`api` 服务启动时会自动执行 `alembic upgrade head`，然后监听 `http://127.0.0.1:8000`。
+打开:
+
+```text
+http://127.0.0.1:8000
+```
+
+`api` 服务启动时会自动执行 `alembic upgrade head`，然后监听 `http://127.0.0.1:8000`。Docker 镜像构建时会先执行 `frontend` 的 `npm ci` 和 `npm run build`，再把 `frontend/dist` 复制进后端镜像。
 
 如果容器内 API / worker 需要访问宿主机上的 Ollama 或兼容 OpenAI 服务，不要在 `.env` 里使用 `http://127.0.0.1:11434/v1`，应改为:
 
 ```env
 OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+```
+
+### 多租户端到端 Smoke
+
+方式一：一键启动完整项目:
+
+```powershell
+docker compose up -d --build
+uv run python scripts/smoke_multitenant.py
 ```
 
 方式二：本机进程调试。先启动依赖并创建当前开发 schema:
