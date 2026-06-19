@@ -7,16 +7,16 @@
 后端主线已经收口为:
 
 ```text
-/api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
+/api/v1 + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。当前最短板是前端还没有会话历史加载，以及后端还缺一个“只检索不问 AI”的 preview/debug 接口。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。Agent 已恢复为当前主线的一部分，`retrieve_context` tool 直接调用 PostgreSQL/pgvector，并在 SQL 层保留 `user_id + kb_id` 权限过滤。当前最短板是质量评测还没有绑定真实知识库数据集，以及前端还没有会话历史加载。
 
 ## 当前优先级
 
-1. 补齐前端最小产品闭环: 登录、知识库选择、文档上传、状态追踪、聊天。
-2. 在真实 PostgreSQL 数据上跑 pgvector retrieval / answer baseline。
-3. 根据 bad cases 决定 hybrid / rerank 默认策略。
+1. 准备与当前知识库一致的 eval dataset，并跑 pgvector retrieval / answer baseline。
+2. 根据 bad cases 决定 hybrid / rerank 默认策略。
+3. 补齐前端聊天体验: 新会话、历史会话列表、消息加载、usage 展示。
 4. 再考虑更复杂的权限模型、运维面板和质量运营。
 
 ## 前端实现原则
@@ -120,7 +120,7 @@ frontend/src/components/StatusBadge.tsx
 - [x] 引用来源展示 filename/source、chunk_index、content 预览
 - [x] 发送中、错误、空 references 的状态处理
 - [ ] 保留 usage 展示，但不阻塞主要聊天体验
-- [x] 增加只检索不问 AI 的 preview 接口，用于直接查看 pgvector 命中的 chunks
+- [x] 增加只检索不问 AI 的 preview/debug 接口，用于直接查看 pgvector 命中的 chunks
 - [x] 前端接入 chat run 取消按钮
 
 建议组件:
@@ -134,6 +134,8 @@ frontend/src/components/ReferenceList.tsx
 
 ## Batch Q1: 真实数据质量基线
 
+- [x] 增加 baseline runner 自定义 retrieval / answer dataset 参数
+- [x] 增加质量评测闭环文档和 dataset 格式说明
 - [ ] 准备一组与当前知识库一致的 eval dataset
 - [ ] 运行 pgvector retrieval baseline
 - [ ] 运行 pgvector answer sampling
@@ -145,7 +147,7 @@ frontend/src/components/ReferenceList.tsx
 
 ```powershell
 uv run python -m evaluation.check_pgvector_embedding_config
-uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --answer-limit 5
+uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-dataset data/eval/current_kb_retrieval.jsonl --answer-dataset data/eval/current_kb_answer.jsonl --retrieval-limit 10 --answer-limit 5
 ```
 
 ## 暂不做

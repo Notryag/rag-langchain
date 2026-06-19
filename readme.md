@@ -90,7 +90,7 @@ uv run python scripts/smoke_multitenant.py --skip-chat
 uv run python -m evaluation.check_pgvector_embedding_config
 
 # pgvector baseline
-uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --skip-answer
+uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-dataset data/eval/current_kb_retrieval.jsonl --retrieval-limit 10 --skip-answer
 ```
 
 ## 前端
@@ -140,6 +140,7 @@ docs/           架构、运行、规划、待办
 - 开发与运行约定: [docs/development.md](docs/development.md)
 - 多租户企业知识库 RAG 规划: [docs/multitenant-rag.md](docs/multitenant-rag.md)
 - 入库策略: [docs/ingestion.md](docs/ingestion.md)
+- 质量评测闭环: [docs/evaluation.md](docs/evaluation.md)
 - 项目现状: [docs/project-status.md](docs/project-status.md)
 - 路线图: [docs/roadmap.md](docs/roadmap.md)
 - 待办清单: [docs/todo.md](docs/todo.md)

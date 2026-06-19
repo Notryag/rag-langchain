@@ -10,6 +10,8 @@
 HTTP /api/v1
   -> app/api/v1/
   -> app/services/
+  -> app/agent + app/tools/
+  -> app/retrieval/
   -> app/db/models/
   -> PostgreSQL + pgvector
   -> Redis / Celery
@@ -22,6 +24,8 @@ HTTP /api/v1
 - `app/api/`: FastAPI 应用装配、HTTP 协议、SSE 序列化、错误处理、限流。
 - `app/api/v1/`: 产品化多租户接口。
 - `app/services/`: 业务编排，包含认证、知识库、文档、问答、缓存、日志。
+- `app/agent/`: 当前问答 Agent 封装，只属于 `/api/v1 + pgvector` 主链路。
+- `app/tools/`: Agent tools。`retrieve_context` 必须从 runtime context 获取 `db_session / user_id / kb_id`，再调用 pgvector 检索。
 - `app/retrieval/`: 文档加载、切分、embedding provider、pgvector 检索、hybrid、rerank、引用格式化。
 - `app/db/`: SQLAlchemy Base、session、ORM models。
 - `app/workers/`: Celery app 与异步文档处理任务。
@@ -40,14 +44,16 @@ HTTP /api/v1
 ```text
 POST /api/v1/kbs/{kb_id}/chat
   -> ChatService.ask()
+  -> RagService.stream()
+  -> Agent
+  -> retrieve_context tool
   -> pgvector retrieve(user_id, kb_id)
-  -> context compression
-  -> model answer
+  -> model answer with tool context
   -> save chat_messages + chat_runs
   -> return answer / references / session_id / run_id / usage
 ```
 
-SSE 路径由 `ChatService.stream()` 产生 `answer_delta / complete / error`，API 层只负责序列化事件。
+SSE 路径由 runtime / `ChatService.run_prepared_stream()` 产生 `tool_call / tool_result / answer_delta / complete / error`，API 层只负责序列化事件。
 
 ## 文档处理路径
 
@@ -74,6 +80,9 @@ upload
 - `app/api/v1/documents.py`: 上传、列表、详情、删除、处理。
 - `app/api/v1/chat.py`: 同步问答、SSE、聊天记录。
 - `app/services/chat_service.py`: 问答主编排。
+- `app/services/rag_service.py`: Agent 流式事件适配、引用去重、usage 聚合。
+- `app/services/chat_client.py`: LangChain Agent client。
+- `app/tools/retrieve_context.py`: Agent 检索工具，连接 runtime context 与 pgvector。
 - `app/services/document_service.py`: 文档处理主编排。
 - `app/retrieval/pgvector_store.py`: pgvector 检索、hybrid、rerank。
 - `app/retrieval/embeddings.py`: embedding 初始化。

@@ -1,6 +1,6 @@
 # 目标架构与收口计划
 
-核心结论: 项目没有致命总体设计缺陷，真正的架构风险是两条 RAG 链路长期并存。现在该风险已经通过删除旧链路收口，产品主线唯一化为 `/api/v1 + pgvector`。
+核心结论: 项目没有致命总体设计缺陷，真正的架构风险是两条 RAG 链路长期并存。现在该风险已经通过删除旧链路收口，产品主线唯一化为 `/api/v1 + Agent + pgvector`。
 
 ## 当前主线
 
@@ -8,6 +8,8 @@
 /api/v1/*
   -> app/api/v1/
   -> app/services/
+  -> app/agent + app/tools/retrieve_context.py
+  -> app/retrieval/
   -> SQLAlchemy models
   -> PostgreSQL + pgvector
   -> Redis / Celery / operation logs / rate limit / cache
@@ -62,6 +64,7 @@
 ## 成功标准
 
 - 新功能只面向 `/api/v1` 产品主链路。
+- Agent / Tool 只能作为当前产品主链路的一部分存在，不能恢复旧 Chroma 或旧 `/api`。
 - 检索必须在 SQL 层保留 `user_id + kb_id` 权限过滤。
 - 问答输出始终保存聊天记录并返回 references。
 - usage、cache、operation log、SSE 都围绕 chat run 聚合。
@@ -74,4 +77,4 @@
 1. 真实数据 pgvector retrieval baseline。
 2. pgvector answer sampling + answer eval。
 3. bad case 回流，决定 hybrid / rerank 默认策略。
-4. 前端补齐登录、知识库选择、上传和聊天管理。
+4. 前端补齐新会话、历史会话列表、消息加载和 usage 展示。

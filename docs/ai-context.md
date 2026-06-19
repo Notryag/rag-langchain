@@ -18,7 +18,7 @@
 唯一产品主线:
 
 ```text
-/api/v1 + PostgreSQL + pgvector + JWT + Redis/Celery
+/api/v1 + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
 旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答运行时路径是 `/api/v1/chat -> app/services/chat_service.py -> app/services/rag_service.py -> app/agent -> app/tools/retrieve_context.py -> app/retrieval/pgvector_store.py`。
@@ -106,6 +106,7 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 读取:
 
 - [hybrid-search-evaluation.md](hybrid-search-evaluation.md)
+- [evaluation.md](evaluation.md)
 - `evaluation/`
 - `app/retrieval/pgvector_store.py`
 - `app/retrieval/reranker.py`
@@ -117,7 +118,7 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 ```powershell
 uv run python -m evaluation.check_pgvector_embedding_config
 uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --limit 10
-uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-limit 10 --skip-answer
+uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrieval-dataset data/eval/current_kb_retrieval.jsonl --answer-dataset data/eval/current_kb_answer.jsonl --retrieval-limit 10 --skip-answer
 ```
 
 ### 前端、React、静态托管

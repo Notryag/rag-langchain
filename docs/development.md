@@ -223,10 +223,10 @@ uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrie
 ```powershell
 $env:EMBEDDING_DIMENSION='1024'
 uv run python -m evaluation.check_pgvector_embedding_config
-uv run python -m evaluation.run_pgvector_baseline --user-id 2 --kb-id 2 --retrieval-limit 1 --skip-answer
+uv run python -m evaluation.run_pgvector_baseline --user-id 2 --kb-id 2 --retrieval-dataset data/eval/current_kb_retrieval.jsonl --retrieval-limit 1 --skip-answer
 ```
 
-注意: smoke 文档和正式评测集语义不匹配时，retrieval pass rate 为 0 是预期现象，不能据此判断 hybrid / rerank 策略优劣。
+注意: smoke 文档和正式评测集语义不匹配时，retrieval pass rate 为 0 是预期现象，不能据此判断 hybrid / rerank 策略优劣。为当前知识库准备专用样本时，参考 [evaluation.md](evaluation.md)。
 
 ### 采样回答
 

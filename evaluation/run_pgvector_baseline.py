@@ -40,6 +40,8 @@ def build_baseline_commands(
     paths: BaselinePaths,
     user_id: int,
     kb_id: int,
+    retrieval_dataset: str | None = None,
+    answer_dataset: str | None = None,
     retrieval_limit: int | None,
     answer_limit: int | None,
     skip_answer: bool = False,
@@ -63,6 +65,8 @@ def build_baseline_commands(
         "--manifest-output",
         str(paths.retrieval_manifest),
     ]
+    if retrieval_dataset is not None:
+        retrieval_command.extend(["--dataset", retrieval_dataset])
     if retrieval_limit is not None:
         retrieval_command.extend(["--limit", str(retrieval_limit)])
 
@@ -77,6 +81,8 @@ def build_baseline_commands(
         "--output",
         str(paths.answer_runs),
     ]
+    if answer_dataset is not None:
+        answer_sampling_command.extend(["--dataset", answer_dataset])
     if answer_limit is not None:
         answer_sampling_command.extend(["--limit", str(answer_limit)])
 
@@ -89,6 +95,8 @@ def build_baseline_commands(
         "--bad-cases-out",
         str(paths.answer_bad_cases),
     ]
+    if answer_dataset is not None:
+        answer_eval_command.extend(["--dataset", answer_dataset])
     if answer_limit is not None:
         answer_eval_command.extend(["--limit", str(answer_limit)])
 
@@ -164,6 +172,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--kb-id", type=int, required=True, help="Knowledge base id used for pgvector eval.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Directory for baseline artifacts.")
     parser.add_argument("--run-id", default=None, help="Optional stable run id; defaults to UTC timestamp.")
+    parser.add_argument("--retrieval-dataset", default=None, help="Path to retrieval eval jsonl.")
+    parser.add_argument("--answer-dataset", default=None, help="Path to answer eval jsonl.")
     parser.add_argument("--retrieval-limit", type=int, default=None, help="Limit retrieval eval samples.")
     parser.add_argument("--answer-limit", type=int, default=None, help="Limit answer eval samples.")
     parser.add_argument("--skip-answer", action="store_true", help="Only run retrieval eval artifacts.")
@@ -180,6 +190,8 @@ def main() -> None:
         paths=paths,
         user_id=args.user_id,
         kb_id=args.kb_id,
+        retrieval_dataset=args.retrieval_dataset,
+        answer_dataset=args.answer_dataset,
         retrieval_limit=args.retrieval_limit,
         answer_limit=args.answer_limit,
         skip_answer=args.skip_answer,

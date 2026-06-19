@@ -58,6 +58,26 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertEqual(len(commands), 1)
         self.assertIn("evaluation.evaluate_pgvector_retrieval", commands[0])
 
+    def test_build_baseline_commands_can_use_custom_datasets(self) -> None:
+        paths = build_baseline_paths(Path("out"), run_id="run-1")
+
+        commands = build_baseline_commands(
+            paths=paths,
+            user_id=1,
+            kb_id=2,
+            retrieval_dataset="data/eval/customer_retrieval.jsonl",
+            answer_dataset="data/eval/customer_answer.jsonl",
+            retrieval_limit=None,
+            answer_limit=None,
+        )
+
+        self.assertIn("--dataset", commands[0])
+        self.assertIn("data/eval/customer_retrieval.jsonl", commands[0])
+        self.assertIn("--dataset", commands[1])
+        self.assertIn("data/eval/customer_answer.jsonl", commands[1])
+        self.assertIn("--dataset", commands[2])
+        self.assertIn("data/eval/customer_answer.jsonl", commands[2])
+
     def test_write_baseline_manifest_records_commands_and_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
             paths = build_baseline_paths(Path(tmpdir), run_id="run-1")
