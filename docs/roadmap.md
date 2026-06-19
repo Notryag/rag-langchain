@@ -16,7 +16,7 @@
 
 长期目标不是做一个“能回答问题”的 demo，而是演进为一个多租户企业知识库 RAG 系统。
 
-新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力已经落地，后续重点转为架构收口: 将 `/api/v1 + pgvector` 明确为产品主线，把旧 Chroma/Agent 链路定位为 legacy demo / evaluation 基线，并统一检索接口、chat run 生命周期和流式输出。详细计划见 [target-architecture.md](target-architecture.md)。
+新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力和架构收口主任务已经落地: `/api/v1 + pgvector` 是产品主线，旧 Chroma/Agent 链路定位为 legacy demo / evaluation 基线，统一检索 DTO、chat run 生命周期、service 层 token SSE、pgvector retrieval / answer eval、hybrid、rerank 和上下文压缩已经具备。详细计划见 [target-architecture.md](target-architecture.md)。
 
 ### 目标一: 可验证的 RAG 系统
 
@@ -115,15 +115,15 @@ evaluation/
 
 ### P0: 架构收口
 
-这是当前最高优先级。
+已基本完成。
 
 计划内容:
 
-- 明确 `/api/v1 + pgvector` 是产品主链路
-- 抽统一 retrieval interface / DTO
-- 将旧 Chroma/Agent 链路降级为 legacy demo / eval 基线
-- 增加 chat run 生命周期
-- 将 `/api/v1` SSE 升级为 service 层 token 级 streaming
+- [x] 明确 `/api/v1 + pgvector` 是产品主链路
+- [x] 抽统一 retrieval interface / DTO
+- [x] 将旧 Chroma/Agent 链路降级为 legacy demo / eval 基线
+- [x] 增加 chat run 生命周期
+- [x] 将 `/api/v1` SSE 升级为 service 层 token 级 streaming
 
 预期结果:
 
@@ -135,11 +135,11 @@ evaluation/
 
 计划内容:
 
-- 建立 pgvector retrieval eval
-- 区分 retrieval eval 与 answer eval
-- 增加权限隔离评测样本
-- 沉淀 bad case、references 和检索参数
-- 给每轮优化建立可对比基线
+- [x] 建立 pgvector retrieval eval
+- [x] 区分 retrieval eval 与 answer eval
+- [x] 增加权限隔离评测样本
+- [x] 沉淀 bad case、references 和检索参数
+- [ ] 在真实 PostgreSQL 数据上跑出 baseline manifest
 
 预期结果:
 
@@ -151,10 +151,10 @@ evaluation/
 
 计划内容:
 
-- 加入 reranker
-- 支持 metadata 过滤
-- 优化 chunk 策略与上下文压缩
-- 增强 citation 与 artifact 输出
+- [x] 加入 reranker
+- [ ] 支持 `/api/v1` 查询级 metadata 过滤
+- [x] 优化上下文压缩
+- [ ] 增强 citation 与 artifact 输出
 
 预期结果:
 
@@ -164,7 +164,7 @@ evaluation/
 
 ## 中期计划
 
-当前 P0/P1/P2 的本地 RAG 能力已经基本具备，下一阶段进入多租户产品化建设。
+当前多租户产品化后端能力已经基本具备，下一阶段重点是产品化运维能力和真实数据质量基线。
 
 建议方向:
 

@@ -21,6 +21,7 @@ class AnswerRun:
     answer: str
     elapsed_ms: int | None
     usage: dict[str, Any] | None
+    metadata: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,11 @@ def _load_runs(path: str | Path) -> dict[str, AnswerRun]:
                     answer=str(payload["answer"]),
                     elapsed_ms=payload.get("elapsed_ms"),
                     usage=payload.get("usage"),
+                    metadata={
+                        key: value
+                        for key, value in payload.items()
+                        if key not in {"id", "query", "category", "answer", "elapsed_ms", "usage"}
+                    },
                 )
             except Exception as exc:  # pragma: no cover - defensive path
                 raise ValueError(f"Invalid answer eval run at line {line_number}") from exc
@@ -166,6 +172,7 @@ def _write_bad_cases(path: str | Path, results: list[AnswerEvalResult]) -> None:
                 "required_fact_hits": result.required_fact_hits,
                 "refusal_detected": result.refusal_detected,
                 "answer": result.run.answer,
+                "run_metadata": result.run.metadata,
             }
             fh.write(json.dumps(payload, ensure_ascii=False) + "\n")
 

@@ -196,6 +196,7 @@ uv run python -m evaluation.evaluate_hybrid_search --show-changes
 
 ```powershell
 uv run python -m evaluation.generate_answers --limit 5
+uv run python -m evaluation.generate_pgvector_answers --user-id 1 --kb-id 1 --limit 5
 ```
 
 ### 回答评测

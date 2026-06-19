@@ -18,7 +18,8 @@
 - JWT 认证、知识库 CRUD、文档上传与状态追踪
 - Celery 异步文档处理
 - pgvector 入库、权限过滤检索、结构化引用
-- 多租户问答、聊天记录、SSE、热点缓存、限流、操作日志、usage 统计
+- 多租户问答、聊天记录、chat run 生命周期、token 级 SSE、热点缓存、限流、操作日志、usage 统计
+- pgvector retrieval / answer eval、hybrid、rerank、prompt 上下文压缩
 
 这意味着项目当前的主要问题已经不是“能不能跑起来”，而是“怎么稳定变好、怎么长期维护”。
 
@@ -49,11 +50,10 @@
 
 ## 当前不足
 
-- 当前存在旧 `/api + Chroma + Agent` 和新 `/api/v1 + pgvector + 多租户` 两条问答链路。
-- pgvector 多租户链路已成为产品主线，但检索接口还没有统一抽象。
-- `/api/v1` SSE 仍是回答完成后的分块输出，还不是真正 token 级 streaming。
-- 聊天记录有 session/message，但还缺少一次问答运行的 run 生命周期模型。
-- 新 pgvector 产品主链路还缺独立 retrieval / answer evaluation。
+- 当前仍存在旧 `/api + Chroma + Agent` 和新 `/api/v1 + pgvector + 多租户` 两条问答链路，需要继续保持主次边界。
+- pgvector 多租户链路已成为产品主线，统一 retrieval DTO、chat run、token 级 SSE 和评测入口已经完成。
+- 新 pgvector 产品主链路已有 retrieval / answer evaluation，但还需要在真实 PostgreSQL 数据上沉淀可对比 baseline。
+- 旧链路仍有演示和 legacy eval 价值，但不应继续承载新的企业知识库能力。
 
 ## 当前目录判断
 
@@ -80,13 +80,12 @@ migrations/
 
 ## 当前最重要的结论
 
-接下来最值得投入的方向是架构收口，而不是继续堆产品功能:
+接下来最值得投入的方向是质量基线和产品化运维闭环，而不是继续堆大功能:
 
-1. 明确 `/api/v1 + pgvector` 是产品主链路。
-2. 将旧 `/api + Chroma + Agent` 定位为 legacy demo / eval 基线。
-3. 抽统一 retrieval interface，避免两套检索逻辑继续分叉。
-4. 增加 chat run 生命周期，聚合 status、usage、cache_hit、error。
-5. 将 SSE 从 API 层伪流式升级为 service 层 token 级 streaming。
-6. 给 pgvector 多租户链路补 retrieval / answer evaluation。
+1. 在真实 PostgreSQL + pgvector 数据上跑 retrieval / answer eval，沉淀 baseline manifest 和 bad cases。
+2. 基于评测结果决定是否默认开启 hybrid / rerank。
+3. 继续保持 `/api/v1 + pgvector` 为产品主链路，旧 `/api + Chroma + Agent` 只作为 legacy demo / eval 基线。
+4. 补齐 run 查询、取消、运行耗时和更细的 usage 统计。
+5. 再考虑组织、团队、RBAC、ACL 等更复杂权限模型。
 
 详细计划见 [target-architecture.md](target-architecture.md)。
