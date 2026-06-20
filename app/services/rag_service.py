@@ -29,6 +29,7 @@ class RagService:
         user_id: int | None = None,
         kb_id: int | None = None,
         db_session: Session | None = None,
+        system_prompt: str | None = None,
     ) -> RagResponse:
         resolved_thread_id = thread_id or new_thread_id()
         result = self._client.ask(
@@ -38,6 +39,7 @@ class RagService:
             user_id=user_id,
             kb_id=kb_id,
             db_session=db_session,
+            system_prompt=system_prompt,
         )
         return RagResponse(
             thread_id=resolved_thread_id,
@@ -55,6 +57,7 @@ class RagService:
         user_id: int | None = None,
         kb_id: int | None = None,
         db_session: Session | None = None,
+        system_prompt: str | None = None,
     ) -> Generator[RagStreamEvent, None, None]:
         resolved_thread_id = thread_id or new_thread_id()
         started_at = time.perf_counter()
@@ -72,6 +75,7 @@ class RagService:
             user_id=user_id,
             kb_id=kb_id,
             db_session=db_session,
+            system_prompt=system_prompt,
         ):
             if event.type == "messages-tuple":
                 event_type = event.data.get("type")

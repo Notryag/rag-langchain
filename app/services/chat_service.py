@@ -84,13 +84,14 @@ class ChatService:
         session.add(user_message)
         session.commit()
 
+        prompt_version = self._prompt_version_service.get_active(session)
         chat_run = self._create_run(
             session,
             user_id=user_id,
             kb_id=kb_id,
             chat_session_id=chat_session.id,
             question=question,
-            prompt_version_id=self._prompt_version_service.get_active(session).id,
+            prompt_version_id=prompt_version.id,
         )
         return PreparedChatRun(session_id=chat_session.id, run_id=chat_run.id)
 
@@ -105,6 +106,11 @@ class ChatService:
         run_id: int,
     ) -> Iterator[ChatStreamEvent]:
         chat_run = self._get_run_for_user(session, user_id=user_id, run_id=run_id)
+        prompt_version = (
+            self._prompt_version_service.get_by_id(session, chat_run.prompt_version_id)
+            if chat_run.prompt_version_id is not None
+            else self._prompt_version_service.get_active(session)
+        )
         try:
             answer = ""
             references: list[dict[str, Any]] = []
@@ -116,6 +122,7 @@ class ChatService:
                 user_id=user_id,
                 kb_id=kb_id,
                 db_session=session,
+                system_prompt=prompt_version.system_prompt,
             ):
                 if event.type == "tool_call":
                     yield ChatStreamEvent(
@@ -200,13 +207,14 @@ class ChatService:
         session.add(user_message)
         session.commit()
 
+        prompt_version = self._prompt_version_service.get_active(session)
         chat_run = self._create_run(
             session,
             user_id=user_id,
             kb_id=kb_id,
             chat_session_id=chat_session.id,
             question=question,
-            prompt_version_id=self._prompt_version_service.get_active(session).id,
+            prompt_version_id=prompt_version.id,
         )
         try:
             answer_parts: list[str] = []
@@ -218,6 +226,7 @@ class ChatService:
                 user_id=user_id,
                 kb_id=kb_id,
                 db_session=session,
+                system_prompt=prompt_version.system_prompt,
             ):
                 if event.type == "answer":
                     answer_parts.append(event.content)

@@ -32,23 +32,25 @@ def get_middleware():
     return [prompt_with_context]
 
 
-def build_agent():
+def build_agent(*, system_prompt: str | None = None):
     configure_langsmith_environment()
     model = build_model()
     tools = get_tools()
     middleware = get_middleware()
+    resolved_system_prompt = system_prompt or BASE_SYSTEM_PROMPT
 
     agent = create_agent(
         model=model,
         tools=tools,
         middleware=middleware,
         checkpointer=build_checkpointer(),
-        system_prompt=BASE_SYSTEM_PROMPT,
+        system_prompt=resolved_system_prompt,
     )
     logger.info(
-        "Agent 创建完成。tools=%s middleware_count=%s",
+        "Agent 创建完成。tools=%s middleware_count=%s system_prompt_chars=%s",
         [tool.name for tool in tools],
         len(middleware),
+        len(resolved_system_prompt),
     )
     return agent
 

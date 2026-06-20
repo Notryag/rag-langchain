@@ -110,12 +110,19 @@ def _accumulate_usage(
 
 class AgentChatClient:
     def __init__(self) -> None:
-        logger.info("初始化共享 Agent 实例。")
-        self._agent = build_agent()
+        logger.info("初始化 Agent 客户端。")
+        self._agents_by_prompt: dict[str, Any] = {}
+        self._default_agent = self._get_agent()
 
     @property
     def agent(self):
-        return self._agent
+        return self._default_agent
+
+    def _get_agent(self, system_prompt: str | None = None):
+        cache_key = system_prompt or ""
+        if cache_key not in self._agents_by_prompt:
+            self._agents_by_prompt[cache_key] = build_agent(system_prompt=system_prompt)
+        return self._agents_by_prompt[cache_key]
 
     def ask(
         self,
@@ -126,6 +133,7 @@ class AgentChatClient:
         user_id: int | None = None,
         kb_id: int | None = None,
         db_session: Session | None = None,
+        system_prompt: str | None = None,
     ) -> ChatResult:
         user_input = _normalize_user_input(user_input)
         logger.info("收到聊天请求。thread_id=%s chars=%s", thread_id, len(user_input))
@@ -137,7 +145,8 @@ class AgentChatClient:
             kb_id=kb_id,
             db_session=db_session,
         )
-        result = self._agent.invoke(
+        agent = self._get_agent(system_prompt)
+        result = agent.invoke(
             {"messages": [{"role": "user", "content": user_input}]},
             config=config,
             context=context,
@@ -181,8 +190,8 @@ class AgentChatClient:
 
         return base
 
-    def _get_existing_message_ids(self, config: dict[str, Any]) -> set[str]:
-        snapshot = self._agent.get_state(config)
+    def _get_existing_message_ids(self, agent, config: dict[str, Any]) -> set[str]:
+        snapshot = agent.get_state(config)
         values = getattr(snapshot, "values", {}) or {}
         messages = values.get("messages", []) or []
         existing_ids: set[str] = set()
@@ -201,6 +210,7 @@ class AgentChatClient:
         user_id: int | None = None,
         kb_id: int | None = None,
         db_session: Session | None = None,
+        system_prompt: str | None = None,
         **kwargs,
     ) -> Generator[StreamEvent, None, None]:
         """Stream a conversation turn, yielding events incrementally.
@@ -229,7 +239,8 @@ class AgentChatClient:
             db_session=db_session,
         )
 
-        seen_ids = self._get_existing_message_ids(config)
+        agent = self._get_agent(system_prompt)
+        seen_ids = self._get_existing_message_ids(agent, config)
         seen_tool_calls: set[str] = set()
         seen_tool_results: set[str] = set()
         usage_message_ids: set[str] = set()
@@ -239,7 +250,7 @@ class AgentChatClient:
             "total_tokens": 0,
         }
 
-        for mode, chunk in self._agent.stream(
+        for mode, chunk in agent.stream(
             state,
             config=config,
             context=context,

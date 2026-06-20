@@ -498,7 +498,7 @@ POST /api/v1/prompts/{prompt_version_id}/rollback
 
 `activate` 和 `rollback` 都会把指定 prompt version 设为当前 active 版本，区别是 operation log 的 action 分别记录为 `prompt.activate` 和 `prompt.rollback`，便于审计。
 
-当前 Agent prompt 仍由代码中的 `BASE_SYSTEM_PROMPT` 和动态 prompt middleware 装配；`prompt_versions` 已经可以管理和记录 active 版本，但下一步还需要把 active prompt 纳入运行时装配。
+当前问答会在创建 `chat_runs` 时绑定 active prompt version，并把该版本的 `system_prompt` 传入 Agent。Agent 客户端会按 system prompt 文本缓存运行实例；切换 active prompt 后，新一轮 chat run 使用新 prompt，历史 run 仍保留原 `prompt_version_id`。
 
 ## MCP Server 示例
 

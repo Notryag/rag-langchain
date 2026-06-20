@@ -21,6 +21,12 @@ class PromptVersionConflictError(Exception):
 
 
 class PromptVersionService:
+    def get_by_id(self, session: Session, prompt_version_id: int) -> PromptVersion:
+        prompt_version = session.get(PromptVersion, prompt_version_id)
+        if prompt_version is None:
+            raise PromptVersionNotFoundError("Prompt version not found")
+        return prompt_version
+
     def list_versions(self, session: Session) -> list[PromptVersion]:
         statement = select(PromptVersion).order_by(
             PromptVersion.is_active.desc(),
@@ -51,9 +57,7 @@ class PromptVersionService:
         return prompt_version
 
     def activate(self, session: Session, prompt_version_id: int) -> PromptVersion:
-        prompt_version = session.get(PromptVersion, prompt_version_id)
-        if prompt_version is None:
-            raise PromptVersionNotFoundError("Prompt version not found")
+        prompt_version = self.get_by_id(session, prompt_version_id)
 
         session.execute(update(PromptVersion).values(is_active=False))
         prompt_version.is_active = True
