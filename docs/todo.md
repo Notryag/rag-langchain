@@ -42,7 +42,7 @@
 - [x] 增加 `/api/v1/kbs` 创建、列表前端 API 方法
 - [x] 增加知识库编辑、删除前端 API 方法
 - [x] 增加文档上传、列表、删除、手动处理 API 方法
-- [ ] 增加文档详情前端 API 方法
+- [x] 增加文档详情前端 API 方法
 - [x] 增加聊天 SSE API 方法
 - [x] 统一 Bearer token 注入和基础错误处理
 - [x] 将 token 保存到 `localStorage`

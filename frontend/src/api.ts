@@ -117,6 +117,11 @@ export async function listDocuments(token: string, kbId: number): Promise<Knowle
   return response.json();
 }
 
+export async function getDocument(token: string, documentId: number): Promise<KnowledgeDocument> {
+  const response = await request(`/api/v1/documents/${documentId}`, {}, token);
+  return response.json();
+}
+
 export async function uploadDocument(token: string, kbId: number, file: File): Promise<KnowledgeDocument> {
   const formData = new FormData();
   formData.append("file", file);
