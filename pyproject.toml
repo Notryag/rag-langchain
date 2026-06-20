@@ -28,6 +28,7 @@ dependencies = [
   "redis>=5.0",
   "celery>=5.4",
   "bcrypt<4.1",
+  "mcp>=1.28.0",
 ]
 
 [tool.setuptools]

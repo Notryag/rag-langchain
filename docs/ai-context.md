@@ -102,6 +102,18 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 - assistant 消息保存结构化 `references`。
 - 热点问题缓存按 `user_id + kb_id + question + top_k + 模型配置` 隔离。
 
+### MCP Tool 示例、外部 Agent 集成
+
+读取:
+
+- [development.md](development.md) 的 MCP Server 示例章节
+- `app/mcp/server.py`
+- `app/retrieval/pgvector_store.py`
+- `app/db/models/chat.py`
+- `app/db/models/document.py`
+
+当前 MCP server 是独立进程，不挂到 FastAPI 主进程。工具必须显式接收 `user_id` / `kb_id` 或 `user_id` / `run_id`，并复用当前 pgvector 检索和 SQL 租户过滤，不允许绕回旧 Chroma。
+
 ### 检索质量、评测、rerank、hybrid
 
 读取:
@@ -145,6 +157,7 @@ app/
   core/         安全/JWT/密码工具
   db/           SQLAlchemy Base、session、ORM models
   memory/       LangGraph checkpointer
+  mcp/          独立 MCP server 示例，复用当前 pgvector 与 chat run 数据
   retrieval/    加载、切分、pgvector、hybrid、rerank、引用
   runtime/      chat run 生命周期、SSE StreamBridge、取消、运行态查询
   schemas/      Pydantic schemas

@@ -14,6 +14,7 @@
 - 回答返回结构化引用来源
 - 聊天会话、消息、chat run、usage、操作日志
 - LangSmith tracing 配置入口、token cost 估算、trace id/url 预留
+- MCP Server 示例，供外部 Agent/MCP client 复用知识库检索、文档查询和运行记录查询
 - SSE 流式回答、热点问题缓存、接口限流
 - pgvector retrieval / answer eval、baseline manifest、bad case 导出
 
@@ -120,6 +121,7 @@ app/
   core/         JWT、密码、安全工具
   db/           SQLAlchemy session 与 ORM models
   memory/       LangGraph checkpointer
+  mcp/          独立 MCP server 示例，不挂入 FastAPI 主进程
   retrieval/    loaders、splitter、pgvector、hybrid、rerank、引用
   runtime/      chat run 生命周期、SSE StreamBridge、取消、运行态查询
   schemas/      Pydantic schemas

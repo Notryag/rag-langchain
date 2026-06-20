@@ -478,6 +478,22 @@ TOKEN_OUTPUT_COST_PER_1K=0.002
 
 当前 Agent prompt 仍由代码中的 `BASE_SYSTEM_PROMPT` 和动态 prompt middleware 装配；`prompt_versions` 先作为运行记录和后续管理 API 的数据地基。等评测基线稳定后，再把启用 prompt 版本纳入运行时装配。
 
+## MCP Server 示例
+
+项目提供一个独立 MCP server 示例，不挂到 FastAPI 主进程:
+
+```powershell
+uv run python -m app.mcp.server
+```
+
+当前工具:
+
+- `kb_search`: 按 `user_id + kb_id` 调用 pgvector 检索。
+- `document_lookup`: 查询当前用户当前知识库内的文档元数据。
+- `get_chat_run`: 查询当前用户自己的 chat run、usage、token cost 和 trace 字段。
+
+这些工具都显式要求 `user_id` / `kb_id` 或 `user_id` / `run_id`，并在 SQL 层保留租户过滤。它们用于演示外部 Agent/MCP client 如何复用本项目能力，不替代 `/api/v1` 产品接口。
+
 ## 用户反馈
 
 旧 `/api/feedback` 已删除。后续如果需要产品化反馈，应新增 `/api/v1` 反馈接口，并绑定 `user_id / kb_id / session_id / run_id`。
