@@ -1,12 +1,13 @@
 # 目标架构与收口计划
 
-核心结论: 项目没有致命总体设计缺陷，真正的架构风险是两条 RAG 链路长期并存。现在该风险已经通过删除旧链路收口，产品主线唯一化为 `/api/v1 + Agent + pgvector`。
+核心结论: 项目没有致命总体设计缺陷，真正的架构风险是两条 RAG 链路长期并存。现在该风险已经通过删除旧链路收口，产品主线唯一化为 `/api/v1 + Runtime + Agent + pgvector`。
 
 ## 当前主线
 
 ```text
 /api/v1/*
   -> app/api/v1/
+  -> app/runtime/
   -> app/services/
   -> app/agent + app/tools/retrieve_context.py
   -> app/retrieval/
@@ -18,6 +19,7 @@
 新增能力默认进入:
 
 - HTTP: `app/api/v1/`
+- 运行态、SSE、取消: `app/runtime/`
 - 业务编排: `app/services/`
 - 检索能力: `app/retrieval/`
 - 数据结构: `app/db/models/` + Alembic migration
@@ -64,6 +66,7 @@
 ## 成功标准
 
 - 新功能只面向 `/api/v1` 产品主链路。
+- Runtime 只负责 run 生命周期、取消和事件协议，不直接依赖 pgvector 或承载检索业务。
 - Agent / Tool 只能作为当前产品主链路的一部分存在，不能恢复旧 Chroma 或旧 `/api`。
 - 检索必须在 SQL 层保留 `user_id + kb_id` 权限过滤。
 - 问答输出始终保存聊天记录并返回 references。

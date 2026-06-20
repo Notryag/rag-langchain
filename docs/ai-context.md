@@ -18,10 +18,10 @@
 唯一产品主线:
 
 ```text
-/api/v1 + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
+/api/v1 + Runtime + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答运行时路径是 `/api/v1/chat -> app/services/chat_service.py -> app/services/rag_service.py -> app/agent -> app/tools/retrieve_context.py -> app/retrieval/pgvector_store.py`。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答运行时路径是 `/api/v1/chat -> app/runtime -> app/services/chat_service.py -> app/services/rag_service.py -> app/agent -> app/tools/retrieve_context.py -> app/retrieval/pgvector_store.py`。
 
 注意: `app/agent/` 和 `app/tools/` 已恢复为当前主线的一部分，但 tool 必须走 pgvector 和多租户过滤；不要恢复旧 Chroma vectorstore。
 
@@ -87,6 +87,7 @@ upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> do
 - [development.md](development.md) 的多租户问答 API 章节
 - [../RAG_RUNTIME_SPEC.md](../RAG_RUNTIME_SPEC.md): 只有改运行态、取消、后台 run、SSE 桥时需要读取。
 - `app/api/v1/chat.py`
+- `app/runtime/`
 - `app/services/chat_service.py`
 - `app/services/rag_service.py`
 - `app/services/chat_client.py`
@@ -145,6 +146,7 @@ app/
   db/           SQLAlchemy Base、session、ORM models
   memory/       LangGraph checkpointer
   retrieval/    加载、切分、pgvector、hybrid、rerank、引用
+  runtime/      chat run 生命周期、SSE StreamBridge、取消、运行态查询
   schemas/      Pydantic schemas
   services/     认证、知识库、文档、问答、缓存、日志
   workers/      Celery app 和文档任务

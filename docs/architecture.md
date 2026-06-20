@@ -9,6 +9,7 @@
 ```text
 HTTP /api/v1
   -> app/api/v1/
+  -> app/runtime/
   -> app/services/
   -> app/agent + app/tools/
   -> app/retrieval/
@@ -17,14 +18,15 @@ HTTP /api/v1
   -> Redis / Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答主线为 `/api/v1 + Agent + pgvector`。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答主线为 `/api/v1 + Runtime + Agent + pgvector`。
 
 ## 分层边界
 
 - `app/api/`: FastAPI 应用装配、HTTP 协议、SSE 序列化、错误处理、限流。
 - `app/api/v1/`: 产品化多租户接口。
+- `app/runtime/`: chat run 生命周期、SSE StreamBridge、取消、运行态查询。runtime 不直接依赖 pgvector，不做检索业务，只编排运行状态和事件协议。
 - `app/services/`: 业务编排，包含认证、知识库、文档、问答、缓存、日志。
-- `app/agent/`: 当前问答 Agent 封装，只属于 `/api/v1 + pgvector` 主链路。
+- `app/agent/`: 当前问答 Agent 封装，只属于 `/api/v1 + Runtime + pgvector` 主链路。
 - `app/tools/`: Agent tools。`retrieve_context` 必须从 runtime context 获取 `db_session / user_id / kb_id`，再调用 pgvector 检索。
 - `app/retrieval/`: 文档加载、切分、embedding provider、pgvector 检索、hybrid、rerank、引用格式化。
 - `app/db/`: SQLAlchemy Base、session、ORM models。
@@ -53,7 +55,22 @@ POST /api/v1/kbs/{kb_id}/chat
   -> return answer / references / session_id / run_id / usage
 ```
 
-SSE 路径由 runtime / `ChatService.run_prepared_stream()` 产生 `tool_call / tool_result / answer_delta / complete / error`，API 层只负责序列化事件。
+SSE 路径:
+
+```text
+POST /api/v1/kbs/{kb_id}/chat/stream
+  -> RuntimeService
+  -> RunManager
+  -> ChatService.prepare_run()
+  -> ChatService.run_prepared_stream()
+  -> RagService.stream()
+  -> Agent
+  -> retrieve_context tool
+  -> pgvector retrieve(user_id, kb_id)
+  -> StreamBridge emits metadata / tool_call / tool_result / answer_delta / complete / end / error
+```
+
+API 层只负责鉴权、依赖注入和 SSE 序列化。
 
 ## 文档处理路径
 
@@ -79,6 +96,10 @@ upload
 - `app/api/v1/knowledge_bases.py`: 知识库 CRUD。
 - `app/api/v1/documents.py`: 上传、列表、详情、删除、处理。
 - `app/api/v1/chat.py`: 同步问答、SSE、聊天记录。
+- `app/runtime/manager.py`: in-process run 注册、查询和取消状态。
+- `app/runtime/service.py`: RuntimeService，连接 API、ChatService 和 StreamBridge。
+- `app/runtime/stream.py`: StreamBridge，统一 SSE 事件输出。
+- `app/runtime/schemas.py`: runtime 事件和状态数据结构。
 - `app/services/chat_service.py`: 问答主编排。
 - `app/services/rag_service.py`: Agent 流式事件适配、引用去重、usage 聚合。
 - `app/services/chat_client.py`: LangChain Agent client。

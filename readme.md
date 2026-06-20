@@ -2,7 +2,7 @@
 
 多租户企业知识库 RAG 后端。当前主线是 FastAPI + SQLAlchemy 2.0 + PostgreSQL + pgvector + Redis + Celery + JWT。
 
-旧 `/api + Chroma + CLI + Streamlit` 链路已经删除。当前问答主线是 `/api/v1 + Agent + pgvector`: Agent 通过 `retrieve_context` tool 调用当前 PostgreSQL/pgvector 检索，并保留多租户权限过滤。
+旧 `/api + Chroma + CLI + Streamlit` 链路已经删除。当前问答主线是 `/api/v1 + Runtime + Agent + pgvector`: Runtime 管理 chat run 生命周期、SSE、取消和运行态查询，Agent 通过 `retrieve_context` tool 调用当前 PostgreSQL/pgvector 检索，并保留多租户权限过滤。
 
 ## 当前能力
 
@@ -120,6 +120,7 @@ app/
   db/           SQLAlchemy session 与 ORM models
   memory/       LangGraph checkpointer
   retrieval/    loaders、splitter、pgvector、hybrid、rerank、引用
+  runtime/      chat run 生命周期、SSE StreamBridge、取消、运行态查询
   schemas/      Pydantic schemas
   services/     认证、知识库、文档、问答、缓存、日志
   workers/      Celery app 和文档任务

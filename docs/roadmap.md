@@ -16,7 +16,7 @@
 
 长期目标不是做一个“能回答问题”的 demo，而是演进为一个多租户企业知识库 RAG 系统。
 
-新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力和架构收口主任务已经落地: `/api/v1 + Agent + pgvector` 是唯一产品主线，旧 Chroma/CLI/Streamlit 链路已经删除，chat run 生命周期、service 层 token SSE、pgvector retrieval / answer eval、hybrid、rerank 和上下文压缩已经具备。详细计划见 [target-architecture.md](target-architecture.md)。
+新的产品化目标详见 [multitenant-rag.md](multitenant-rag.md)。当前第一、第二阶段主体能力和架构收口主任务已经落地: `/api/v1 + Runtime + Agent + pgvector` 是唯一产品主线，旧 Chroma/CLI/Streamlit 链路已经删除，chat run 生命周期、Runtime SSE、取消、pgvector retrieval / answer eval、hybrid、rerank 和上下文压缩已经具备。详细计划见 [target-architecture.md](target-architecture.md)。
 
 ### 目标一: 可验证的 RAG 系统
 
@@ -79,6 +79,10 @@ app/
   services/
     chat_service.py
     document_service.py
+  runtime/
+    manager.py
+    service.py
+    stream.py
   api/
     v1/
 evaluation/
@@ -102,11 +106,11 @@ evaluation/
 
 计划内容:
 
-- [x] 明确 `/api/v1 + pgvector` 是产品主链路
+- [x] 明确 `/api/v1 + Runtime + pgvector` 是产品主链路
 - [x] 抽统一 retrieval interface / DTO
 - [x] 删除旧 Chroma 链路，并将 Agent 迁移到 pgvector tool 主线
 - [x] 增加 chat run 生命周期
-- [x] 将 `/api/v1` SSE 升级为 service 层 token 级 streaming
+- [x] 将 `/api/v1` SSE 升级为 runtime 管理的 token 级 streaming
 
 预期结果:
 

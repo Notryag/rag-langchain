@@ -7,10 +7,10 @@
 后端主线已经收口为:
 
 ```text
-/api/v1 + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
+/api/v1 + Runtime + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。Agent 已恢复为当前主线的一部分，`retrieve_context` tool 直接调用 PostgreSQL/pgvector，并在 SQL 层保留 `user_id + kb_id` 权限过滤。当前最短板是质量评测还没有绑定真实知识库数据集，以及前端还没有会话历史加载。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。Runtime 是当前问答运行态主线，负责 chat run 生命周期、SSE StreamBridge、取消和运行态查询。Agent 已恢复为当前主线的一部分，`retrieve_context` tool 直接调用 PostgreSQL/pgvector，并在 SQL 层保留 `user_id + kb_id` 权限过滤。当前最短板是质量评测还没有绑定真实知识库数据集，以及前端还没有会话历史加载。
 
 ## 当前优先级
 
