@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from app.db.models.chat import ChatRun
+from app.db.models.chat import ChatRun, ChatRunEvent
 from app.services.chat_service import ChatService
 from app.services.rag_types import RagResponse, RagStreamEvent
 
@@ -72,6 +72,9 @@ class PromptRuntimeTests(unittest.TestCase):
         self.assertEqual(rag_service.system_prompt, "Use strict citations.")
         runs = [item for item in session.added if isinstance(item, ChatRun)]
         self.assertEqual(runs[0].prompt_version_id, 42)
+        events = [item for item in session.added if isinstance(item, ChatRunEvent)]
+        self.assertEqual([event.event_type for event in events], ["complete"])
+        self.assertEqual(events[0].payload["reference_count"], 1)
 
 
 if __name__ == "__main__":

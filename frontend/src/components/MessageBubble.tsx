@@ -1,6 +1,6 @@
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 
-import type { ChatMessage, Citation, FeedbackRating, ToolTrace } from "../types";
+import type { ChatMessage, ChatRunEvent, Citation, FeedbackRating, ToolTrace } from "../types";
 
 type RetrievedSnippet = {
   label: string;
@@ -110,6 +110,19 @@ function MessageBubble({
             ))}
           </div>
         )}
+        {!!message.runEvents?.length && (
+          <details className="run-timeline">
+            <summary>
+              <span>执行 Trace</span>
+              <small>{message.runEvents.length} 个事件</small>
+            </summary>
+            <div className="run-events">
+              {message.runEvents.map((event) => (
+                <RunEventItem event={event} key={event.id} />
+              ))}
+            </div>
+          </details>
+        )}
         {(message.elapsedMs !== undefined ||
           totalTokens !== undefined ||
           totalCost !== undefined ||
@@ -155,6 +168,39 @@ function MessageBubble({
         )}
       </div>
     </article>
+  );
+}
+
+function RunEventItem({ event }: { event: ChatRunEvent }) {
+  const toolName = typeof event.payload.tool_name === "string" ? event.payload.tool_name : "";
+  const statusLine = typeof event.payload.status_line === "string" ? event.payload.status_line : "";
+  const referenceCount =
+    typeof event.payload.reference_count === "number"
+      ? event.payload.reference_count
+      : Array.isArray(event.payload.citations)
+        ? event.payload.citations.length
+        : undefined;
+  const totalTokens =
+    typeof event.payload.usage === "object" &&
+    event.payload.usage !== null &&
+    "total_tokens" in event.payload.usage
+      ? String((event.payload.usage as Record<string, unknown>).total_tokens)
+      : "";
+
+  return (
+    <div className="run-event">
+      <div className="run-event-head">
+        <strong>
+          #{event.sequence} {event.event_type}
+        </strong>
+        {toolName && <span>{toolName}</span>}
+      </div>
+      {statusLine && <p>{statusLine}</p>}
+      <div className="run-event-meta">
+        {referenceCount !== undefined && <span>refs={referenceCount}</span>}
+        {totalTokens && <span>tokens={totalTokens}</span>}
+      </div>
+    </div>
   );
 }
 

@@ -13,7 +13,8 @@
 - 问答时按 `user_id + kb_id` 在 SQL 层做权限过滤
 - 回答返回结构化引用来源
 - 聊天会话、消息、chat run、usage、操作日志
-- LangSmith tracing 配置入口、token cost 估算、trace id/url 预留
+- 本地轻量 Agent run timeline，记录 tool/result/complete/error
+- 外部 tracing 配置入口、token cost 估算、trace id/url 预留
 - Prompt 版本列表、创建、启用和回滚 API
 - MCP Server 示例，供外部 Agent/MCP client 复用知识库检索、文档查询和运行记录查询
 - SSE 流式回答、热点问题缓存、接口限流

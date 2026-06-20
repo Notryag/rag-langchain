@@ -146,10 +146,10 @@ frontend/src/components/ReferenceList.tsx
 
 ## Batch O1: 可观测与运行成本
 
-- [x] 接入 LangSmith tracing 环境变量，不自研完整 trace 后台
+- [x] 接入外部 tracing 环境变量，不自研完整 trace 后台
 - [x] `chat_runs` 预留 `trace_id / trace_url`
 - [x] 保存本地 `token_cost` 估算字段
-- [ ] 从 LangSmith run tree 稳定回填 trace id/url
+- [ ] 外部平台 trace_url 自动回填（可选）
 - [x] 前端 run 详情展示 usage / token_cost / trace_url
 
 ## Batch A1: Agentic RAG 加分项
@@ -158,7 +158,7 @@ frontend/src/components/ReferenceList.tsx
 - [x] Prompt 版本管理 API: 创建、启用、列表、回滚
 - [x] MCP Server 示例: 暴露 kb_search / document_lookup / get_chat_run
 - [x] Runtime 使用 active prompt version 装配 Agent 系统提示词
-- [ ] Agent 执行事件持久化: chat_run_events 或接 LangSmith trace 链接
+- [x] Agent 执行事件持久化: chat_run_events 轻量 timeline
 
 建议命令:
 

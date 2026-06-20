@@ -21,6 +21,7 @@ class DbModelTests(unittest.TestCase):
                 "chat_sessions",
                 "chat_messages",
                 "chat_runs",
+                "chat_run_events",
                 "prompt_versions",
                 "operation_logs",
             },
@@ -76,6 +77,20 @@ class DbModelTests(unittest.TestCase):
         index_names = {index.name for index in table.indexes}
         self.assertIn("ix_chat_runs_user_kb_status", index_names)
         self.assertIn("ix_chat_runs_session_created", index_names)
+
+    def test_chat_run_events_keep_timeline_fields(self) -> None:
+        table = Base.metadata.tables["chat_run_events"]
+
+        self.assertIn("run_id", table.columns)
+        self.assertIn("user_id", table.columns)
+        self.assertIn("kb_id", table.columns)
+        self.assertIn("event_type", table.columns)
+        self.assertIn("sequence", table.columns)
+        self.assertIn("payload", table.columns)
+
+        index_names = {index.name for index in table.indexes}
+        self.assertIn("ix_chat_run_events_run_sequence", index_names)
+        self.assertIn("ix_chat_run_events_user_kb_created", index_names)
 
     def test_chunk_keeps_tenant_scope_and_vector_embedding(self) -> None:
         table = Base.metadata.tables["document_chunks"]

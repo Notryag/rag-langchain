@@ -789,7 +789,8 @@ button {
   background: #f8fafc;
 }
 
-.tool-trace summary {
+.tool-trace summary,
+.run-timeline summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -802,10 +803,60 @@ button {
   overflow-wrap: anywhere;
 }
 
-.tool-trace summary small {
+.tool-trace summary small,
+.run-timeline summary small {
   flex: 0 0 auto;
   color: var(--muted);
   font-weight: 500;
+}
+
+.run-timeline {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.run-events {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.run-event {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.run-event-head,
+.run-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.run-event-head strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.run-event-head span,
+.run-event-meta span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-event p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .retrieved-snippets {

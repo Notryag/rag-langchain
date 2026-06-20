@@ -444,18 +444,21 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 
 每次问答都会创建一条 `chat_runs` 记录。operation log 的 `chat.ask` / `chat.stream` 以 `chat_run` 作为 resource，并在 details 中保留 `session_id`、`kb_id`、引用数量、缓存命中和 usage。
 
-## 可观测与 LangSmith
+## 可观测与 Timeline
 
-本项目不自研完整 Agent trace 后台。深度 trace、tool 调用树、LLM 输入输出、延迟和线上调试优先交给 LangSmith；本地只保留产品运行态所需字段:
+本项目不自研完整 Agent trace 平台。深度 trace、tool 调用树、LLM 输入输出、延迟和线上调试可以交给 LangSmith / Langfuse 这类外部平台；本地只保留产品运行态和演示所需字段:
 
 - `chat_runs.usage`
 - `chat_runs.token_cost`
 - `chat_runs.prompt_version_id`
 - `chat_runs.trace_id`
 - `chat_runs.trace_url`
+- `chat_run_events`
 - operation logs
 
-开启 LangSmith:
+`chat_run_events` 是轻量本地 timeline，只记录 `tool_call`、`tool_result`、`complete`、`error` 这类关键事件及结构化 payload，便于前端回看一次 run 的执行过程。它不是 OpenTelemetry span 树，也不替代 LangSmith / Langfuse。
+
+如果你要接外部平台，再开启 LangSmith:
 
 ```env
 LANGSMITH_TRACING=true
@@ -471,6 +474,12 @@ TOKEN_OUTPUT_COST_PER_1K=0.002
 ```
 
 `token_cost` 基于模型返回的 `usage.input_tokens` 和 `usage.output_tokens` 计算。不同兼容模型网关可能不返回 usage，此时成本为 0。
+
+查询本地 run timeline:
+
+```text
+GET /api/v1/chat-runs/{run_id}/events
+```
 
 ## Prompt 版本
 

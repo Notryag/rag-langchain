@@ -93,6 +93,20 @@ class ChatRunRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ChatRunEventRead(BaseModel):
+    id: int
+    run_id: int
+    user_id: int
+    kb_id: int
+    event_type: str
+    sequence: int
+    payload: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ChatRunCancelResponse(BaseModel):
     run_id: int
     cancelled: bool

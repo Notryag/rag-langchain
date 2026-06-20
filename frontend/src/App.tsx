@@ -7,6 +7,7 @@ import {
   deleteDocument,
   deleteKnowledgeBase,
   getChatRun,
+  listChatRunEvents,
   listDocuments,
   listChatMessages,
   listChatSessions,
@@ -483,9 +484,11 @@ function App() {
     if (!apiToken) return;
     try {
       const run = await getChatRun(apiToken, runId);
+      const runEvents = await listChatRunEvents(apiToken, runId);
       updateAssistant(assistantId, {
         usage: run.usage,
         tokenCost: run.token_cost,
+        runEvents,
         traceUrl: run.trace_url,
       });
     } catch {

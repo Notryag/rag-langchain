@@ -125,6 +125,18 @@ export type ChatRun = {
   updated_at: string;
 };
 
+export type ChatRunEvent = {
+  id: number;
+  run_id: number;
+  user_id: number;
+  kb_id: number;
+  event_type: string;
+  sequence: number;
+  payload: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
 export type RetrievalPreviewChunk = {
   rank: number | null;
   document_id: number | string | null;
@@ -154,6 +166,7 @@ export type ChatMessage = {
   toolTraces?: ToolTrace[];
   usage?: Record<string, unknown> | null;
   tokenCost?: Record<string, unknown> | null;
+  runEvents?: ChatRunEvent[];
   runId?: number | null;
   traceUrl?: string | null;
   elapsedMs?: number | null;

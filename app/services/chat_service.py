@@ -6,7 +6,7 @@ from typing import Any, Iterator, Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models.chat import ChatMessage, ChatRole, ChatRun, ChatRunStatus, ChatSession
+from app.db.models.chat import ChatMessage, ChatRole, ChatRun, ChatRunEvent, ChatRunStatus, ChatSession
 from app.services.kb_service import KnowledgeBaseService
 from app.services.prompt_version_service import PromptVersionService
 from app.services.rag_service import RagService, get_rag_service
@@ -111,6 +111,7 @@ class ChatService:
             if chat_run.prompt_version_id is not None
             else self._prompt_version_service.get_active(session)
         )
+        event_sequence = 0
         try:
             answer = ""
             references: list[dict[str, Any]] = []
@@ -125,6 +126,14 @@ class ChatService:
                 system_prompt=prompt_version.system_prompt,
             ):
                 if event.type == "tool_call":
+                    event_sequence += 1
+                    self._record_run_event(
+                        session,
+                        chat_run=chat_run,
+                        event_type="tool_call",
+                        sequence=event_sequence,
+                        payload={"status_line": event.status_line, "tool_name": event.tool_name},
+                    )
                     yield ChatStreamEvent(
                         type="tool_call",
                         status_line=event.status_line,
@@ -133,6 +142,19 @@ class ChatService:
                     continue
                 if event.type == "tool_result":
                     references = [dict(citation) for citation in event.citations]
+                    event_sequence += 1
+                    self._record_run_event(
+                        session,
+                        chat_run=chat_run,
+                        event_type="tool_result",
+                        sequence=event_sequence,
+                        payload={
+                            "status_line": event.status_line,
+                            "tool_name": event.tool_name,
+                            "content": event.content,
+                            "citations": references,
+                        },
+                    )
                     yield ChatStreamEvent(
                         type="tool_result",
                         content=event.content,
@@ -165,6 +187,20 @@ class ChatService:
                 usage=usage,
                 cache_hit=cache_hit,
             )
+            event_sequence += 1
+            self._record_run_event(
+                session,
+                chat_run=chat_run,
+                event_type="complete",
+                sequence=event_sequence,
+                payload={
+                    "answer_preview": answer[:500],
+                    "reference_count": len(references),
+                    "usage": usage,
+                    "token_cost": calculate_token_cost(usage),
+                    "cache_hit": cache_hit,
+                },
+            )
             session.commit()
             result = ChatAnswer(
                 answer=answer,
@@ -178,6 +214,15 @@ class ChatService:
             yield ChatStreamEvent(type="complete", answer=answer, result=result)
         except Exception as exc:
             self._mark_run_failed(session, chat_run=chat_run, error_message=str(exc))
+            event_sequence += 1
+            self._record_run_event(
+                session,
+                chat_run=chat_run,
+                event_type="error",
+                sequence=event_sequence,
+                payload={"message": str(exc)},
+            )
+            session.commit()
             yield ChatStreamEvent(type="error", error_message=str(exc))
             return
 
@@ -220,6 +265,7 @@ class ChatService:
             answer_parts: list[str] = []
             references: list[dict[str, Any]] = []
             usage: dict[str, Any] = _zero_usage(cached=False)
+            event_sequence = 0
             for event in self._rag_service.stream(
                 question,
                 thread_id=str(chat_session.id),
@@ -230,8 +276,30 @@ class ChatService:
             ):
                 if event.type == "answer":
                     answer_parts.append(event.content)
+                elif event.type == "tool_call":
+                    event_sequence += 1
+                    self._record_run_event(
+                        session,
+                        chat_run=chat_run,
+                        event_type="tool_call",
+                        sequence=event_sequence,
+                        payload={"status_line": event.status_line, "tool_name": event.tool_name},
+                    )
                 elif event.type == "tool_result":
                     references = [dict(citation) for citation in event.citations]
+                    event_sequence += 1
+                    self._record_run_event(
+                        session,
+                        chat_run=chat_run,
+                        event_type="tool_result",
+                        sequence=event_sequence,
+                        payload={
+                            "status_line": event.status_line,
+                            "tool_name": event.tool_name,
+                            "content": event.content,
+                            "citations": references,
+                        },
+                    )
                 elif event.type == "complete" and event.result is not None:
                     references = [dict(citation) for citation in event.result.citations]
                     usage = event.result.usage or usage
@@ -239,6 +307,14 @@ class ChatService:
             cache_hit = False
         except Exception as exc:
             self._mark_run_failed(session, chat_run=chat_run, error_message=str(exc))
+            self._record_run_event(
+                session,
+                chat_run=chat_run,
+                event_type="error",
+                sequence=event_sequence + 1,
+                payload={"message": str(exc)},
+            )
+            session.commit()
             raise
 
         assistant_message = ChatMessage(
@@ -255,6 +331,19 @@ class ChatService:
             references=references,
             usage=usage,
             cache_hit=cache_hit,
+        )
+        self._record_run_event(
+            session,
+            chat_run=chat_run,
+            event_type="complete",
+            sequence=event_sequence + 1,
+            payload={
+                "answer_preview": answer[:500],
+                "reference_count": len(references),
+                "usage": usage,
+                "token_cost": calculate_token_cost(usage),
+                "cache_hit": cache_hit,
+            },
         )
         session.commit()
         return ChatAnswer(
@@ -350,6 +439,35 @@ class ChatService:
         chat_session = self._get_session_for_user(session, user_id=user_id, session_id=session_id)
         statement = select(ChatMessage).where(ChatMessage.session_id == chat_session.id).order_by(ChatMessage.created_at)
         return list(session.scalars(statement))
+
+    def list_run_events(self, session: Session, *, user_id: int, run_id: int) -> list[ChatRunEvent]:
+        self._get_run_for_user(session, user_id=user_id, run_id=run_id)
+        statement = (
+            select(ChatRunEvent)
+            .where(ChatRunEvent.run_id == run_id, ChatRunEvent.user_id == user_id)
+            .order_by(ChatRunEvent.sequence, ChatRunEvent.id)
+        )
+        return list(session.scalars(statement))
+
+    def _record_run_event(
+        self,
+        session: Session,
+        *,
+        chat_run: ChatRun,
+        event_type: str,
+        sequence: int,
+        payload: dict[str, Any],
+    ) -> None:
+        session.add(
+            ChatRunEvent(
+                run_id=chat_run.id,
+                user_id=chat_run.user_id,
+                kb_id=chat_run.kb_id,
+                event_type=event_type,
+                sequence=sequence,
+                payload=payload,
+            )
+        )
 
     def _get_or_create_session(
         self,

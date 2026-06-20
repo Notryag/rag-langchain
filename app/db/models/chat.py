@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from typing import Any
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, Index, JSON, String, Text
+from sqlalchemy import BigInteger, Enum, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -96,3 +96,26 @@ class ChatRun(TimestampMixin, Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     session = relationship("ChatSession", back_populates="runs")
+    events = relationship("ChatRunEvent", back_populates="run", cascade="all, delete-orphan")
+
+
+class ChatRunEvent(TimestampMixin, Base):
+    __tablename__ = "chat_run_events"
+    __table_args__ = (
+        Index("ix_chat_run_events_run_sequence", "run_id", "sequence"),
+        Index("ix_chat_run_events_user_kb_created", "user_id", "kb_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("chat_runs.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    kb_id: Mapped[int] = mapped_column(
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+    run = relationship("ChatRun", back_populates="events")

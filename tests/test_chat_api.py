@@ -43,6 +43,23 @@ def _chat_message(**overrides):
     return SimpleNamespace(**payload)
 
 
+def _chat_run_event(**overrides):
+    now = datetime.now(UTC)
+    payload = {
+        "id": 10,
+        "run_id": 34,
+        "user_id": 1,
+        "kb_id": 2,
+        "event_type": "tool_result",
+        "sequence": 1,
+        "payload": {"tool_name": "retrieve_context", "citations": [{"filename": "产品说明.pdf"}]},
+        "created_at": now,
+        "updated_at": now,
+    }
+    payload.update(overrides)
+    return SimpleNamespace(**payload)
+
+
 class ChatApiTests(unittest.TestCase):
     def setUp(self) -> None:
         app.dependency_overrides.clear()
@@ -196,6 +213,24 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(response.json()[0]["role"], "user")
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.session_id, 8)
+
+    def test_list_chat_run_events(self) -> None:
+        class FakeChatService:
+            def list_run_events(self, session, *, user_id, run_id):
+                self.user_id = user_id
+                self.run_id = run_id
+                return [_chat_run_event(sequence=1), _chat_run_event(id=11, event_type="complete", sequence=2)]
+
+        fake_service = FakeChatService()
+        app.dependency_overrides[chat_routes.get_chat_service] = lambda: fake_service
+
+        response = self.client.get("/api/v1/chat-runs/34/events")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["event_type"] for item in response.json()], ["tool_result", "complete"])
+        self.assertEqual(response.json()[0]["payload"]["tool_name"], "retrieve_context")
+        self.assertEqual(fake_service.user_id, 1)
+        self.assertEqual(fake_service.run_id, 34)
 
 
 if __name__ == "__main__":

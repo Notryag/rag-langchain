@@ -221,6 +221,29 @@ def upgrade() -> None:
     op.create_index("ix_chat_runs_session_created", "chat_runs", ["session_id", "created_at"])
 
     op.create_table(
+        "chat_run_events",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("run_id", sa.BigInteger(), nullable=False),
+        sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column("kb_id", sa.BigInteger(), nullable=False),
+        sa.Column("event_type", sa.String(length=64), nullable=False),
+        sa.Column("sequence", sa.Integer(), nullable=False),
+        sa.Column("payload", sa.JSON(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.ForeignKeyConstraint(["kb_id"], ["knowledge_bases.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["run_id"], ["chat_runs.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_chat_run_events_run_id", "chat_run_events", ["run_id"])
+    op.create_index("ix_chat_run_events_user_id", "chat_run_events", ["user_id"])
+    op.create_index("ix_chat_run_events_kb_id", "chat_run_events", ["kb_id"])
+    op.create_index("ix_chat_run_events_event_type", "chat_run_events", ["event_type"])
+    op.create_index("ix_chat_run_events_run_sequence", "chat_run_events", ["run_id", "sequence"])
+    op.create_index("ix_chat_run_events_user_kb_created", "chat_run_events", ["user_id", "kb_id", "created_at"])
+
+    op.create_table(
         "chat_messages",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column("session_id", sa.BigInteger(), nullable=False),
@@ -238,6 +261,13 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_chat_messages_session_id", table_name="chat_messages")
     op.drop_table("chat_messages")
+    op.drop_index("ix_chat_run_events_user_kb_created", table_name="chat_run_events")
+    op.drop_index("ix_chat_run_events_run_sequence", table_name="chat_run_events")
+    op.drop_index("ix_chat_run_events_event_type", table_name="chat_run_events")
+    op.drop_index("ix_chat_run_events_kb_id", table_name="chat_run_events")
+    op.drop_index("ix_chat_run_events_user_id", table_name="chat_run_events")
+    op.drop_index("ix_chat_run_events_run_id", table_name="chat_run_events")
+    op.drop_table("chat_run_events")
     op.drop_index("ix_chat_runs_session_created", table_name="chat_runs")
     op.drop_index("ix_chat_runs_user_kb_status", table_name="chat_runs")
     op.drop_index("ix_chat_runs_status", table_name="chat_runs")

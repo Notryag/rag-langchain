@@ -1,6 +1,7 @@
 import type {
   KnowledgeBase,
   ChatRun,
+  ChatRunEvent,
   ChatSession,
   KnowledgeDocument,
   PublicConfig,
@@ -152,6 +153,11 @@ export async function cancelChatRun(token: string, runId: number): Promise<{ run
 
 export async function getChatRun(token: string, runId: number): Promise<ChatRun> {
   const response = await request(`/api/v1/chat-runs/${runId}`, {}, token);
+  return response.json();
+}
+
+export async function listChatRunEvents(token: string, runId: number): Promise<ChatRunEvent[]> {
+  const response = await request(`/api/v1/chat-runs/${runId}/events`, {}, token);
   return response.json();
 }
 

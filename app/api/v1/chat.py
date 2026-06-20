@@ -18,6 +18,7 @@ from app.schemas.chat import (
     ChatMessageRead,
     ChatRequest,
     ChatRunCancelResponse,
+    ChatRunEventRead,
     ChatRunRead,
     ChatSessionRead,
     RetrievalPreviewChunk,
@@ -198,6 +199,17 @@ def get_chat_run(
     if chat_run is None:
         raise ChatSessionNotFoundError("Chat run not found")
     return ChatRunRead.model_validate(chat_run)
+
+
+@router.get("/chat-runs/{run_id}/events", response_model=list[ChatRunEventRead])
+def list_chat_run_events(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+    chat_service: ChatService = Depends(get_chat_service),
+) -> list[ChatRunEventRead]:
+    events = chat_service.list_run_events(session, user_id=current_user.id, run_id=run_id)
+    return [ChatRunEventRead.model_validate(event) for event in events]
 
 
 @router.post("/chat-runs/{run_id}/cancel", response_model=ChatRunCancelResponse)
