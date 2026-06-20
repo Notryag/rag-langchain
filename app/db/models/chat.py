@@ -85,6 +85,9 @@ class ChatRun(TimestampMixin, Base):
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     references: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     usage: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    token_cost: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    trace_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     cache_hit: Mapped[bool] = mapped_column(default=False, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 

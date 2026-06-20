@@ -45,6 +45,7 @@ class ChatAnswerResponse(BaseModel):
     session_id: int
     run_id: int
     usage: dict[str, Any] | None = None
+    token_cost: dict[str, Any] | None = None
 
 
 class ChatSessionRead(BaseModel):
@@ -80,6 +81,9 @@ class ChatRunRead(BaseModel):
     answer: str | None
     references: list[dict[str, Any]]
     usage: dict[str, Any]
+    token_cost: dict[str, Any]
+    trace_id: str | None
+    trace_url: str | None
     cache_hit: bool
     error_message: str | None
     created_at: datetime

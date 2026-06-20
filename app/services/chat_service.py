@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models.chat import ChatMessage, ChatRole, ChatRun, ChatRunStatus, ChatSession
 from app.services.kb_service import KnowledgeBaseService
 from app.services.rag_service import RagService, get_rag_service
+from app.services.token_cost import calculate_token_cost
 
 
 class ChatSessionNotFoundError(ValueError):
@@ -23,6 +24,7 @@ class ChatAnswer:
     run_id: int
     cache_hit: bool = False
     usage: dict[str, Any] | None = None
+    token_cost: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -160,6 +162,7 @@ class ChatService:
                 run_id=chat_run.id,
                 cache_hit=cache_hit,
                 usage=usage,
+                token_cost=calculate_token_cost(usage),
             )
             yield ChatStreamEvent(type="complete", answer=answer, result=result)
         except Exception as exc:
@@ -247,6 +250,7 @@ class ChatService:
             run_id=chat_run.id,
             cache_hit=cache_hit,
             usage=usage,
+            token_cost=calculate_token_cost(usage),
         )
 
     def stream(
@@ -291,6 +295,7 @@ class ChatService:
             question=question,
             references=[],
             usage={},
+            token_cost={},
             cache_hit=False,
         )
         session.add(chat_run)
@@ -312,6 +317,7 @@ class ChatService:
         chat_run.answer = answer
         chat_run.references = references
         chat_run.usage = usage
+        chat_run.token_cost = calculate_token_cost(usage)
         chat_run.cache_hit = cache_hit
         chat_run.error_message = None
 

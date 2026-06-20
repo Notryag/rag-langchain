@@ -48,6 +48,12 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
         rate_limit_window_seconds=60,
         hot_question_cache_enabled=True,
         hot_question_cache_ttl_seconds=300,
+        langsmith_tracing=False,
+        langsmith_api_key=None,
+        langsmith_project="langchain-rag",
+        langsmith_endpoint=None,
+        token_input_cost_per_1k=0.0,
+        token_output_cost_per_1k=0.0,
     )
 
 

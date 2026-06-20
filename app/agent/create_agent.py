@@ -3,6 +3,7 @@ import logging
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
+from app.config.langsmith import configure_langsmith_environment
 from app.config.settings import settings
 from app.middleware.prompt_with_context import prompt_with_context
 from app.agent.prompts import BASE_SYSTEM_PROMPT
@@ -32,6 +33,7 @@ def get_middleware():
 
 
 def build_agent():
+    configure_langsmith_environment()
     model = build_model()
     tools = get_tools()
     middleware = get_middleware()

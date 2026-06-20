@@ -10,6 +10,7 @@ from app.api.main import app
 from app.api.v1 import auth as auth_routes
 from app.api.v1 import chat as chat_routes
 from app.db.models.chat import ChatRole
+from app.runtime.schemas import RuntimeRun, StreamEvent
 from app.services.chat_service import ChatAnswer, ChatSessionNotFoundError, ChatStreamEvent
 
 
@@ -73,6 +74,7 @@ class ChatApiTests(unittest.TestCase):
                     session_id=12,
                     run_id=34,
                     usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
+                    token_cost={"total_cost": 0.0, "currency": "USD"},
                 )
 
         fake_service = FakeChatService()
@@ -98,7 +100,9 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(self.operation_logs[0]["details"]["reference_count"], 1)
         self.assertFalse(self.operation_logs[0]["details"]["cache_hit"])
         self.assertEqual(response.json()["usage"]["total_tokens"], 15)
+        self.assertEqual(response.json()["token_cost"]["total_cost"], 0.0)
         self.assertEqual(self.operation_logs[0]["details"]["usage"]["total_tokens"], 15)
+        self.assertEqual(self.operation_logs[0]["details"]["token_cost"]["total_cost"], 0.0)
 
     def test_chat_returns_404_for_missing_session(self) -> None:
         class FakeChatService:
@@ -113,23 +117,33 @@ class ChatApiTests(unittest.TestCase):
         self.assertEqual(response.json()["error"]["code"], "chat_session_not_found")
 
     def test_chat_stream(self) -> None:
-        class FakeChatService:
-            def stream(self, session, *, user_id, kb_id, question, session_id=None):
+        class FakeRuntimeService:
+            async def start_chat_run(self, session, *, user_id, kb_id, question, session_id=None):
                 self.user_id = user_id
                 self.kb_id = kb_id
                 self.question = question
-                answer = ChatAnswer(
-                    answer="系统根据调用次数计费。",
-                    references=[{"filename": "产品说明.pdf", "chunk_index": 3}],
-                    session_id=12,
-                    run_id=34,
-                    usage={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
-                )
-                yield ChatStreamEvent(type="answer_delta", content="系统", answer="系统")
-                yield ChatStreamEvent(type="complete", answer=answer.answer, result=answer)
+                self.session_id = session_id
+                return RuntimeRun(run_id=34, session_id=12, user_id=user_id, kb_id=kb_id)
 
-        fake_service = FakeChatService()
-        app.dependency_overrides[chat_routes.get_chat_service] = lambda: fake_service
+            async def stream_run(self, run_id, *, disconnect_mode):
+                yield StreamEvent(id=1, event="answer_delta", data={"content": "系统", "answer": "系统"})
+                yield StreamEvent(
+                    id=2,
+                    event="complete",
+                    data={
+                        "answer": "系统根据调用次数计费。",
+                        "references": [{"filename": "产品说明.pdf", "chunk_index": 3}],
+                        "session_id": 12,
+                        "run_id": 34,
+                        "cache_hit": False,
+                        "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "cached": False},
+                        "token_cost": {"total_cost": 0.0, "currency": "USD"},
+                    },
+                )
+                yield StreamEvent(id=0, event="end", data={})
+
+        fake_service = FakeRuntimeService()
+        app.dependency_overrides[chat_routes.get_runtime_service] = lambda: fake_service
 
         with self.client.stream("POST", "/api/v1/kbs/2/chat/stream", json={"question": "怎么计费？"}) as response:
             body = response.read().decode("utf-8")
@@ -140,12 +154,15 @@ class ChatApiTests(unittest.TestCase):
         self.assertIn('"session_id": 12', body)
         self.assertIn('"run_id": 34', body)
         self.assertIn('"total_tokens": 15', body)
+        self.assertIn('"total_cost": 0.0', body)
         self.assertEqual(fake_service.user_id, 1)
         self.assertEqual(fake_service.kb_id, 2)
-        self.assertEqual(self.operation_logs[0]["action"], "chat.stream")
-        self.assertEqual(self.operation_logs[0]["resource_type"], "chat_run")
-        self.assertEqual(self.operation_logs[0]["resource_id"], 34)
-        self.assertEqual(self.operation_logs[0]["details"]["session_id"], 12)
+        self.assertEqual(self.operation_logs[0]["action"], "chat.run.start")
+        self.assertEqual(self.operation_logs[1]["action"], "chat.stream")
+        self.assertEqual(self.operation_logs[1]["resource_type"], "chat_run")
+        self.assertEqual(self.operation_logs[1]["resource_id"], 34)
+        self.assertEqual(self.operation_logs[1]["details"]["session_id"], 12)
+        self.assertEqual(self.operation_logs[1]["details"]["token_cost"]["total_cost"], 0.0)
 
     def test_list_chat_sessions(self) -> None:
         class FakeChatService:

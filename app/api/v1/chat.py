@@ -63,6 +63,7 @@ def chat(
             "reference_count": len(answer.references),
             "cache_hit": answer.cache_hit,
             "usage": answer.usage,
+            "token_cost": answer.token_cost,
         },
     )
     return ChatAnswerResponse(
@@ -71,6 +72,7 @@ def chat(
         session_id=answer.session_id,
         run_id=answer.run_id,
         usage=answer.usage,
+        token_cost=answer.token_cost,
     )
 
 
@@ -175,6 +177,7 @@ def chat_stream(
                             "reference_count": len(payload_data.get("references") or []),
                             "cache_hit": payload_data.get("cache_hit", False),
                             "usage": payload_data.get("usage"),
+                            "token_cost": payload_data.get("token_cost"),
                         },
                     )
                 yield _sse_payload(event.event, event.data if isinstance(event.data, dict) else {"value": event.data})

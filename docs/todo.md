@@ -17,7 +17,8 @@
 1. 准备与当前知识库一致的 eval dataset，并跑 pgvector retrieval / answer baseline。
 2. 根据 bad cases 决定 hybrid / rerank 默认策略。
 3. 补齐前端聊天体验: 新会话、历史会话列表、消息加载、usage 展示。
-4. 再考虑更复杂的权限模型、运维面板和质量运营。
+4. 补齐 Agentic RAG 工程增强: Prompt 版本管理、MCP Server 示例、LangSmith trace 链接回填。
+5. 再考虑更复杂的权限模型、运维面板和质量运营。
 
 ## 前端实现原则
 
@@ -142,6 +143,20 @@ frontend/src/components/ReferenceList.tsx
 - [ ] 运行 answer eval
 - [ ] 保存 baseline manifest、answer runs 和 bad cases
 - [ ] 根据结果决定 `RETRIEVAL_SEARCH_TYPE`、`RERANKER_ENABLED` 默认值
+
+## Batch O1: 可观测与运行成本
+
+- [x] 接入 LangSmith tracing 环境变量，不自研完整 trace 后台
+- [x] `chat_runs` 预留 `trace_id / trace_url`
+- [x] 保存本地 `token_cost` 估算字段
+- [ ] 从 LangSmith run tree 稳定回填 trace id/url
+- [ ] 前端 run 详情展示 usage / token_cost / trace_url
+
+## Batch A1: Agentic RAG 加分项
+
+- [ ] Prompt 版本管理: prompt_versions 表、启用版本、run 记录 prompt_version
+- [ ] MCP Server 示例: 暴露 kb_search / document_lookup / get_chat_run
+- [ ] Agent 执行事件持久化: chat_run_events 或接 LangSmith trace 链接
 
 建议命令:
 

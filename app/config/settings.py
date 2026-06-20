@@ -37,6 +37,17 @@ def _get_int_env(name: str, default: int) -> int:
         raise ValueError(f"Environment variable {name} must be an integer, got: {raw_value}") from exc
 
 
+def _get_float_env(name: str, default: float) -> float:
+    raw_value = (os.getenv(name) or "").strip()
+    if not raw_value:
+        return default
+
+    try:
+        return float(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"Environment variable {name} must be a number, got: {raw_value}") from exc
+
+
 def _get_bool_env(name: str, default: bool) -> bool:
     raw_value = (os.getenv(name) or "").strip().lower()
     if not raw_value:
@@ -83,6 +94,12 @@ class Settings:
     rate_limit_window_seconds: int
     hot_question_cache_enabled: bool
     hot_question_cache_ttl_seconds: int
+    langsmith_tracing: bool
+    langsmith_api_key: str | None
+    langsmith_project: str
+    langsmith_endpoint: str | None
+    token_input_cost_per_1k: float
+    token_output_cost_per_1k: float
 
     def __post_init__(self) -> None:
         if self.retrieval_search_type not in _SUPPORTED_RETRIEVAL_SEARCH_TYPES:
@@ -153,6 +170,18 @@ class Settings:
         if self.checkpointer_type == "sqlite" and not self.checkpointer_sqlite_path.strip():
             raise ValueError("CHECKPOINTER_SQLITE_PATH must not be empty when CHECKPOINTER_TYPE=sqlite")
 
+        if self.langsmith_tracing and not self.langsmith_api_key:
+            raise ValueError("LANGSMITH_API_KEY must not be empty when LANGSMITH_TRACING=true")
+
+        if not self.langsmith_project.strip():
+            raise ValueError("LANGSMITH_PROJECT must not be empty")
+
+        if self.token_input_cost_per_1k < 0:
+            raise ValueError("TOKEN_INPUT_COST_PER_1K must be >= 0")
+
+        if self.token_output_cost_per_1k < 0:
+            raise ValueError("TOKEN_OUTPUT_COST_PER_1K must be >= 0")
+
     @classmethod
     def load(cls) -> "Settings":
         return cls(
@@ -191,6 +220,12 @@ class Settings:
             rate_limit_window_seconds=_get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60),
             hot_question_cache_enabled=_get_bool_env("HOT_QUESTION_CACHE_ENABLED", True),
             hot_question_cache_ttl_seconds=_get_int_env("HOT_QUESTION_CACHE_TTL_SECONDS", 300),
+            langsmith_tracing=_get_bool_env("LANGSMITH_TRACING", False),
+            langsmith_api_key=_get_optional_env("LANGSMITH_API_KEY"),
+            langsmith_project=(os.getenv("LANGSMITH_PROJECT") or "langchain-rag").strip(),
+            langsmith_endpoint=_get_optional_env("LANGSMITH_ENDPOINT"),
+            token_input_cost_per_1k=_get_float_env("TOKEN_INPUT_COST_PER_1K", 0.0),
+            token_output_cost_per_1k=_get_float_env("TOKEN_OUTPUT_COST_PER_1K", 0.0),
         )
 
 

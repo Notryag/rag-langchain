@@ -223,6 +223,7 @@ def _event_payload(event: Any) -> dict[str, Any]:
             "run_id": answer.run_id,
             "cache_hit": answer.cache_hit,
             "usage": serialize(answer.usage),
+            "token_cost": serialize(answer.token_cost),
         }
     if event.type == "error":
         return {"message": event.error_message or "chat stream failed"}

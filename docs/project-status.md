@@ -19,6 +19,7 @@
 - 按 `user_id + kb_id` 权限过滤的 pgvector 检索
 - 多租户问答、结构化 references、聊天记录
 - chat run 生命周期、取消、usage、热点缓存、限流、操作日志
+- LangSmith tracing 配置入口、本地 token cost 估算、trace id/url 预留字段
 - SSE `metadata / tool_call / tool_result / answer_delta / complete / end / error`
 - pgvector retrieval / answer eval、baseline runner、embedding 维度诊断
 

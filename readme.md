@@ -13,6 +13,7 @@
 - 问答时按 `user_id + kb_id` 在 SQL 层做权限过滤
 - 回答返回结构化引用来源
 - 聊天会话、消息、chat run、usage、操作日志
+- LangSmith tracing 配置入口、token cost 估算、trace id/url 预留
 - SSE 流式回答、热点问题缓存、接口限流
 - pgvector retrieval / answer eval、baseline manifest、bad case 导出
 

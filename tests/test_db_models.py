@@ -65,6 +65,9 @@ class DbModelTests(unittest.TestCase):
         self.assertIn("answer", table.columns)
         self.assertIn("references", table.columns)
         self.assertIn("usage", table.columns)
+        self.assertIn("token_cost", table.columns)
+        self.assertIn("trace_id", table.columns)
+        self.assertIn("trace_url", table.columns)
         self.assertIn("cache_hit", table.columns)
         self.assertIn("error_message", table.columns)
 

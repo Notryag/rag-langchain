@@ -62,6 +62,11 @@ uv run python -m <module>
 - `RATE_LIMIT_WINDOW_SECONDS` 默认 `60`，表示限流窗口秒数。
 - `HOT_QUESTION_CACHE_ENABLED` 默认 `true`，用于缓存同一用户同一知识库的热点问题回答。
 - `HOT_QUESTION_CACHE_TTL_SECONDS` 默认 `300`，表示热点问题缓存有效期秒数。
+- `LANGSMITH_TRACING` 默认 `false`，开启后由 LangChain/LangSmith 记录 Agent trace。
+- `LANGSMITH_API_KEY` 在 `LANGSMITH_TRACING=true` 时必填。
+- `LANGSMITH_PROJECT` 默认 `langchain-rag`。
+- `LANGSMITH_ENDPOINT` 可选，默认使用 LangSmith 官方地址。
+- `TOKEN_INPUT_COST_PER_1K` 和 `TOKEN_OUTPUT_COST_PER_1K` 默认 `0`，用于本地按 usage 估算 token 成本。
 - 入库当前支持 `.txt`、`.md`、`.pdf`、`.docx`、`.html`、`.htm`。
 
 ## 常用评测命令
@@ -438,6 +443,33 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 - `error`: 流式问答失败信息，失败时对应 `chat_runs.status = failed`
 
 每次问答都会创建一条 `chat_runs` 记录。operation log 的 `chat.ask` / `chat.stream` 以 `chat_run` 作为 resource，并在 details 中保留 `session_id`、`kb_id`、引用数量、缓存命中和 usage。
+
+## 可观测与 LangSmith
+
+本项目不自研完整 Agent trace 后台。深度 trace、tool 调用树、LLM 输入输出、延迟和线上调试优先交给 LangSmith；本地只保留产品运行态所需字段:
+
+- `chat_runs.usage`
+- `chat_runs.token_cost`
+- `chat_runs.trace_id`
+- `chat_runs.trace_url`
+- operation logs
+
+开启 LangSmith:
+
+```env
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your_langsmith_key
+LANGSMITH_PROJECT=langchain-rag
+```
+
+如果需要本地成本估算，设置:
+
+```env
+TOKEN_INPUT_COST_PER_1K=0.001
+TOKEN_OUTPUT_COST_PER_1K=0.002
+```
+
+`token_cost` 基于模型返回的 `usage.input_tokens` 和 `usage.output_tokens` 计算。不同兼容模型网关可能不返回 usage，此时成本为 0。
 
 ## 用户反馈
 
