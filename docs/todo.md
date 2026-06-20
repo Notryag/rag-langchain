@@ -154,7 +154,8 @@ frontend/src/components/ReferenceList.tsx
 
 ## Batch A1: Agentic RAG 加分项
 
-- [ ] Prompt 版本管理: prompt_versions 表、启用版本、run 记录 prompt_version
+- [x] Prompt 版本管理地基: prompt_versions 表、默认版本、run 记录 prompt_version_id
+- [ ] Prompt 版本管理 API: 创建、启用、列表、回滚
 - [ ] MCP Server 示例: 暴露 kb_search / document_lookup / get_chat_run
 - [ ] Agent 执行事件持久化: chat_run_events 或接 LangSmith trace 链接
 

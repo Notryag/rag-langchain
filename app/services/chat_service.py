@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.chat import ChatMessage, ChatRole, ChatRun, ChatRunStatus, ChatSession
 from app.services.kb_service import KnowledgeBaseService
+from app.services.prompt_version_service import PromptVersionService
 from app.services.rag_service import RagService, get_rag_service
 from app.services.token_cost import calculate_token_cost
 
@@ -51,9 +52,11 @@ class ChatService:
         *,
         kb_service: KnowledgeBaseService | None = None,
         rag_service: RagService | None = None,
+        prompt_version_service: PromptVersionService | None = None,
     ) -> None:
         self._kb_service = kb_service or KnowledgeBaseService()
         self._rag_service = rag_service or get_rag_service()
+        self._prompt_version_service = prompt_version_service or PromptVersionService()
 
     def prepare_run(
         self,
@@ -87,6 +90,7 @@ class ChatService:
             kb_id=kb_id,
             chat_session_id=chat_session.id,
             question=question,
+            prompt_version_id=self._prompt_version_service.get_active(session).id,
         )
         return PreparedChatRun(session_id=chat_session.id, run_id=chat_run.id)
 
@@ -202,6 +206,7 @@ class ChatService:
             kb_id=kb_id,
             chat_session_id=chat_session.id,
             question=question,
+            prompt_version_id=self._prompt_version_service.get_active(session).id,
         )
         try:
             answer_parts: list[str] = []
@@ -286,11 +291,13 @@ class ChatService:
         kb_id: int,
         chat_session_id: int,
         question: str,
+        prompt_version_id: int | None,
     ) -> ChatRun:
         chat_run = ChatRun(
             session_id=chat_session_id,
             user_id=user_id,
             kb_id=kb_id,
+            prompt_version_id=prompt_version_id,
             status=ChatRunStatus.RUNNING,
             question=question,
             references=[],

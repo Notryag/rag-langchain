@@ -21,6 +21,7 @@ class DbModelTests(unittest.TestCase):
                 "chat_sessions",
                 "chat_messages",
                 "chat_runs",
+                "prompt_versions",
                 "operation_logs",
             },
             set(Base.metadata.tables),
@@ -60,6 +61,7 @@ class DbModelTests(unittest.TestCase):
         self.assertIn("session_id", table.columns)
         self.assertIn("user_id", table.columns)
         self.assertIn("kb_id", table.columns)
+        self.assertIn("prompt_version_id", table.columns)
         self.assertIn("status", table.columns)
         self.assertIn("question", table.columns)
         self.assertIn("answer", table.columns)

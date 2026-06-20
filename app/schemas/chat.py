@@ -76,6 +76,7 @@ class ChatRunRead(BaseModel):
     session_id: int
     user_id: int
     kb_id: int
+    prompt_version_id: int | None
     status: ChatRunStatus
     question: str
     answer: str | None

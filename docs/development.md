@@ -450,6 +450,7 @@ GET  /api/v1/chat-sessions/{session_id}/messages
 
 - `chat_runs.usage`
 - `chat_runs.token_cost`
+- `chat_runs.prompt_version_id`
 - `chat_runs.trace_id`
 - `chat_runs.trace_url`
 - operation logs
@@ -470,6 +471,12 @@ TOKEN_OUTPUT_COST_PER_1K=0.002
 ```
 
 `token_cost` 基于模型返回的 `usage.input_tokens` 和 `usage.output_tokens` 计算。不同兼容模型网关可能不返回 usage，此时成本为 0。
+
+## Prompt 版本
+
+`prompt_versions` 保存可追踪的系统 prompt 版本。当前内置 `default_rag_assistant / v1`，每个 `chat_runs` 会记录 `prompt_version_id`，方便后续把回答质量、bad cases 和 prompt 变更关联起来。
+
+当前 Agent prompt 仍由代码中的 `BASE_SYSTEM_PROMPT` 和动态 prompt middleware 装配；`prompt_versions` 先作为运行记录和后续管理 API 的数据地基。等评测基线稳定后，再把启用 prompt 版本纳入运行时装配。
 
 ## 用户反馈
 

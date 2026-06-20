@@ -75,6 +75,10 @@ class ChatRun(TimestampMixin, Base):
         index=True,
         nullable=False,
     )
+    prompt_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prompt_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     status: Mapped[ChatRunStatus] = mapped_column(
         Enum(ChatRunStatus, name="chat_run_status", values_callable=lambda enum_cls: [item.value for item in enum_cls]),
         default=ChatRunStatus.RUNNING,
