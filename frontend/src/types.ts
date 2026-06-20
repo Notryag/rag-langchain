@@ -83,6 +83,46 @@ export type ChatResponse = {
   run_id: number;
   cache_hit?: boolean;
   usage: Record<string, unknown> | null;
+  token_cost?: Record<string, unknown> | null;
+};
+
+export type ChatSession = {
+  id: number;
+  user_id: number;
+  kb_id: number;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StoredChatMessage = {
+  id: number;
+  session_id: number;
+  role: "assistant" | "user" | "system";
+  content: string;
+  references: Citation[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type ChatRun = {
+  id: number;
+  session_id: number;
+  user_id: number;
+  kb_id: number;
+  prompt_version_id: number | null;
+  status: "running" | "completed" | "failed" | "cancelled";
+  question: string;
+  answer: string | null;
+  references: Citation[];
+  usage: Record<string, unknown>;
+  token_cost: Record<string, unknown>;
+  trace_id: string | null;
+  trace_url: string | null;
+  cache_hit: boolean;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type RetrievalPreviewChunk = {
@@ -113,7 +153,9 @@ export type ChatMessage = {
   retrievalProfile?: RetrievalProfile;
   toolTraces?: ToolTrace[];
   usage?: Record<string, unknown> | null;
+  tokenCost?: Record<string, unknown> | null;
   runId?: number | null;
+  traceUrl?: string | null;
   elapsedMs?: number | null;
   feedbackRating?: FeedbackRating;
   feedbackPending?: boolean;

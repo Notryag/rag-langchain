@@ -1,8 +1,9 @@
 import { Bot, LogOut, PanelLeft, Plus } from "lucide-react";
 import { useMemo } from "react";
 
-import type { KnowledgeBase, PublicConfig, RetrievalProfile, User } from "../types";
+import type { ChatSession, KnowledgeBase, PublicConfig, RetrievalProfile, User } from "../types";
 import RetrievalSettings from "./RetrievalSettings";
+import SessionList from "./SessionList";
 
 type SidebarProps = {
   activeKbId: number | null;
@@ -10,6 +11,7 @@ type SidebarProps = {
   config: PublicConfig | null;
   defaultRetrievalProfile: RetrievalProfile | null;
   knowledgeBases: KnowledgeBase[];
+  chatSessions: ChatSession[];
   pending: boolean;
   retrievalProfile: RetrievalProfile | null;
   threadId: string;
@@ -21,6 +23,7 @@ type SidebarProps = {
   onLogout: () => void;
   onRetrievalProfileChange: (profile: RetrievalProfile) => void;
   onResetThread: () => void;
+  onSessionSelect: (session: ChatSession) => void;
 };
 
 function Sidebar({
@@ -29,6 +32,7 @@ function Sidebar({
   config,
   defaultRetrievalProfile,
   knowledgeBases,
+  chatSessions,
   pending,
   retrievalProfile,
   threadId,
@@ -40,6 +44,7 @@ function Sidebar({
   onLogout,
   onRetrievalProfileChange,
   onResetThread,
+  onSessionSelect,
 }: SidebarProps) {
   const configRows = useMemo(() => {
     if (!config) return [["模型", "-"]];
@@ -110,13 +115,14 @@ function Sidebar({
       <section className="panel">
         <div className="panel-head">
           <h2>会话</h2>
-          <button className="icon-button" onClick={onResetThread} disabled={pending} title="新建会话">
-            <Plus size={18} />
-          </button>
         </div>
-        <dl className="meta-list">
-          <MetaRow label="会话" value={threadId || "-"} />
-        </dl>
+        <SessionList
+          activeSessionId={threadId && threadId !== "-" ? Number(threadId) : undefined}
+          disabled={pending || workspacePending}
+          sessions={chatSessions}
+          onNewSession={onResetThread}
+          onSelectSession={onSessionSelect}
+        />
       </section>
 
       <section className="panel">

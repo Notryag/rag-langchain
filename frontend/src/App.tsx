@@ -6,7 +6,10 @@ import {
   createKnowledgeBase,
   deleteDocument,
   deleteKnowledgeBase,
+  getChatRun,
   listDocuments,
+  listChatMessages,
+  listChatSessions,
   listKnowledgeBases,
   loadConfig,
   loadMe,
@@ -23,6 +26,7 @@ import KbManager from "./components/KbManager";
 import Sidebar from "./components/Sidebar";
 import type {
   ChatMessage,
+  ChatSession,
   Citation,
   FeedbackRating,
   KnowledgeDocument,
@@ -48,6 +52,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [activeKbId, setActiveKbId] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState<number | undefined>(undefined);
   const [config, setConfig] = useState<PublicConfig | null>(null);
@@ -74,9 +79,11 @@ function App() {
   useEffect(() => {
     if (!apiToken || !activeKbId) {
       setDocuments([]);
+      setChatSessions([]);
       return;
     }
     void refreshDocuments();
+    void refreshChatSessions();
   }, [apiToken, activeKbId]);
 
   useEffect(() => {
@@ -110,6 +117,7 @@ function App() {
       setCurrentUser(null);
       setKnowledgeBases([]);
       setDocuments([]);
+      setChatSessions([]);
       setActiveKbId(null);
       setWorkspaceError(error instanceof Error ? error.message : "加载用户信息失败");
     } finally {
@@ -129,6 +137,7 @@ function App() {
     setCurrentUser(null);
     setKnowledgeBases([]);
     setDocuments([]);
+    setChatSessions([]);
     setActiveKbId(null);
     setSessionId(undefined);
     setMessages([welcomeMessage]);
@@ -157,6 +166,7 @@ function App() {
       setKnowledgeBases((current) => [kb, ...current]);
       setActiveKbId(kb.id);
       setSessionId(undefined);
+      setChatSessions([]);
       setMessages([welcomeMessage]);
     } catch (error) {
       setWorkspaceError(error instanceof Error ? error.message : "创建知识库失败");
@@ -171,6 +181,7 @@ function App() {
     setKnowledgeBases((current) => [kb, ...current]);
     setActiveKbId(kb.id);
     setSessionId(undefined);
+    setChatSessions([]);
     setMessages([welcomeMessage]);
   }
 
@@ -189,6 +200,7 @@ function App() {
       return next;
     });
     setDocuments([]);
+    setChatSessions([]);
     setSessionId(undefined);
     setMessages([welcomeMessage]);
   }
@@ -200,6 +212,31 @@ function App() {
       setDocuments(await listDocuments(apiToken, activeKbId));
     } catch (error) {
       setWorkspaceError(error instanceof Error ? error.message : "加载文档失败");
+    }
+  }
+
+  async function refreshChatSessions() {
+    if (!apiToken || !activeKbId) return;
+    try {
+      const sessions = await listChatSessions(apiToken);
+      setChatSessions(sessions.filter((item) => item.kb_id === activeKbId));
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : "加载会话失败");
+    }
+  }
+
+  async function loadSessionMessages(targetSession: ChatSession) {
+    if (!apiToken || pending) return;
+    setWorkspacePending(true);
+    setWorkspaceError("");
+    try {
+      const storedMessages = await listChatMessages(apiToken, targetSession.id);
+      setSessionId(targetSession.id);
+      setMessages(storedMessages.length ? storedMessages.map(toChatMessage) : [welcomeMessage]);
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : "加载会话消息失败");
+    } finally {
+      setWorkspacePending(false);
     }
   }
 
@@ -274,6 +311,7 @@ function App() {
     const toolTraces: ToolTrace[] = [];
     let answer = "";
     let failed = false;
+    let completedRunId: number | null = null;
 
     try {
       await streamChat({
@@ -285,9 +323,15 @@ function App() {
         onEvent: (eventData) => {
           handleStreamEvent(eventData, assistantId, statusLines, citations, toolTraces, (nextAnswer) => {
             answer = nextAnswer;
+          }, (runId) => {
+            completedRunId = runId;
           });
         },
       });
+      if (completedRunId !== null) {
+        await enrichAssistantWithRun(assistantId, completedRunId);
+      }
+      await refreshChatSessions();
     } catch (error) {
       failed = true;
       updateAssistant(assistantId, {
@@ -374,6 +418,7 @@ function App() {
     citations: Citation[],
     toolTraces: ToolTrace[],
     setAnswer: (answer: string) => void,
+    setCompletedRunId: (runId: number) => void,
   ) {
     if (eventData.eventName === "metadata") {
       setSessionId(eventData.data.session_id);
@@ -411,11 +456,14 @@ function App() {
     if (eventData.eventName === "complete") {
       setSessionId(eventData.data.session_id);
       setAnswer(eventData.data.answer);
+      setCompletedRunId(eventData.data.run_id);
       updateAssistant(assistantId, {
         content: eventData.data.answer,
+        runId: eventData.data.run_id,
         citations: eventData.data.references,
         toolTraces: [...toolTraces],
         usage: eventData.data.usage,
+        tokenCost: eventData.data.token_cost,
       });
       return;
     }
@@ -429,6 +477,20 @@ function App() {
     setMessages((current) =>
       current.map((message) => (message.id === id ? { ...message, ...patch } : message)),
     );
+  }
+
+  async function enrichAssistantWithRun(assistantId: string, runId: number) {
+    if (!apiToken) return;
+    try {
+      const run = await getChatRun(apiToken, runId);
+      updateAssistant(assistantId, {
+        usage: run.usage,
+        tokenCost: run.token_cost,
+        traceUrl: run.trace_url,
+      });
+    } catch {
+      // Run enrichment is helpful but not required for the chat answer itself.
+    }
   }
 
   async function handleFeedback(message: ChatMessage, rating: FeedbackRating) {
@@ -489,6 +551,8 @@ function App() {
         }}
         onRetrievalProfileChange={setRetrievalProfile}
         onResetThread={resetThread}
+        chatSessions={chatSessions}
+        onSessionSelect={loadSessionMessages}
       />
       <ChatPanel
         header={
@@ -535,6 +599,20 @@ function configToProfile(config: PublicConfig): RetrievalProfile {
     fetch_k: config.retrieval_fetch_k,
     reranker_enabled: config.reranker_enabled,
     max_context_chars: config.retrieval_max_context_chars,
+  };
+}
+
+function toChatMessage(message: {
+  id: number;
+  role: "assistant" | "user" | "system";
+  content: string;
+  references: Citation[];
+}): ChatMessage {
+  return {
+    id: `stored-${message.id}`,
+    role: message.role === "assistant" ? "assistant" : "user",
+    content: message.content,
+    citations: message.references,
   };
 }
 

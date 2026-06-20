@@ -302,6 +302,63 @@ button {
   overflow-wrap: anywhere;
 }
 
+.session-list {
+  display: grid;
+  gap: 10px;
+}
+
+.session-new-button,
+.session-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.session-new-button {
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  font-weight: 700;
+}
+
+.session-items {
+  display: grid;
+  gap: 6px;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.session-item {
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 9px;
+  text-align: left;
+}
+
+.session-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-item.active {
+  border-color: #9ef0d7;
+  background: rgba(158, 240, 215, 0.14);
+  color: #9ef0d7;
+}
+
+.session-new-button:disabled,
+.session-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .panel-note {
   margin: 0;
   color: #b8c4d3;
@@ -647,6 +704,12 @@ button {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.usage a {
+  color: var(--accent-2);
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .citations {

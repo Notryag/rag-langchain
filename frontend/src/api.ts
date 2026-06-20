@@ -1,10 +1,13 @@
 import type {
   KnowledgeBase,
+  ChatRun,
+  ChatSession,
   KnowledgeDocument,
   PublicConfig,
   RetrievalPreviewResponse,
   RetrievalProfile,
   StreamEvent,
+  StoredChatMessage,
   TokenResponse,
   User,
 } from "./types";
@@ -139,6 +142,21 @@ export async function deleteDocument(token: string, documentId: number): Promise
 
 export async function cancelChatRun(token: string, runId: number): Promise<{ run_id: number; cancelled: boolean }> {
   const response = await postJson(`/api/v1/chat-runs/${runId}/cancel`, {}, token);
+  return response.json();
+}
+
+export async function getChatRun(token: string, runId: number): Promise<ChatRun> {
+  const response = await request(`/api/v1/chat-runs/${runId}`, {}, token);
+  return response.json();
+}
+
+export async function listChatSessions(token: string): Promise<ChatSession[]> {
+  const response = await request("/api/v1/chat-sessions", {}, token);
+  return response.json();
+}
+
+export async function listChatMessages(token: string, sessionId: number): Promise<StoredChatMessage[]> {
+  const response = await request(`/api/v1/chat-sessions/${sessionId}/messages`, {}, token);
   return response.json();
 }
 

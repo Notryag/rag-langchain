@@ -47,6 +47,8 @@ function MessageBubble({
   onFeedback: (message: ChatMessage, rating: FeedbackRating) => void;
 }) {
   const totalTokens = message.usage?.total_tokens;
+  const totalCost = message.tokenCost?.total_cost;
+  const currency = typeof message.tokenCost?.currency === "string" ? message.tokenCost.currency : "USD";
   const profile = message.retrievalProfile;
   const canSendFeedback =
     message.role === "assistant" && message.id !== "welcome" && !message.error && message.elapsedMs !== undefined;
@@ -108,11 +110,25 @@ function MessageBubble({
             ))}
           </div>
         )}
-        {(message.elapsedMs !== undefined || totalTokens !== undefined) && (
+        {(message.elapsedMs !== undefined ||
+          totalTokens !== undefined ||
+          totalCost !== undefined ||
+          message.traceUrl) && (
           <div className="usage">
             {message.elapsedMs !== undefined && message.elapsedMs !== null ? `${message.elapsedMs} ms` : ""}
             {message.elapsedMs !== undefined && totalTokens !== undefined ? " | " : ""}
             {totalTokens !== undefined ? `tokens=${String(totalTokens)}` : ""}
+            {(totalTokens !== undefined || message.elapsedMs !== undefined) && totalCost !== undefined ? " | " : ""}
+            {totalCost !== undefined ? `cost=${String(totalCost)} ${currency}` : ""}
+            {(totalTokens !== undefined || totalCost !== undefined || message.elapsedMs !== undefined) &&
+            message.traceUrl
+              ? " | "
+              : ""}
+            {message.traceUrl && (
+              <a href={message.traceUrl} rel="noreferrer" target="_blank">
+                trace
+              </a>
+            )}
           </div>
         )}
         {canSendFeedback && (

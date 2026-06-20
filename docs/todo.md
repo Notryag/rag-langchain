@@ -115,12 +115,12 @@ frontend/src/components/StatusBadge.tsx
 ## Batch F5: 聊天体验收口
 
 - [x] 聊天使用当前选中知识库，不再手动填 `kb_id`
-- [ ] 新会话、历史会话列表、消息加载
+- [x] 新会话、历史会话列表、消息加载
 - [x] SSE 展示 `answer_delta / complete / error`
 - [x] SSE 展示 Agent `tool_call / tool_result`
 - [x] 引用来源展示 filename/source、chunk_index、content 预览
 - [x] 发送中、错误、空 references 的状态处理
-- [ ] 保留 usage 展示，但不阻塞主要聊天体验
+- [x] 保留 usage 展示，但不阻塞主要聊天体验
 - [x] 增加只检索不问 AI 的 preview/debug 接口，用于直接查看 pgvector 命中的 chunks
 - [x] 前端接入 chat run 取消按钮
 
@@ -150,7 +150,7 @@ frontend/src/components/ReferenceList.tsx
 - [x] `chat_runs` 预留 `trace_id / trace_url`
 - [x] 保存本地 `token_cost` 估算字段
 - [ ] 从 LangSmith run tree 稳定回填 trace id/url
-- [ ] 前端 run 详情展示 usage / token_cost / trace_url
+- [x] 前端 run 详情展示 usage / token_cost / trace_url
 
 ## Batch A1: Agentic RAG 加分项
 
