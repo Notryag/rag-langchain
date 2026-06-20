@@ -176,7 +176,7 @@ uv run python -m evaluation.check_pgvector_embedding_config
 uv run python -m evaluation.check_pgvector_embedding_config --probe-model
 ```
 
-不带 `--probe-model` 时只检查配置和数据库列维度；带 `--probe-model` 会真实调用 embedding 模型，适合确认兼容 OpenAI 服务实际返回的向量维度。
+不带 `--probe-model` 时只检查配置和数据库列维度；带 `--probe-model` 会真实调用 embedding 模型，适合确认兼容 OpenAI 服务实际返回的向量维度。数据库不可达时会快速返回 `database_error`，先确认 Docker/PostgreSQL 已启动。
 
 该脚本会依次执行:
 

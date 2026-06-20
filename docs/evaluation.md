@@ -81,6 +81,8 @@ uv run python scripts/prepare_current_kb_eval.py
 uv run python -m evaluation.check_pgvector_embedding_config
 ```
 
+如果 PostgreSQL 不可达，该命令会快速返回 `ok=false` 和 `database_error`，先启动 Docker/PostgreSQL 后再继续 baseline。
+
 只跑 retrieval baseline:
 
 ```powershell

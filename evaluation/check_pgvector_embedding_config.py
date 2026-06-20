@@ -5,10 +5,11 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.config.settings import settings
-from app.db.session import get_session_factory
 from app.retrieval.embeddings import get_embeddings
 
 
@@ -19,25 +20,36 @@ class PgVectorEmbeddingCheck:
     database_dimension: int | None
     actual_dimension: int | None
     chunk_count: int
+    database_error: str | None
     ok: bool
     issues: list[str]
 
 
 def check_pgvector_embedding_config(*, probe_model: bool = False) -> PgVectorEmbeddingCheck:
-    database_dimension = _get_database_embedding_dimension()
-    chunk_count = _get_chunk_count()
+    database_error = None
+    try:
+        database_dimension = _get_database_embedding_dimension()
+        chunk_count = _get_chunk_count()
+    except RuntimeError as exc:
+        database_dimension = None
+        chunk_count = 0
+        database_error = str(exc)
+
     actual_dimension = _get_actual_embedding_dimension() if probe_model else None
     issues = _collect_issues(
         configured_dimension=settings.embedding_dimension,
         database_dimension=database_dimension,
         actual_dimension=actual_dimension,
     )
+    if database_error is not None:
+        issues.append(f"Database check failed: {database_error}")
     return PgVectorEmbeddingCheck(
         embedding_model=settings.embedding_model,
         configured_dimension=settings.embedding_dimension,
         database_dimension=database_dimension,
         actual_dimension=actual_dimension,
         chunk_count=chunk_count,
+        database_error=database_error,
         ok=not issues,
         issues=issues,
     )
@@ -74,16 +86,29 @@ def _get_database_embedding_dimension() -> int | None:
           and not attisdropped
         """
     )
-    with get_session_factory()() as session:
-        typmod = session.scalar(statement)
+    typmod = _scalar(statement)
     if typmod is None or typmod < 0:
         return None
     return int(typmod)
 
 
 def _get_chunk_count() -> int:
-    with get_session_factory()() as session:
-        return int(session.scalar(text("select count(*) from document_chunks")) or 0)
+    return int(_scalar(text("select count(*) from document_chunks")) or 0)
+
+
+def _scalar(statement) -> Any:
+    connect_args: dict[str, Any] = {}
+    if settings.database_url.startswith("postgresql"):
+        connect_args["connect_timeout"] = 5
+
+    engine = create_engine(settings.database_url, pool_pre_ping=True, connect_args=connect_args)
+    try:
+        with Session(engine) as session:
+            return session.scalar(statement)
+    except SQLAlchemyError as exc:
+        raise RuntimeError(str(exc)) from exc
+    finally:
+        engine.dispose()
 
 
 def _get_actual_embedding_dimension() -> int:
@@ -108,6 +133,7 @@ def _print_human(check: PgVectorEmbeddingCheck) -> None:
     print(f"database_dimension={check.database_dimension}")
     print(f"actual_dimension={check.actual_dimension}")
     print(f"chunk_count={check.chunk_count}")
+    print(f"database_error={check.database_error}")
     print(f"ok={str(check.ok).lower()}")
     for issue in check.issues:
         print(f"issue={issue}")
