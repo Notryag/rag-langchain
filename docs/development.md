@@ -476,7 +476,29 @@ TOKEN_OUTPUT_COST_PER_1K=0.002
 
 `prompt_versions` 保存可追踪的系统 prompt 版本。当前内置 `default_rag_assistant / v1`，每个 `chat_runs` 会记录 `prompt_version_id`，方便后续把回答质量、bad cases 和 prompt 变更关联起来。
 
-当前 Agent prompt 仍由代码中的 `BASE_SYSTEM_PROMPT` 和动态 prompt middleware 装配；`prompt_versions` 先作为运行记录和后续管理 API 的数据地基。等评测基线稳定后，再把启用 prompt 版本纳入运行时装配。
+Prompt 版本接口:
+
+```text
+GET  /api/v1/prompts
+POST /api/v1/prompts
+POST /api/v1/prompts/{prompt_version_id}/activate
+POST /api/v1/prompts/{prompt_version_id}/rollback
+```
+
+创建请求:
+
+```json
+{
+  "name": "default_rag_assistant",
+  "version": "v2",
+  "description": "Stricter citation style",
+  "system_prompt": "..."
+}
+```
+
+`activate` 和 `rollback` 都会把指定 prompt version 设为当前 active 版本，区别是 operation log 的 action 分别记录为 `prompt.activate` 和 `prompt.rollback`，便于审计。
+
+当前 Agent prompt 仍由代码中的 `BASE_SYSTEM_PROMPT` 和动态 prompt middleware 装配；`prompt_versions` 已经可以管理和记录 active 版本，但下一步还需要把 active prompt 纳入运行时装配。
 
 ## MCP Server 示例
 
