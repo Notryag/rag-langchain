@@ -57,6 +57,15 @@ data/eval/current_kb_answer.jsonl
 
 ## 推荐流程
 
+仓库内置的第一版当前知识库样本:
+
+```text
+data/eval/current_kb_retrieval.jsonl
+data/eval/current_kb_answer.jsonl
+```
+
+这组样本对应 `data/raw/` 下的扫地机器人资料，适合作为本地 smoke 知识库或演示知识库的第一条质量基线。如果你的数据库中上传的是其他企业文档，应复制这两个文件并按真实文档内容重写 `query / expected_sources / expected_keywords / expected_facts`。
+
 先检查 embedding 维度和 pgvector 列维度:
 
 ```powershell
