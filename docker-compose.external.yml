@@ -1,0 +1,6 @@
+services:
+  api:
+    depends_on: !reset []
+
+  worker:
+    depends_on: !reset []

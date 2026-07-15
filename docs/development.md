@@ -142,6 +142,25 @@ docker compose up -d --build
 uv run python scripts/smoke_multitenant.py
 ```
 
+### 使用已有 PostgreSQL / Redis
+
+如果服务器已经运行 PostgreSQL 和 Redis，不需要启动 Compose 中同名的本地容器。先在 `.env` 中配置独立数据库和 Redis DB：
+
+```dotenv
+DATABASE_URL=postgresql+psycopg://rag_app:strong-password@db.example.com:5432/rag_langchain
+REDIS_URL=redis://:strong-password@redis.example.com:6379/10
+CELERY_BROKER_URL=redis://:strong-password@redis.example.com:6379/11
+CELERY_RESULT_BACKEND=redis://:strong-password@redis.example.com:6379/12
+```
+
+然后使用 external override，只启动 API 和 Worker：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.external.yml up -d --build api worker
+```
+
+该 override 会移除对 Compose 内置 `postgres` / `redis` 服务的依赖。PostgreSQL 目标数据库需要提前创建并启用 `vector` 扩展，API 启动时仍会执行 Alembic migration。不要将 PostgreSQL 的 `5432` 或 Redis 的 `6379` 暴露给公网。
+
 方式二：本机进程调试。先启动依赖并创建当前开发 schema:
 
 ```powershell
