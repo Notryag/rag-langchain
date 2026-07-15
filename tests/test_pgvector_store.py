@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from langchain_core.documents import Document as LangChainDocument
 
+from app.config.settings import settings
 from app.retrieval.pgvector_store import (
     ingest_document_chunks,
     retrieve_pgvector_chunks,
@@ -21,7 +22,7 @@ class FakeEmbeddings:
         return [[float(index), 0.1] for index, _ in enumerate(texts)]
 
     def embed_query(self, text: str) -> list[float]:
-        return [0.2] * 1536
+        return [0.2] * settings.embedding_dimension
 
 
 class WrongDimensionEmbeddings:
