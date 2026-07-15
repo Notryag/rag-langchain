@@ -17,5 +17,5 @@ services:
 
 networks:
   default:
-    name: ${EXTERNAL_DOCKER_NETWORK:-dayboard_default}
+    name: ${EXTERNAL_DOCKER_NETWORK:-platform-infra}
     external: true
