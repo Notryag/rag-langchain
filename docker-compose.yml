@@ -71,8 +71,8 @@ services:
       CHUNK_SIZE: ${CHUNK_SIZE:-800}
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-120}
     command: >
-      sh -c "uv run alembic upgrade head &&
-      uv run python -m app.main web --host 0.0.0.0 --port 8000"
+      sh -c "alembic upgrade head &&
+      exec python -m app.main web --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     volumes:
@@ -87,8 +87,6 @@ services:
       test:
         [
           "CMD",
-          "uv",
-          "run",
           "python",
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5).read()",
@@ -142,7 +140,7 @@ services:
       RETRIEVAL_MAX_CONTEXT_CHARS: ${RETRIEVAL_MAX_CONTEXT_CHARS:-4000}
       CHUNK_SIZE: ${CHUNK_SIZE:-800}
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-120}
-    command: uv run celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
     volumes:
       - app_storage:/app/storage
       - app_logs:/app/logs
