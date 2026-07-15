@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from app.services.chat_service import ChatAnswer
-from evaluation.evaluate_answers import _load_runs
+from evaluation.evaluate_answers import AnswerRun, _load_runs, _summarize, evaluate_answers
 from evaluation.dataset import AnswerEvalSample
 from evaluation.generate_pgvector_answers import (
     PgVectorAnswerRunConfig,
@@ -77,6 +77,7 @@ class PgVectorAnswerGenerationTests(unittest.TestCase):
         self.assertEqual(record["run_id"], 20)
         self.assertEqual(record["references"][0]["filename"], "manual.txt")
         self.assertTrue(record["cache_hit"])
+        self.assertIsNone(record["token_cost"])
 
     def test_generate_pgvector_answer_runs_calls_chat_service_with_tenant_scope(self) -> None:
         chat_service = FakeChatService()
@@ -114,6 +115,21 @@ class PgVectorAnswerGenerationTests(unittest.TestCase):
         self.assertEqual(runs["ans_1"].metadata["backend"], "pgvector")
         self.assertEqual(runs["ans_1"].metadata["run_id"], 20)
         self.assertEqual(runs["ans_1"].metadata["references"][0]["filename"], "manual.txt")
+
+    def test_answer_summary_records_citation_latency_and_cost(self) -> None:
+        sample = _sample(expected_sources=["manual.txt"])
+        run = {
+            "ans_1": AnswerRun(
+                id="ans_1", query=sample.query, category=sample.category, answer="调用次数和存储容量",
+                elapsed_ms=12, usage={"total_tokens": 5},
+                metadata={"references": [{"filename": "manual.txt"}], "token_cost": {"total_cost": 0.01}},
+            )
+        }
+        result = evaluate_answers([sample], run)
+        summary = _summarize(result)
+        self.assertEqual(summary["citation_accuracy"], 1.0)
+        self.assertEqual(summary["p95_elapsed_ms"], 12.0)
+        self.assertEqual(summary["total_cost_usd"], 0.01)
 
 
 if __name__ == "__main__":

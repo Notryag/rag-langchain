@@ -56,6 +56,7 @@ def build_answer_run_record(
         "references": answer.references,
         "elapsed_ms": elapsed_ms,
         "usage": answer.usage,
+        "token_cost": answer.token_cost,
         "cache_hit": answer.cache_hit,
     }
 

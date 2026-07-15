@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from app.config.logging_setup import setup_logging
@@ -45,12 +46,14 @@ class PgVectorRetrievalEvalResult:
     matched_keywords: list[str]
     required_keyword_hits: int
     chunks: list[RetrievedChunk]
+    elapsed_ms: int = 0
 
 
 def evaluate_pgvector_sample(
     sample: RetrievalEvalSample,
     config: PgVectorRetrievalEvalConfig,
     chunks: list[RetrievedChunk],
+    elapsed_ms: int = 0,
 ) -> PgVectorRetrievalEvalResult:
     permission_ok = all(
         chunk.metadata.get("user_id") == config.user_id
@@ -69,6 +72,7 @@ def evaluate_pgvector_sample(
             matched_keywords=[],
             required_keyword_hits=sample.expected_min_keyword_hits,
             chunks=chunks,
+            elapsed_ms=elapsed_ms,
         )
 
     hit_ranks = [chunk.rank or 0 for chunk in chunks if chunk.source in sample.expected_sources]
@@ -86,6 +90,7 @@ def evaluate_pgvector_sample(
         matched_keywords=matched_keywords,
         required_keyword_hits=sample.expected_min_keyword_hits,
         chunks=chunks,
+        elapsed_ms=elapsed_ms,
     )
 
 
@@ -109,6 +114,7 @@ def result_to_bad_case(result: PgVectorRetrievalEvalResult) -> dict[str, Any]:
         "matched_keywords": result.matched_keywords,
         "required_keyword_hits": result.required_keyword_hits,
         "references": [chunk.to_reference() for chunk in result.chunks],
+        "elapsed_ms": result.elapsed_ms,
     }
 
 
@@ -117,6 +123,15 @@ def summarize(results: list[PgVectorRetrievalEvalResult]) -> dict[str, float | i
     source_hits = [result for result in scored_results if result.source_hit]
     permission_passes = [result for result in scored_results if result.permission_ok]
     passed_results = [result for result in scored_results if result.passed]
+    latencies = [result.elapsed_ms for result in scored_results]
+
+    def percentile(percentile: float) -> float:
+        if not latencies:
+            return 0.0
+        ordered = sorted(latencies)
+        index = min(len(ordered) - 1, int(round((len(ordered) - 1) * percentile)))
+        return float(ordered[index])
+
     return {
         "total": len(results),
         "scored": len(scored_results),
@@ -125,8 +140,12 @@ def summarize(results: list[PgVectorRetrievalEvalResult]) -> dict[str, float | i
         "permission_ok": len(permission_passes),
         "passed": len(passed_results),
         "source_hit_rate": round(len(source_hits) / len(scored_results), 4) if scored_results else 0.0,
+        "recall_at_k": round(len(source_hits) / len(scored_results), 4) if scored_results else 0.0,
         "permission_ok_rate": round(len(permission_passes) / len(scored_results), 4) if scored_results else 0.0,
         "pass_rate": round(len(passed_results) / len(scored_results), 4) if scored_results else 0.0,
+        "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else 0.0,
+        "p50_latency_ms": percentile(0.5),
+        "p95_latency_ms": percentile(0.95),
     }
 
 
@@ -259,11 +278,10 @@ def main() -> None:
                 reranker_enabled=reranker_enabled,
             )
             with session_factory() as session:
-                results = [
-                    evaluate_pgvector_sample(
-                        sample,
-                        config,
-                        retrieve_pgvector_retrieved_chunks(
+                results = []
+                for sample in samples:
+                    started_at = perf_counter()
+                    chunks = retrieve_pgvector_retrieved_chunks(
                             session,
                             user_id=config.user_id,
                             kb_id=config.kb_id,
@@ -272,10 +290,15 @@ def main() -> None:
                             search_type=config.search_type,
                             fetch_k=config.fetch_k,
                             reranker_enabled=config.reranker_enabled,
-                        ),
                     )
-                    for sample in samples
-                ]
+                    results.append(
+                        evaluate_pgvector_sample(
+                            sample,
+                            config,
+                            chunks,
+                            elapsed_ms=int((perf_counter() - started_at) * 1000),
+                        )
+                    )
 
             all_results.extend(results)
             summary = summarize(results)

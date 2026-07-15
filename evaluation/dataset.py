@@ -71,6 +71,7 @@ class AnswerEvalSample:
     expected_min_fact_hits: int
     answerable: bool
     accepted_refusal_keywords: list[str]
+    expected_sources: list[str]
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "AnswerEvalSample":
@@ -96,6 +97,7 @@ class AnswerEvalSample:
             expected_min_fact_hits=expected_min_fact_hits,
             answerable=bool(payload.get("answerable", True)),
             accepted_refusal_keywords=accepted_refusal_keywords,
+            expected_sources=[str(source) for source in payload.get("expected_sources", [])],
         )
 
 

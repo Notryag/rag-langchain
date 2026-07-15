@@ -47,12 +47,13 @@ class PgVectorRetrievalEvalTests(unittest.TestCase):
             user_id=1, kb_id=2, top_k=3, search_type="similarity", fetch_k=8, reranker_enabled=False
         )
 
-        result = evaluate_pgvector_sample(_sample(), config, [_chunk()])
+        result = evaluate_pgvector_sample(_sample(), config, [_chunk()], elapsed_ms=42)
 
         self.assertTrue(result.passed)
         self.assertTrue(result.permission_ok)
         self.assertTrue(result.source_hit)
         self.assertEqual(result.matched_keywords, ["调用次数", "存储容量"])
+        self.assertEqual(result.elapsed_ms, 42)
 
     def test_evaluate_sample_fails_permission_leak_even_when_content_matches(self) -> None:
         config = PgVectorRetrievalEvalConfig(
@@ -106,6 +107,7 @@ class PgVectorRetrievalEvalTests(unittest.TestCase):
         self.assertEqual(summary["permission_ok"], 1)
         self.assertEqual(summary["passed"], 1)
         self.assertEqual(summary["permission_ok_rate"], 0.5)
+        self.assertEqual(summary["recall_at_k"], 1.0)
 
 
 if __name__ == "__main__":

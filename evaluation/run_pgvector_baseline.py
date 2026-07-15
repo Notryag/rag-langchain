@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from evaluation.history import append_history_record, build_history_record
+
 
 DEFAULT_OUTPUT_DIR = Path("storage/exports/pgvector_baselines")
 
@@ -20,7 +22,9 @@ class BaselinePaths:
     retrieval_bad_cases: Path
     answer_runs: Path
     answer_bad_cases: Path
+    answer_summary: Path
     manifest: Path
+    history: Path
 
 
 def build_baseline_paths(output_dir: Path, *, run_id: str) -> BaselinePaths:
@@ -31,7 +35,9 @@ def build_baseline_paths(output_dir: Path, *, run_id: str) -> BaselinePaths:
         retrieval_bad_cases=run_dir / "pgvector_retrieval_bad_cases.jsonl",
         answer_runs=run_dir / "pgvector_answer_runs.jsonl",
         answer_bad_cases=run_dir / "pgvector_answer_bad_cases.jsonl",
+        answer_summary=run_dir / "pgvector_answer_summary.json",
         manifest=run_dir / "baseline_manifest.json",
+        history=output_dir / "history.jsonl",
     )
 
 
@@ -94,6 +100,8 @@ def build_baseline_commands(
         str(paths.answer_runs),
         "--bad-cases-out",
         str(paths.answer_bad_cases),
+        "--summary-output",
+        str(paths.answer_summary),
     ]
     if answer_dataset is not None:
         answer_eval_command.extend(["--dataset", answer_dataset])
@@ -127,6 +135,7 @@ def write_baseline_manifest(
             "retrieval_bad_cases": str(paths.retrieval_bad_cases),
             "answer_runs": str(paths.answer_runs),
             "answer_bad_cases": str(paths.answer_bad_cases),
+            "answer_summary": str(paths.answer_summary),
         },
         "summary": summary or {},
     }
@@ -151,6 +160,7 @@ def collect_baseline_summary(paths: BaselinePaths) -> dict:
         "answer_run_count": _count_jsonl_records(paths.answer_runs),
         "answer_bad_case_count": answer_bad_cases,
         "retrieval_summaries": [_read_json(path).get("summary", {}) for path in retrieval_manifests],
+        "answer_summary": _read_json(paths.answer_summary) if paths.answer_summary.exists() else {},
     }
 
 
@@ -226,6 +236,10 @@ def main() -> None:
             status="failed",
             summary=summary,
         )
+        append_history_record(
+            paths.history,
+            build_history_record(run_id=run_id, status="failed", user_id=args.user_id, kb_id=args.kb_id, summary=summary),
+        )
         print(f"baseline_failed_manifest={paths.manifest.as_posix()}")
         raise
     else:
@@ -238,6 +252,10 @@ def main() -> None:
             commands=commands,
             status="completed",
             summary=summary,
+        )
+        append_history_record(
+            paths.history,
+            build_history_record(run_id=run_id, status="completed", user_id=args.user_id, kb_id=args.kb_id, summary=summary),
         )
         print(f"baseline_summary={json.dumps(summary, ensure_ascii=False)}")
 

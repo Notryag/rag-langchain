@@ -33,6 +33,7 @@ class AnswerEvalResult:
     matched_facts: list[str]
     required_fact_hits: int
     refusal_detected: bool
+    citation_correct: bool | None
 
 
 def _normalize_text(text: str) -> str:
@@ -106,6 +107,7 @@ def evaluate_answers(samples: list[AnswerEvalSample], runs: dict[str, AnswerRun]
         if run is None:
             raise KeyError(f"Missing answer run for sample: {sample.id}")
         grade, matched_facts, refusal_detected = _grade_answer(sample, run.answer)
+        citation_correct = _citation_correct(sample, run)
         passed = grade == "correct" or (not sample.answerable and grade == "acceptable_refusal")
         results.append(
             AnswerEvalResult(
@@ -116,12 +118,33 @@ def evaluate_answers(samples: list[AnswerEvalSample], runs: dict[str, AnswerRun]
                 matched_facts=matched_facts,
                 required_fact_hits=sample.expected_min_fact_hits,
                 refusal_detected=refusal_detected,
+                citation_correct=citation_correct,
             )
         )
     return results
 
 
-def _summarize(results: list[AnswerEvalResult]) -> dict[str, int | float]:
+def _citation_correct(sample: AnswerEvalSample, run: AnswerRun) -> bool | None:
+    if not sample.expected_sources:
+        return None
+    references = run.metadata.get("references", [])
+    actual_sources = {
+        str(reference.get("filename") or reference.get("source"))
+        for reference in references
+        if isinstance(reference, dict) and (reference.get("filename") or reference.get("source"))
+    }
+    return bool(actual_sources.intersection(sample.expected_sources))
+
+
+def _percentile(values: list[int], percentile: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, int(round((len(ordered) - 1) * percentile))))
+    return float(ordered[index])
+
+
+def _summarize(results: list[AnswerEvalResult]) -> dict[str, int | float | None]:
     total = len(results)
     grade_counts = {
         "correct": 0,
@@ -133,11 +156,27 @@ def _summarize(results: list[AnswerEvalResult]) -> dict[str, int | float]:
         grade_counts[result.grade] += 1
 
     passed = sum(1 for result in results if result.passed)
+    citation_results = [result.citation_correct for result in results if result.citation_correct is not None]
+    elapsed = [result.run.elapsed_ms for result in results if result.run.elapsed_ms is not None]
+    usage = [result.run.usage or {} for result in results]
+    token_cost = [result.run.metadata.get("token_cost") or {} for result in results]
     return {
         "total": total,
         "passed": passed,
         "pass_rate": round(passed / total, 4) if total else 0.0,
         **grade_counts,
+        "citation_scored": len(citation_results),
+        "citation_correct": sum(1 for value in citation_results if value),
+        "citation_accuracy": round(sum(1 for value in citation_results if value) / len(citation_results), 4)
+        if citation_results
+        else None,
+        "avg_elapsed_ms": round(sum(elapsed) / len(elapsed), 2) if elapsed else 0.0,
+        "p50_elapsed_ms": _percentile(elapsed, 0.5),
+        "p95_elapsed_ms": _percentile(elapsed, 0.95),
+        "total_input_tokens": sum(int(item.get("input_tokens", 0) or 0) for item in usage),
+        "total_output_tokens": sum(int(item.get("output_tokens", 0) or 0) for item in usage),
+        "total_tokens": sum(int(item.get("total_tokens", 0) or 0) for item in usage),
+        "total_cost_usd": round(sum(float(item.get("total_cost", 0) or 0) for item in token_cost), 8),
     }
 
 
@@ -188,6 +227,7 @@ def _parse_args() -> argparse.Namespace:
         default=str(DEFAULT_BAD_CASES_PATH),
         help="Path to export failed answer cases as jsonl.",
     )
+    parser.add_argument("--summary-output", default=None, help="Optional JSON output for aggregate metrics.")
     return parser.parse_args()
 
 
@@ -213,6 +253,11 @@ def main() -> None:
         _print_result(result)
 
     _write_bad_cases(args.bad_cases_out, results)
+    if args.summary_output:
+        summary_path = Path(args.summary_output)
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"summary_written={summary_path.as_posix()}")
     print(f"bad_cases_written={Path(args.bad_cases_out).as_posix()}")
 
 

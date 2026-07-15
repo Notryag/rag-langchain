@@ -2,6 +2,13 @@
 
 这份文档说明如何为当前多租户知识库建立可重复的 retrieval / answer baseline。改检索、rerank、Agent prompt 或引用逻辑前，优先用这里的流程验证。
 
+每次 baseline 完成或失败都会追加一条 `storage/exports/pgvector_baselines/history.jsonl`，记录 git commit、租户范围、召回率、引用正确率、延迟、token 和估算成本，便于跨版本比较：
+
+```bash
+uv run python -m evaluation.show_eval_history --limit 20
+uv run python -m evaluation.show_eval_history --json
+```
+
 ## 核心原则
 
 - eval dataset 必须和当前 `user_id + kb_id` 已入库文档一致。
@@ -107,7 +114,11 @@ storage/exports/pgvector_baselines/{run_id}/
 - `pgvector_retrieval_manifest_*.json`: 各检索策略通过率。
 - `pgvector_retrieval_bad_cases.jsonl`: 召回失败样本。
 - `pgvector_answer_runs.jsonl`: 实际回答、引用、usage。
+- `pgvector_answer_summary.json`: 回答通过率、引用正确率、延迟、token 和成本汇总。
 - `pgvector_answer_bad_cases.jsonl`: 回答失败样本。
+- `history.jsonl`: 所有 baseline 的追加式历史索引，可按 git commit 对比。
+
+答案数据集可为可回答样本声明 `expected_sources`；只有声明了期望来源的样本会进入引用正确率分母，拒答样本和未标注来源的样本会显示为未计分。
 
 ## 决策标准
 

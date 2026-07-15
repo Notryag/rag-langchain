@@ -42,6 +42,7 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertIn(str(paths.answer_runs), commands[1])
         self.assertIn("evaluation.evaluate_answers", commands[2])
         self.assertIn(str(paths.answer_bad_cases), commands[2])
+        self.assertIn(str(paths.answer_summary), commands[2])
 
     def test_build_baseline_commands_can_skip_answer_steps(self) -> None:
         paths = build_baseline_paths(Path("out"), run_id="run-1")
@@ -92,6 +93,7 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertEqual(payload["kb_id"], 2)
         self.assertEqual(payload["commands"], commands)
         self.assertIn("answer_bad_cases", payload["artifacts"])
+        self.assertIn("answer_summary", payload["artifacts"])
 
     def test_collect_baseline_summary_counts_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -99,6 +101,7 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
             paths.run_dir.mkdir(parents=True)
             paths.answer_runs.write_text("{}\n{}\n", encoding="utf-8")
             paths.answer_bad_cases.write_text("{}\n", encoding="utf-8")
+            paths.answer_summary.write_text('{"pass_rate": 0.5}', encoding="utf-8")
             paths.retrieval_bad_cases.write_text("{}\n{}\n{}\n", encoding="utf-8")
             (paths.run_dir / "pgvector_retrieval_manifest_similarity_reranker_off.json").write_text(
                 '{"summary":{"passed":1}}',
@@ -112,6 +115,7 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertEqual(summary["answer_bad_case_count"], 1)
         self.assertEqual(summary["retrieval_bad_case_count"], 3)
         self.assertEqual(summary["retrieval_summaries"][0]["passed"], 1)
+        self.assertEqual(summary["answer_summary"]["pass_rate"], 0.5)
 
     def test_write_baseline_manifest_can_record_failed_status(self) -> None:
         with TemporaryDirectory() as tmpdir:
