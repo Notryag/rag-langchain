@@ -151,6 +151,10 @@ DATABASE_URL=postgresql+psycopg://rag_app:strong-password@db.example.com:5432/ra
 REDIS_URL=redis://:strong-password@redis.example.com:6379/10
 CELERY_BROKER_URL=redis://:strong-password@redis.example.com:6379/11
 CELERY_RESULT_BACKEND=redis://:strong-password@redis.example.com:6379/12
+EXTERNAL_DOCKER_NETWORK=dayboard_default
+RAG_HOST_PORT=8001
+RAG_BASE_PATH=/rag/
+RAG_API_BASE_URL=/rag-api
 ```
 
 然后使用 external override，只启动 API 和 Worker：

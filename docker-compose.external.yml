@@ -1,6 +1,21 @@
 services:
   api:
+    build:
+      args:
+        VITE_BASE_PATH: ${RAG_BASE_PATH:-/rag/}
+        VITE_API_BASE_URL: ${RAG_API_BASE_URL:-/rag-api}
     depends_on: !reset []
+    ports: !override
+      - "127.0.0.1:${RAG_HOST_PORT:-8001}:8000"
 
   worker:
+    build:
+      args:
+        VITE_BASE_PATH: ${RAG_BASE_PATH:-/rag/}
+        VITE_API_BASE_URL: ${RAG_API_BASE_URL:-/rag-api}
     depends_on: !reset []
+
+networks:
+  default:
+    name: ${EXTERNAL_DOCKER_NETWORK:-dayboard_default}
+    external: true

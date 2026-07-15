@@ -64,6 +64,8 @@ def _get_bool_env(name: str, default: bool) -> bool:
 class Settings:
     openai_api_key: str
     openai_base_url: str | None
+    embedding_api_key: str
+    embedding_base_url: str | None
     chat_model: str
     embedding_model: str
     embedding_dimension: int
@@ -164,6 +166,7 @@ class Settings:
             "JWT_SECRET_KEY": self.jwt_secret_key,
             "JWT_ALGORITHM": self.jwt_algorithm,
             "UPLOAD_DIR": self.upload_dir,
+            "EMBEDDING_API_KEY": self.embedding_api_key,
         }
         for field_name, field_value in required_string_fields.items():
             if not field_value.strip():
@@ -189,6 +192,8 @@ class Settings:
         return cls(
             openai_api_key=_get_required_env("OPENAI_API_KEY"),
             openai_base_url=_get_optional_env("OPENAI_BASE_URL"),
+            embedding_api_key=(os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip(),
+            embedding_base_url=_get_optional_env("EMBEDDING_BASE_URL") or _get_optional_env("OPENAI_BASE_URL"),
             chat_model=(os.getenv("CHAT_MODEL") or "gpt-4.1-mini").strip(),
             embedding_model=(os.getenv("EMBEDDING_MODEL") or "bge-m3").strip(),
             embedding_dimension=_get_int_env("EMBEDDING_DIMENSION", 1024),

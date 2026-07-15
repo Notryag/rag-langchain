@@ -18,6 +18,8 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
     return Settings(
         openai_api_key="test-key",
         openai_base_url=None,
+        embedding_api_key="test-key",
+        embedding_base_url=None,
         chat_model="test-chat",
         embedding_model="test-embedding",
         embedding_dimension=1536,
