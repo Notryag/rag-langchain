@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -42,7 +45,10 @@ class ApiSystemTests(unittest.TestCase):
         self.assertIn("average_chat_elapsed_ms", payload)
 
     def test_react_index(self) -> None:
-        response = self.client.get("/")
+        with TemporaryDirectory() as tmp_dir:
+            Path(tmp_dir, "index.html").write_text('<div id="root"></div>', encoding="utf-8")
+            with patch("app.api.main.FRONTEND_DIST_DIR", Path(tmp_dir)):
+                response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/html", response.headers["content-type"])
