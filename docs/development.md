@@ -57,6 +57,7 @@ uv run python -m <module>
 - `JWT_SECRET_KEY` 默认值仅适合本地开发，生产环境必须替换。
 - `ACCESS_TOKEN_EXPIRE_MINUTES` 默认 `60`。
 - `UPLOAD_DIR` 默认 `./storage/uploads`，用于保存上传原始文件。
+- `MAX_UPLOAD_BYTES` 默认 `20971520`（20 MiB），上传按块写入并在超过限制时删除不完整文件。
 - `RATE_LIMIT_ENABLED` 默认 `true`，用于开启 `/api/v1` 接口限流。
 - `RATE_LIMIT_REQUESTS` 默认 `60`，表示一个窗口内允许的请求数。
 - `RATE_LIMIT_WINDOW_SECONDS` 默认 `60`，表示限流窗口秒数。
@@ -117,6 +118,14 @@ http://127.0.0.1:8000
 ```
 
 `api` 服务启动时会自动执行 `alembic upgrade head`，然后监听 `http://127.0.0.1:8000`。Docker 镜像构建时会先执行 `frontend` 的 `npm ci` 和 `npm run build`，再把 `frontend/dist` 复制进后端镜像。
+
+创建首个 Prompt 管理员:
+
+```powershell
+uv run python -m app.main create-admin --username admin --email admin@example.com --password "change-this-password"
+```
+
+公开注册只会创建 `user` 角色。`/api/v1/prompts` 的列表、创建、激活和回滚接口全部要求 `admin` 角色。
 
 如果容器内 API / worker 需要访问宿主机上的 Ollama 或兼容 OpenAI 服务，不要在 `.env` 里使用 `http://127.0.0.1:11434/v1`，应改为:
 

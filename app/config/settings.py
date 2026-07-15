@@ -89,6 +89,7 @@ class Settings:
     jwt_algorithm: str
     access_token_expire_minutes: int
     upload_dir: str
+    max_upload_bytes: int
     rate_limit_enabled: bool
     rate_limit_requests: int
     rate_limit_window_seconds: int
@@ -130,6 +131,7 @@ class Settings:
             "RATE_LIMIT_REQUESTS": self.rate_limit_requests,
             "RATE_LIMIT_WINDOW_SECONDS": self.rate_limit_window_seconds,
             "HOT_QUESTION_CACHE_TTL_SECONDS": self.hot_question_cache_ttl_seconds,
+            "MAX_UPLOAD_BYTES": self.max_upload_bytes,
         }
         for field_name, field_value in positive_fields.items():
             if field_value <= 0:
@@ -215,6 +217,7 @@ class Settings:
             jwt_algorithm=(os.getenv("JWT_ALGORITHM") or "HS256").strip(),
             access_token_expire_minutes=_get_int_env("ACCESS_TOKEN_EXPIRE_MINUTES", 60),
             upload_dir=(os.getenv("UPLOAD_DIR") or "./storage/uploads").strip(),
+            max_upload_bytes=_get_int_env("MAX_UPLOAD_BYTES", 20 * 1024 * 1024),
             rate_limit_enabled=_get_bool_env("RATE_LIMIT_ENABLED", True),
             rate_limit_requests=_get_int_env("RATE_LIMIT_REQUESTS", 60),
             rate_limit_window_seconds=_get_int_env("RATE_LIMIT_WINDOW_SECONDS", 60),

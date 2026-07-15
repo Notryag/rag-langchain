@@ -4,7 +4,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
-from app.db.models.user import User
+from app.db.models.user import User, UserRole
 from app.schemas.auth import TokenResponse, UserCreate, UserRead
 
 
@@ -37,6 +37,7 @@ class AuthService:
             username=username,
             email=email,
             password_hash=hash_password(payload.password),
+            role=UserRole.USER,
         )
         session.add(user)
         session.commit()
@@ -50,6 +51,14 @@ class AuthService:
 
         token = create_access_token(str(user.id))
         return TokenResponse(access_token=token, user=UserRead.model_validate(user))
+
+    def create_admin(self, session: Session, *, username: str, email: str, password: str) -> User:
+        payload = UserCreate(username=username, email=email, password=password)
+        user = self.register(session, payload)
+        user.role = UserRole.ADMIN
+        session.commit()
+        session.refresh(user)
+        return user
 
 
 def get_auth_service() -> AuthService:

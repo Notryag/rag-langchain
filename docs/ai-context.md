@@ -10,6 +10,7 @@
 2. [architecture.md](architecture.md): 当前分层、边界和关键文件映射。
 3. [target-architecture.md](target-architecture.md): 主架构决策和已删除旧链路说明。
 4. [todo.md](todo.md): 当前待办、已完成批次和近期方向。
+5. [interview-highlights.md](interview-highlights.md): 面试演示、工程取舍和下一阶段边界。
 
 只有任务需要时，再按下面路由继续读取。
 
@@ -61,6 +62,7 @@ uv run python -m app.main web
 
 - 所有知识库、文档、chunk、聊天会话都必须按当前用户过滤。
 - 向量检索权限过滤必须进入 SQL 条件，不能先全局召回再应用层过滤。
+- 公开注册只创建 `user`；系统级 Prompt 管理必须通过 `require_admin`。
 
 ### 文档上传、异步处理、pgvector
 
@@ -77,7 +79,7 @@ uv run python -m app.main web
 路径:
 
 ```text
-upload -> documents(pending) -> Celery task -> parse -> split -> embedding -> document_chunks -> completed/failed
+upload(limit/type/stream) -> documents(pending) -> Celery claim/retry -> parse -> split -> embedding -> document_chunks -> completed/failed
 ```
 
 ### 问答、引用、聊天记录、SSE、缓存

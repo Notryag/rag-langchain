@@ -11,7 +11,7 @@ from app.api.v1 import auth as auth_routes
 from app.api.v1 import chat as chat_routes
 from app.db.models.chat import ChatRole
 from app.runtime.schemas import RuntimeRun, StreamEvent
-from app.services.chat_service import ChatAnswer, ChatSessionNotFoundError, ChatStreamEvent
+from app.services.chat_service import ChatAnswer, ChatSessionNotFoundError
 
 
 def _chat_session(**overrides):

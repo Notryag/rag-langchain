@@ -46,7 +46,10 @@ class AuthApiTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json(), {"id": 1, "username": "alice", "email": "alice@example.com"})
+        self.assertEqual(
+            response.json(),
+            {"id": 1, "username": "alice", "email": "alice@example.com", "role": "user"},
+        )
         self.assertEqual(self.operation_logs[0]["action"], "auth.register")
         self.assertEqual(self.operation_logs[0]["resource_id"], 1)
 
@@ -122,7 +125,10 @@ class AuthApiTests(unittest.TestCase):
         response = self.client.get("/api/v1/auth/me", headers={"Authorization": "Bearer token"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"id": 1, "username": "alice", "email": "alice@example.com"})
+        self.assertEqual(
+            response.json(),
+            {"id": 1, "username": "alice", "email": "alice@example.com", "role": "user"},
+        )
 
 
 if __name__ == "__main__":

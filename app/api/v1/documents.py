@@ -4,13 +4,21 @@ import logging
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.api.v1.auth import get_current_user
 from app.api.errors import ApiError
 from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.document import DocumentProcessResponse, DocumentRead
-from app.services.document_service import DocumentNotFoundError, DocumentService, get_document_service
+from app.services.document_service import (
+    DocumentAlreadyProcessingError,
+    DocumentNotFoundError,
+    DocumentService,
+    DocumentTooLargeError,
+    DocumentUploadError,
+    get_document_service,
+)
 from app.services.hot_question_cache import build_hot_question_scope_key, get_hot_question_cache
 from app.services.operation_log_service import OperationLogService, get_operation_log_service
 from app.workers.tasks import get_document_task_dispatcher
@@ -30,15 +38,28 @@ async def upload_document(
     hot_question_cache=Depends(get_hot_question_cache),
     dispatch_document_processing=Depends(get_document_task_dispatcher),
 ) -> DocumentRead:
-    content = await file.read()
-    document = document_service.create_upload(
-        session,
-        user_id=current_user.id,
-        kb_id=kb_id,
-        filename=file.filename or "upload.bin",
-        content_type=file.content_type,
-        content=content,
-    )
+    try:
+        document = await run_in_threadpool(
+            document_service.create_upload_file,
+            session,
+            user_id=current_user.id,
+            kb_id=kb_id,
+            filename=file.filename or "upload.bin",
+            content_type=file.content_type,
+            source=file.file,
+        )
+    except DocumentTooLargeError as exc:
+        raise ApiError(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            code="document_too_large",
+            message=str(exc),
+        ) from exc
+    except DocumentUploadError as exc:
+        raise ApiError(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            code="unsupported_document",
+            message=str(exc),
+        ) from exc
 
     try:
         dispatch_document_processing(document.id)
@@ -119,9 +140,15 @@ def process_document(
         )
     except DocumentNotFoundError:
         raise
+    except DocumentAlreadyProcessingError as exc:
+        raise ApiError(
+            status_code=status.HTTP_409_CONFLICT,
+            code="document_already_processing",
+            message=str(exc),
+        ) from exc
     except Exception as exc:
         raise ApiError(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             code="document_processing_failed",
             message=str(exc),
         ) from exc

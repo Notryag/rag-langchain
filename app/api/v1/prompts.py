@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
-from app.api.v1.auth import get_current_user
+from app.api.v1.auth import require_admin
 from app.db.models.user import User
 from app.db.session import get_db_session
 from app.schemas.prompt import PromptVersionCreate, PromptVersionRead
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/v1/prompts", tags=["prompts"])
 
 @router.get("", response_model=list[PromptVersionRead])
 def list_prompt_versions(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     session: Session = Depends(get_db_session),
     prompt_version_service: PromptVersionService = Depends(get_prompt_version_service),
 ) -> list[PromptVersionRead]:
@@ -32,7 +32,7 @@ def list_prompt_versions(
 @router.post("", response_model=PromptVersionRead, status_code=status.HTTP_201_CREATED)
 def create_prompt_version(
     payload: PromptVersionCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     session: Session = Depends(get_db_session),
     prompt_version_service: PromptVersionService = Depends(get_prompt_version_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
@@ -60,7 +60,7 @@ def create_prompt_version(
 @router.post("/{prompt_version_id}/activate", response_model=PromptVersionRead)
 def activate_prompt_version(
     prompt_version_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     session: Session = Depends(get_db_session),
     prompt_version_service: PromptVersionService = Depends(get_prompt_version_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
@@ -78,7 +78,7 @@ def activate_prompt_version(
 @router.post("/{prompt_version_id}/rollback", response_model=PromptVersionRead)
 def rollback_prompt_version(
     prompt_version_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     session: Session = Depends(get_db_session),
     prompt_version_service: PromptVersionService = Depends(get_prompt_version_service),
     operation_log_service: OperationLogService = Depends(get_operation_log_service),
@@ -108,6 +108,12 @@ def _activate_prompt_version(
         raise ApiError(
             status_code=status.HTTP_404_NOT_FOUND,
             code="prompt_version_not_found",
+            message=str(exc),
+        ) from exc
+    except PromptVersionConflictError as exc:
+        raise ApiError(
+            status_code=status.HTTP_409_CONFLICT,
+            code="prompt_version_conflict",
             message=str(exc),
         ) from exc
 

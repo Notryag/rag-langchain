@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.agent.prompts import BASE_SYSTEM_PROMPT
@@ -52,7 +53,11 @@ class PromptVersionService:
             is_active=False,
         )
         session.add(prompt_version)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+            raise PromptVersionConflictError("Prompt version already exists") from exc
         session.refresh(prompt_version)
         return prompt_version
 
@@ -61,7 +66,11 @@ class PromptVersionService:
 
         session.execute(update(PromptVersion).values(is_active=False))
         prompt_version.is_active = True
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+            raise PromptVersionConflictError("Another prompt activation is in progress") from exc
         session.refresh(prompt_version)
         return prompt_version
 

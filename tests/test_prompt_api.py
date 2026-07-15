@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.api.main import app
 from app.api.v1 import auth as auth_routes
 from app.api.v1 import prompts as prompt_routes
+from app.db.models.user import UserRole
 from app.services.prompt_version_service import PromptVersionConflictError, PromptVersionNotFoundError
 
 
@@ -32,7 +33,12 @@ class PromptApiTests(unittest.TestCase):
     def setUp(self) -> None:
         app.dependency_overrides.clear()
         self.client = TestClient(app)
-        self.current_user = SimpleNamespace(id=1, username="alice", email="alice@example.com")
+        self.current_user = SimpleNamespace(
+            id=1,
+            username="alice",
+            email="alice@example.com",
+            role=UserRole.ADMIN,
+        )
         self.operation_logs: list[dict] = []
         app.dependency_overrides[auth_routes.get_current_user] = lambda: self.current_user
         app.dependency_overrides[prompt_routes.get_db_session] = lambda: object()
@@ -57,6 +63,14 @@ class PromptApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["version"] for item in response.json()], ["v2", "v1"])
+
+    def test_regular_user_cannot_manage_prompts(self) -> None:
+        self.current_user.role = UserRole.USER
+
+        response = self.client.get("/api/v1/prompts")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"]["code"], "admin_required")
 
     def test_create_prompt_version(self) -> None:
         class FakePromptService:

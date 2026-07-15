@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models.chat import ChatRun, ChatRunStatus
 from app.db.session import get_session_factory
 from app.runtime.manager import RunManager, get_run_manager
-from app.runtime.schemas import DisconnectMode, RuntimeRun, RuntimeRunStatus, StreamEvent
+from app.runtime.schemas import DisconnectMode, RuntimeRun, RuntimeRunStatus
 from app.runtime.serialization import serialize
 from app.runtime.stream import MemoryStreamBridge, get_stream_bridge
 from app.services.chat_service import ChatService, get_chat_service

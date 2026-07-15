@@ -8,6 +8,7 @@ from app.db.base import Base
 from app.db import models  # noqa: F401
 from app.db.models.chat import ChatRole, ChatRunStatus
 from app.db.models.document import DocumentStatus
+from app.db.models.user import UserRole
 
 
 class DbModelTests(unittest.TestCase):
@@ -49,6 +50,13 @@ class DbModelTests(unittest.TestCase):
 
     def test_chat_role_values(self) -> None:
         self.assertEqual([role.value for role in ChatRole], ["user", "assistant", "system"])
+
+    def test_user_role_values_and_prompt_constraints(self) -> None:
+        self.assertEqual([role.value for role in UserRole], ["user", "admin"])
+        self.assertIn("role", Base.metadata.tables["users"].columns)
+        prompt_indexes = {index.name for index in Base.metadata.tables["prompt_versions"].indexes}
+        self.assertIn("uq_prompt_versions_name_version", prompt_indexes)
+        self.assertIn("uq_prompt_versions_single_active", prompt_indexes)
 
     def test_chat_run_status_values(self) -> None:
         self.assertEqual(

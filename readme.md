@@ -16,6 +16,9 @@
 - 本地轻量 Agent run timeline，记录 tool/result/complete/error
 - 外部 tracing 配置入口、token cost 估算、trace id/url 预留
 - Prompt 版本列表、创建、启用和回滚 API
+- `admin / user` 最小 RBAC，Prompt 管理仅管理员可用
+- 文档上传大小、扩展名和 MIME 限制，分块落盘并清理失败文件
+- Celery 文档任务并发抢占、有限重试、退避和执行超时
 - MCP Server 示例，供外部 Agent/MCP client 复用知识库检索、文档查询和运行记录查询
 - SSE 流式回答、热点问题缓存、接口限流
 - pgvector retrieval / answer eval、baseline manifest、bad case 导出
@@ -59,6 +62,7 @@ DATABASE_URL=postgresql+psycopg://rag:rag@localhost:5432/rag
 REDIS_URL=redis://localhost:6379/0
 JWT_SECRET_KEY=change-me-in-production
 UPLOAD_DIR=./storage/uploads
+MAX_UPLOAD_BYTES=20971520
 ```
 
 当前主线默认使用 `bge-m3`，embedding 表结构按 `vector(1024)` 设计。如果切换到其他 embedding 模型，必须同步修改:
@@ -86,6 +90,9 @@ uv run alembic upgrade head
 
 # 单元测试
 uv run python -m unittest discover -s tests
+
+# 创建 Prompt 管理员（先执行数据库迁移）
+uv run python -m app.main create-admin --username admin --email admin@example.com --password "change-this-password"
 
 # 多租户 smoke
 uv run python scripts/smoke_multitenant.py --skip-chat
@@ -151,3 +158,4 @@ docs/           架构、运行、规划、待办
 - 路线图: [docs/roadmap.md](docs/roadmap.md)
 - 待办清单: [docs/todo.md](docs/todo.md)
 - 已完成清单归档: [docs/todo-done.md](docs/todo-done.md)
+- 面试亮点与演示路径: [docs/interview-highlights.md](docs/interview-highlights.md)

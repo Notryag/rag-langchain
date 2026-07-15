@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
 from app.core.security import decode_access_token
-from app.db.models.user import User
+from app.db.models.user import User, UserRole
 from app.db.session import get_db_session
 from app.schemas.auth import TokenResponse, UserCreate, UserLogin, UserRead
 from app.services.auth_service import AuthError, AuthService, get_auth_service
@@ -41,6 +41,16 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise ApiError(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="admin_required",
+            message="Administrator role required",
+        )
+    return current_user
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)

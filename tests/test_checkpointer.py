@@ -43,6 +43,7 @@ def _settings_for_checkpointer(checkpointer_type: str, sqlite_path: str = "") ->
         jwt_algorithm="HS256",
         access_token_expire_minutes=60,
         upload_dir="./storage/uploads",
+        max_upload_bytes=20 * 1024 * 1024,
         rate_limit_enabled=True,
         rate_limit_requests=60,
         rate_limit_window_seconds=60,

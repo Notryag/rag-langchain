@@ -10,6 +10,8 @@ RUN npm run build
 
 FROM python:3.12-slim
 
+ARG UV_VERSION=0.11.28
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
@@ -17,7 +19,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir "uv==${UV_VERSION}"
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
@@ -27,7 +29,12 @@ COPY migrations ./migrations
 COPY app ./app
 COPY --from=frontend-build /frontend/dist ./frontend/dist
 
-RUN mkdir -p storage/uploads logs
+RUN groupadd --system app \
+    && useradd --system --gid app --home-dir /app app \
+    && mkdir -p storage/uploads logs \
+    && chown -R app:app /app
+
+USER app
 
 EXPOSE 8000
 

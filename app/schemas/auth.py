@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.db.models.user import UserRole
+
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
@@ -18,6 +20,7 @@ class UserRead(BaseModel):
     id: int
     username: str
     email: str
+    role: UserRole = UserRole.USER
 
     model_config = {"from_attributes": True}
 

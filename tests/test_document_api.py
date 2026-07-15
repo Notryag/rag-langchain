@@ -10,7 +10,12 @@ from app.api.main import app
 from app.api.v1 import auth as auth_routes
 from app.api.v1 import documents as document_routes
 from app.db.models.document import DocumentStatus
-from app.services.document_service import DocumentNotFoundError
+from app.services.document_service import (
+    DocumentAlreadyProcessingError,
+    DocumentNotFoundError,
+    DocumentTooLargeError,
+    DocumentUploadError,
+)
 from app.services.kb_service import KnowledgeBaseNotFoundError
 
 
@@ -63,12 +68,12 @@ class DocumentApiTests(unittest.TestCase):
 
     def test_upload_document(self) -> None:
         class FakeDocumentService:
-            def create_upload(self, session, *, user_id, kb_id, filename, content_type, content):
+            def create_upload_file(self, session, *, user_id, kb_id, filename, content_type, source):
                 self.user_id = user_id
                 self.kb_id = kb_id
                 self.filename = filename
                 self.content_type = content_type
-                self.content = content
+                self.content = source.read()
                 return _document(kb_id=kb_id, filename=filename, content_type=content_type)
 
         fake_service = FakeDocumentService()
@@ -92,7 +97,7 @@ class DocumentApiTests(unittest.TestCase):
 
     def test_upload_document_rejects_missing_kb(self) -> None:
         class FakeDocumentService:
-            def create_upload(self, session, *, user_id, kb_id, filename, content_type, content):
+            def create_upload_file(self, session, *, user_id, kb_id, filename, content_type, source):
                 raise KnowledgeBaseNotFoundError("Knowledge base not found")
 
         app.dependency_overrides[document_routes.get_document_service] = lambda: FakeDocumentService()
@@ -104,6 +109,38 @@ class DocumentApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["error"]["code"], "knowledge_base_not_found")
+        self.assertEqual(self.dispatched_document_ids, [])
+
+    def test_upload_document_rejects_unsupported_type(self) -> None:
+        class FakeDocumentService:
+            def create_upload_file(self, session, **kwargs):
+                raise DocumentUploadError("Unsupported document type: .exe")
+
+        app.dependency_overrides[document_routes.get_document_service] = lambda: FakeDocumentService()
+
+        response = self.client.post(
+            "/api/v1/kbs/2/documents",
+            files={"file": ("payload.exe", b"hello", "application/octet-stream")},
+        )
+
+        self.assertEqual(response.status_code, 415)
+        self.assertEqual(response.json()["error"]["code"], "unsupported_document")
+        self.assertEqual(self.dispatched_document_ids, [])
+
+    def test_upload_document_rejects_oversized_file(self) -> None:
+        class FakeDocumentService:
+            def create_upload_file(self, session, **kwargs):
+                raise DocumentTooLargeError("Document exceeds upload limit")
+
+        app.dependency_overrides[document_routes.get_document_service] = lambda: FakeDocumentService()
+
+        response = self.client.post(
+            "/api/v1/kbs/2/documents",
+            files={"file": ("manual.txt", b"hello", "text/plain")},
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.json()["error"]["code"], "document_too_large")
         self.assertEqual(self.dispatched_document_ids, [])
 
     def test_list_documents(self) -> None:
@@ -204,6 +241,18 @@ class DocumentApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["error"]["code"], "document_processing_failed")
+
+    def test_process_document_rejects_concurrent_processing(self) -> None:
+        class FakeDocumentService:
+            def process_sync(self, session, *, user_id, document_id):
+                raise DocumentAlreadyProcessingError("Document is already being processed")
+
+        app.dependency_overrides[document_routes.get_document_service] = lambda: FakeDocumentService()
+
+        response = self.client.post("/api/v1/documents/3/process")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["code"], "document_already_processing")
 
 
 if __name__ == "__main__":

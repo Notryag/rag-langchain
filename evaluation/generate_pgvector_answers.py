@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config.logging_setup import setup_logging
 from app.db.session import get_session_factory
-from app.services.chat_service import ChatAnswer, ChatService, get_chat_service
+from app.services.chat_service import ChatAnswer, get_chat_service
 from evaluation.dataset import DEFAULT_ANSWER_EVAL_PATH, AnswerEvalSample, load_answer_eval_samples
 
 DEFAULT_OUTPUT_PATH = Path("storage/exports/pgvector_answer_eval_runs.jsonl")

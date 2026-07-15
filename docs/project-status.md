@@ -14,7 +14,9 @@
 
 - SQLAlchemy / Alembic / PostgreSQL / pgvector 数据层
 - JWT 认证、知识库 CRUD、文档上传与状态追踪
-- Celery 异步文档处理，同步处理入口兜底
+- `admin / user` 最小 RBAC，系统 Prompt 管理仅管理员可用
+- 文档上传大小/类型限制、分块落盘和失败清理
+- Celery 异步文档处理、并发抢占、有限退避重试和执行超时
 - 文档解析、切片、embedding、pgvector 入库
 - 按 `user_id + kb_id` 权限过滤的 pgvector 检索
 - 多租户问答、结构化 references、聊天记录
@@ -22,6 +24,7 @@
 - 外部 tracing 配置入口、本地 token cost 估算、trace id/url 预留字段、本地轻量 run timeline
 - SSE `metadata / tool_call / tool_result / answer_delta / complete / end / error`
 - pgvector retrieval / answer eval、baseline runner、embedding 维度诊断
+- 后端、前端和容器构建并行 CI 门禁
 
 ## 当前核心模块
 
@@ -45,4 +48,4 @@
 2. 采样 pgvector answer run 并跑 answer eval。
 3. 根据 bad cases 决定 hybrid / rerank 默认策略。
 4. 补齐 run 查询、取消和更完整的前端多租户登录/知识库管理体验。
-5. 之后再考虑组织、团队、RBAC、ACL。
+5. 之后再考虑组织、团队和细粒度 ACL；当前只保留面试项目所需的最小角色模型。
