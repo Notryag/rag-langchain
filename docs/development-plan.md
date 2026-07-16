@@ -35,8 +35,8 @@
 
 ### P1: 可扩展检索
 
-- [ ] 使用 PostgreSQL Full Text Search 和 GIN 索引替代 Python 全量 lexical 扫描
-- [ ] 保留向量召回和全文召回的 SQL 租户过滤，并使用 RRF 融合
+- [x] 使用 PostgreSQL `pg_trgm` 和 GIN 索引替代 Python 全量 lexical 扫描
+- [x] 保留向量召回和 lexical 召回的 SQL 租户过滤，并使用 RRF 融合
 - [ ] 引入可插拔 cross-encoder reranker，支持批处理、超时和降级
 - [ ] 建立 1 万和 10 万 chunks 的 p50/p95 延迟基准
 
@@ -82,7 +82,7 @@
 当前执行 **RAG Quality Operations v1**:
 
 1. 修复检索配置正确性并建立可复现 baseline。
-2. 将 hybrid lexical 召回迁移到 PostgreSQL FTS。
+2. 将 hybrid lexical 召回迁移到 PostgreSQL 索引检索。
 3. 接入真实 reranker，并保留超时降级。
 4. 把反馈、bad case 和评测集串成可操作闭环。
 

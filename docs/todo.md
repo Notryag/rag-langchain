@@ -16,7 +16,7 @@
 
 1. 在真实 PostgreSQL 数据上跑 pgvector retrieval / answer baseline。
 2. 根据 bad cases 决定 hybrid / rerank 默认策略。
-3. 将 hybrid lexical 召回迁移到适合中文资料的数据库检索方案。
+3. 用真实 baseline 验证 `pg_trgm` lexical 召回并建立 1 万 / 10 万 chunks 性能基线。
 4. 把反馈、bad case 审核和固定评测集串成质量运营闭环。
 5. 再考虑可靠入库、多实例运行态和更复杂的权限模型。
 

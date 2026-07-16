@@ -74,6 +74,8 @@ uv run python -m evaluation.evaluate_pgvector_retrieval --user-id 1 --kb-id 1 --
 
 当前建议把 `hybrid` 作为可选检索模式保留，并继续用 evaluation 观察后续数据集上的稳定性。
 
+线上 lexical 召回使用 PostgreSQL `pg_trgm` GIN 索引执行中文子串匹配和数据库内计分，不再把知识库全部 chunks 加载到 Python。查询最多使用 32 个长度至少为 3 的 term，避免两字符模式无法生成有效 trigram 时退化为数据库全表扫描，也避免超长问题生成过大的 SQL；短型号和短词仍由 dense 召回覆盖。
+
 原因:
 
 - 剩余 dense 失败样本不是完全无资料，而是相关 chunk 可通过词面信号找到。

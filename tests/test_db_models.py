@@ -112,6 +112,7 @@ class DbModelTests(unittest.TestCase):
         index_names = {index.name for index in table.indexes}
         self.assertIn("ix_document_chunks_tenant_scope", index_names)
         self.assertIn("ix_document_chunks_embedding", index_names)
+        self.assertIn("ix_document_chunks_content_trgm", index_names)
 
 
 if __name__ == "__main__":

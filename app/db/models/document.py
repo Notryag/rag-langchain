@@ -55,6 +55,12 @@ class DocumentChunk(TimestampMixin, Base):
             postgresql_using="ivfflat",
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        Index(
+            "ix_document_chunks_content_trgm",
+            "content",
+            postgresql_using="gin",
+            postgresql_ops={"content": "gin_trgm_ops"},
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

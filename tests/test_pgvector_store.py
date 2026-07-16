@@ -191,14 +191,7 @@ class PgVectorStoreTests(unittest.TestCase):
             content="计费规则包括调用次数",
             chunk_metadata={"user_id": 2, "kb_id": 3},
         )
-        other_chunk = SimpleNamespace(
-            id=8,
-            document_id=9,
-            chunk_index=3,
-            content="完全无关",
-            chunk_metadata={"user_id": 2, "kb_id": 3},
-        )
-        session = FakeSession(execute_result=[(matching_chunk, "产品说明.pdf"), (other_chunk, "产品说明.pdf")])
+        session = FakeSession(execute_result=[(matching_chunk, "产品说明.pdf", 4)])
 
         results = retrieve_pgvector_lexical_chunks(
             session,
@@ -210,10 +203,20 @@ class PgVectorStoreTests(unittest.TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].chunk_id, 7)
-        self.assertGreater(results[0].metadata["lexical_score"], 0)
+        self.assertEqual(results[0].metadata["lexical_score"], 4)
         statement_text = str(session.executed[0])
         self.assertIn("document_chunks.user_id", statement_text)
         self.assertIn("document_chunks.kb_id", statement_text)
+        self.assertIn("LIKE", statement_text)
+        self.assertEqual(session.executed[0]._limit_clause.value, 5)
+
+    def test_retrieve_pgvector_lexical_chunks_skips_queries_without_trigrams(self) -> None:
+        session = FakeSession()
+
+        results = retrieve_pgvector_lexical_chunks(session, user_id=2, kb_id=3, query="X1", top_k=5)
+
+        self.assertEqual(results, [])
+        self.assertEqual(session.executed, [])
 
     def test_retrieve_pgvector_hybrid_chunks_fuses_dense_and_lexical_candidates(self) -> None:
         dense_chunk = SimpleNamespace(
@@ -237,7 +240,7 @@ class PgVectorStoreTests(unittest.TestCase):
             calls.append(str(statement))
             if len(calls) == 1:
                 return [(dense_chunk, "dense.pdf", 0.11)]
-            return [(lexical_chunk, "lexical.pdf")]
+            return [(lexical_chunk, "lexical.pdf", 4)]
 
         session = FakeSession(execute_result=execute_result)
 

@@ -6,18 +6,19 @@ from typing import Any
 import numpy as np
 from langchain_core.documents import Document as LangChainDocument
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
-from sqlalchemy import delete, select
+from sqlalchemy import case, delete, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models.document import Document, DocumentChunk
 from app.config.settings import settings
-from app.retrieval.lexical import lexical_score
+from app.retrieval.lexical import query_terms
 from app.retrieval.reranker import rerank_documents
 from app.retrieval.splitter import split_documents_by_type
 from app.retrieval.types import RetrievedChunk
 from app.retrieval.embeddings import get_embeddings
 
 DEFAULT_RRF_K = 60
+MAX_LEXICAL_QUERY_TERMS = 32
 
 
 @dataclass(frozen=True)
@@ -193,35 +194,47 @@ def retrieve_pgvector_lexical_chunks(
     query: str,
     top_k: int,
 ) -> list[PgVectorRetrievedChunk]:
+    searchable_terms = [term for term in query_terms(query) if len(term) >= 3][:MAX_LEXICAL_QUERY_TERMS]
+    if not searchable_terms:
+        return []
+
+    matches = [DocumentChunk.content.ilike(f"%{_escape_like(term)}%", escape="\\") for term in searchable_terms]
+    lexical_score = sum(
+        (case((match, 2), else_=0) for match in matches),
+        start=literal(0),
+    ).label("lexical_score")
     statement = (
-        select(DocumentChunk, Document.filename)
+        select(DocumentChunk, Document.filename, lexical_score)
         .join(Document, Document.id == DocumentChunk.document_id)
-        .where(DocumentChunk.user_id == user_id, DocumentChunk.kb_id == kb_id)
+        .where(
+            DocumentChunk.user_id == user_id,
+            DocumentChunk.kb_id == kb_id,
+            or_(*matches),
+        )
+        .order_by(lexical_score.desc(), func.length(DocumentChunk.content), DocumentChunk.id)
+        .limit(top_k)
     )
 
-    scored: list[tuple[int, int, PgVectorRetrievedChunk]] = []
-    for chunk, filename in session.execute(statement):
+    results: list[PgVectorRetrievedChunk] = []
+    for chunk, filename, score in session.execute(statement):
         metadata = dict(chunk.chunk_metadata or {})
-        score = _pgvector_lexical_score(query, chunk.content)
-        if score <= 0:
-            continue
-        scored.append(
-            (
-                score,
-                -len(chunk.content),
-                PgVectorRetrievedChunk(
-                    chunk_id=chunk.id,
-                    document_id=chunk.document_id,
-                    filename=filename,
-                    chunk_index=chunk.chunk_index,
-                    content=chunk.content,
-                    metadata={**metadata, "lexical_score": score},
-                    distance=None,
-                ),
+        results.append(
+            PgVectorRetrievedChunk(
+                chunk_id=chunk.id,
+                document_id=chunk.document_id,
+                filename=filename,
+                chunk_index=chunk.chunk_index,
+                content=chunk.content,
+                metadata={**metadata, "lexical_score": int(score)},
+                distance=None,
             )
         )
 
-    return [chunk for _, _, chunk in sorted(scored, key=lambda item: item[:2], reverse=True)[:top_k]]
+    return results
+
+
+def _escape_like(term: str) -> str:
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def retrieve_pgvector_hybrid_chunks(
@@ -310,11 +323,6 @@ def rerank_pgvector_chunks(
         chunk_by_key[(doc.metadata["document_id"], doc.metadata["chunk_index"])]
         for doc in reranked_docs
     ]
-
-
-def _pgvector_lexical_score(query: str, content: str) -> int:
-    doc = LangChainDocument(page_content=content, metadata={})
-    return lexical_score(query, doc)
 
 
 def _validate_embedding_dimension(vector: list[float]) -> None:
