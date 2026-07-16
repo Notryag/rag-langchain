@@ -48,7 +48,7 @@ POST /api/v1/kbs/{kb_id}/chat
   -> ChatService.ask()
   -> RagService.stream()
   -> Agent
-  -> retrieve_context tool
+  -> [按需] retrieve_context tool
   -> pgvector retrieve(user_id, kb_id)
   -> model answer with tool context
   -> save chat_messages + chat_runs
@@ -65,7 +65,7 @@ POST /api/v1/kbs/{kb_id}/chat/stream
   -> ChatService.run_prepared_stream()
   -> RagService.stream()
   -> Agent
-  -> retrieve_context tool
+  -> [按需] retrieve_context tool
   -> pgvector retrieve(user_id, kb_id)
   -> StreamBridge emits metadata / tool_call / tool_result / answer_delta / complete / end / error
 ```

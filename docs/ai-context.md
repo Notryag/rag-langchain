@@ -22,7 +22,7 @@
 /api/v1 + Runtime + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答运行时路径是 `/api/v1/chat -> app/runtime -> app/services/chat_service.py -> app/services/rag_service.py -> app/agent -> app/tools/retrieve_context.py -> app/retrieval/pgvector_store.py`。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。当前问答运行时路径是 `/api/v1/chat -> app/runtime -> app/services/chat_service.py -> app/services/rag_service.py -> app/agent`；Agent 仅在需要文档上下文时调用 `app/tools/retrieve_context.py -> app/retrieval/pgvector_store.py`。
 
 注意: `app/agent/` 和 `app/tools/` 已恢复为当前主线的一部分，但 tool 必须走 pgvector 和多租户过滤；不要恢复旧 Chroma vectorstore。
 
@@ -114,7 +114,7 @@ upload(limit/type/stream) -> documents(pending) -> Celery claim/retry -> parse -
 - `app/db/models/chat.py`
 - `app/db/models/document.py`
 
-当前 MCP server 是独立进程，不挂到 FastAPI 主进程。工具必须显式接收 `user_id` / `kb_id` 或 `user_id` / `run_id`，并复用当前 pgvector 检索和 SQL 租户过滤，不允许绕回旧 Chroma。
+当前 MCP server 是独立的可信本地 stdio 示例，不挂到 FastAPI 主进程。现有显式 `user_id` / `kb_id` 参数不是公开多租户服务的授权方案；公开部署前必须认证调用者，并由服务端身份绑定可访问资源。检索仍需复用当前 pgvector 和 SQL 租户过滤，不允许绕回旧 Chroma。
 
 ### 检索质量、评测、rerank、hybrid
 

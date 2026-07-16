@@ -5,8 +5,7 @@ from langchain_openai import ChatOpenAI
 
 from app.config.langsmith import configure_langsmith_environment
 from app.config.settings import settings
-from app.middleware.prompt_with_context import prompt_with_context
-from app.agent.prompts import BASE_SYSTEM_PROMPT
+from app.agent.prompts import compose_system_prompt
 from app.memory.checkpointer import build_checkpointer
 from app.tools.retrieve_context import retrieve_context
 
@@ -28,28 +27,21 @@ def get_tools():
     return [retrieve_context]
 
 
-def get_middleware():
-    return [prompt_with_context]
-
-
 def build_agent(*, system_prompt: str | None = None):
     configure_langsmith_environment()
     model = build_model()
     tools = get_tools()
-    middleware = get_middleware()
-    resolved_system_prompt = system_prompt or BASE_SYSTEM_PROMPT
+    resolved_system_prompt = compose_system_prompt(system_prompt)
 
     agent = create_agent(
         model=model,
         tools=tools,
-        middleware=middleware,
         checkpointer=build_checkpointer(),
         system_prompt=resolved_system_prompt,
     )
     logger.info(
-        "Agent 创建完成。tools=%s middleware_count=%s system_prompt_chars=%s",
+        "Agent 创建完成。tools=%s system_prompt_chars=%s",
         [tool.name for tool in tools],
-        len(middleware),
         len(resolved_system_prompt),
     )
     return agent

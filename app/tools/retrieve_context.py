@@ -33,7 +33,7 @@ def _context_from_runtime(runtime: ToolRuntime) -> tuple[Session, int, int]:
 
 @tool
 def retrieve_context(query: str, runtime: ToolRuntime, source: str | None = None) -> str:
-    """Must-use tool for questions about the indexed local knowledge base.
+    """Search the indexed local knowledge base when document context would improve the answer.
 
     Args:
         query: Search query for the local knowledge base.
