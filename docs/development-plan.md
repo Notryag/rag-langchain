@@ -37,7 +37,7 @@
 
 - [x] 使用 PostgreSQL `pg_trgm` 和 GIN 索引替代 Python 全量 lexical 扫描
 - [x] 保留向量召回和 lexical 召回的 SQL 租户过滤，并使用 RRF 融合
-- [ ] 引入可插拔 cross-encoder reranker，支持批处理、超时和降级
+- [x] 引入可插拔 HTTP cross-encoder reranker，支持批量候选、超时和降级
 - [ ] 建立 1 万和 10 万 chunks 的 p50/p95 延迟基准
 
 完成标准:

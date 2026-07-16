@@ -45,7 +45,9 @@ uv run python -m <module>
 - `RETRIEVAL_SEARCH_TYPE` 当前支持 `similarity`、`mmr` 和 `hybrid`。
 - `RETRIEVAL_FETCH_K` 必须大于等于 `TOP_K`。
 - `RERANKER_ENABLED` 是可选布尔开关，默认 `false`。
-- `RERANKER_STRATEGY` 当前只支持 `embedding_lexical`。
+- `RERANKER_STRATEGY` 支持 `embedding_lexical` 和 `http`。`http` 使用兼容 TEI rerank 的 `query / texts / top_n` JSON 契约。
+- `RERANKER_API_URL` 在启用 HTTP reranker 时必填；`RERANKER_API_KEY`、`RERANKER_MODEL` 可选。
+- `RERANKER_TIMEOUT_SECONDS` 默认 `5`；网络、超时或响应格式错误时自动降级到 `embedding_lexical`。
 - `LOG_LEVEL` 当前只支持 `CRITICAL`、`ERROR`、`WARNING`、`INFO`、`DEBUG`。
 - `CHECKPOINTER_TYPE` 当前支持 `sqlite` 和 `memory`，默认 `sqlite`，用于保存多轮会话状态。
 - `CHECKPOINTER_SQLITE_PATH` 默认 `./storage/checkpoints.sqlite3`，仅在 `CHECKPOINTER_TYPE=sqlite` 时使用。

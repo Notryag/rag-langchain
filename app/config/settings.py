@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _SUPPORTED_RETRIEVAL_SEARCH_TYPES = {"similarity", "mmr", "hybrid"}
-_SUPPORTED_RERANKER_STRATEGIES = {"embedding_lexical"}
+_SUPPORTED_RERANKER_STRATEGIES = {"embedding_lexical", "http"}
 _SUPPORTED_LOG_LEVELS = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
 _SUPPORTED_CHECKPOINTER_TYPES = {"memory", "sqlite"}
 
@@ -74,6 +74,10 @@ class Settings:
     retrieval_fetch_k: int
     reranker_enabled: bool
     reranker_strategy: str
+    reranker_api_url: str | None
+    reranker_api_key: str | None
+    reranker_model: str | None
+    reranker_timeout_seconds: float
     retrieval_max_context_chars: int
     chunk_size: int
     chunk_overlap: int
@@ -134,6 +138,7 @@ class Settings:
             "RATE_LIMIT_WINDOW_SECONDS": self.rate_limit_window_seconds,
             "HOT_QUESTION_CACHE_TTL_SECONDS": self.hot_question_cache_ttl_seconds,
             "MAX_UPLOAD_BYTES": self.max_upload_bytes,
+            "RERANKER_TIMEOUT_SECONDS": self.reranker_timeout_seconds,
         }
         for field_name, field_value in positive_fields.items():
             if field_value <= 0:
@@ -175,6 +180,9 @@ class Settings:
         if self.checkpointer_type == "sqlite" and not self.checkpointer_sqlite_path.strip():
             raise ValueError("CHECKPOINTER_SQLITE_PATH must not be empty when CHECKPOINTER_TYPE=sqlite")
 
+        if self.reranker_enabled and self.reranker_strategy == "http" and not self.reranker_api_url:
+            raise ValueError("RERANKER_API_URL must not be empty when the HTTP reranker is enabled")
+
         if self.langsmith_tracing and not self.langsmith_api_key:
             raise ValueError("LANGSMITH_API_KEY must not be empty when LANGSMITH_TRACING=true")
 
@@ -202,6 +210,10 @@ class Settings:
             retrieval_fetch_k=_get_int_env("RETRIEVAL_FETCH_K", 8),
             reranker_enabled=_get_bool_env("RERANKER_ENABLED", False),
             reranker_strategy=(os.getenv("RERANKER_STRATEGY") or "embedding_lexical").strip().lower(),
+            reranker_api_url=_get_optional_env("RERANKER_API_URL"),
+            reranker_api_key=_get_optional_env("RERANKER_API_KEY"),
+            reranker_model=_get_optional_env("RERANKER_MODEL"),
+            reranker_timeout_seconds=_get_float_env("RERANKER_TIMEOUT_SECONDS", 5.0),
             retrieval_max_context_chars=_get_int_env("RETRIEVAL_MAX_CONTEXT_CHARS", 4000),
             chunk_size=_get_int_env("CHUNK_SIZE", 800),
             chunk_overlap=_get_int_env("CHUNK_OVERLAP", 120),
