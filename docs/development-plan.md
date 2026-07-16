@@ -22,7 +22,7 @@
 ### P0: 正确性与可复现性
 
 - [x] 统一 `RetrievalProfile` 与 pgvector 执行层的 MMR 能力
-- [ ] 让本地测试命令不依赖手工准备生产环境变量
+- [x] 让本地测试命令不依赖手工准备生产环境变量
 - [ ] 保存真实数据 baseline manifest、answer runs 和 bad cases
 - [ ] 修正文档状态，避免路线图与实际能力不一致
 - [ ] 增加前端核心流程测试

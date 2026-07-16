@@ -89,7 +89,7 @@ uv run python -m app.main web
 uv run alembic upgrade head
 
 # 单元测试
-uv run python -m unittest discover -s tests
+uv run python scripts/run_tests.py
 
 # 创建 Prompt 管理员（先执行数据库迁移）
 uv run python -m app.main create-admin --username admin --email admin@example.com --password "change-this-password"

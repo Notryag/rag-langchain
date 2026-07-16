@@ -184,7 +184,7 @@ docs/           架构、运行、规划、待办
 
 ## 推荐最小检查
 
-- API/service: `uv run python -m unittest discover -s tests`
+- API/service: `uv run python scripts/run_tests.py`
 - 前端: `cd frontend && npm run build`
 - 数据库/migration: `uv run alembic upgrade head`
 - Docker/Compose: `docker compose config`

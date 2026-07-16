@@ -24,6 +24,7 @@
 - 常用入口：
   - `uv run python -m app.main web`
   - `uv run alembic upgrade head`
+  - `uv run python scripts/run_tests.py`
   - `uv run python scripts/smoke_multitenant.py --skip-chat`
 
 ## 提交前检查（最小）
