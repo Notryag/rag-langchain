@@ -118,6 +118,43 @@ class PgVectorStoreTests(unittest.TestCase):
 
         self.assertEqual(session.executed, [])
 
+    def test_retrieve_pgvector_chunks_supports_mmr_with_fetched_candidates(self) -> None:
+        dimension = settings.embedding_dimension
+        query_embedding = [1.0] + [0.0] * (dimension - 1)
+        candidate_embeddings = [
+            [0.94, 0.342] + [0.0] * (dimension - 2),
+            [0.906, 0.423] + [0.0] * (dimension - 2),
+            [0.643, -0.766] + [0.0] * (dimension - 2),
+        ]
+        chunks = [
+            SimpleNamespace(
+                id=index,
+                document_id=9,
+                chunk_index=index,
+                content=f"候选 {index}",
+                chunk_metadata={},
+                embedding=candidate_embeddings[index - 1],
+            )
+            for index in range(1, 4)
+        ]
+        session = FakeSession(
+            execute_result=[(chunk, f"{chunk.id}.pdf", float(chunk.id) / 10) for chunk in chunks]
+        )
+
+        results = retrieve_pgvector_chunks(
+            session,
+            user_id=2,
+            kb_id=3,
+            query="怎么计费",
+            top_k=2,
+            fetch_k=3,
+            search_type="mmr",
+            embeddings=SimpleNamespace(embed_query=lambda _: query_embedding),
+        )
+
+        self.assertEqual([chunk.chunk_id for chunk in results], [1, 3])
+        self.assertEqual(session.executed[0]._limit_clause.value, 3)
+
     def test_retrieve_pgvector_retrieved_chunks_returns_unified_dto(self) -> None:
         chunk = SimpleNamespace(
             id=7,

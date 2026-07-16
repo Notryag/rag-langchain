@@ -156,6 +156,7 @@ docs/           架构、运行、规划、待办
 - 质量评测闭环: [docs/evaluation.md](docs/evaluation.md)
 - 项目现状: [docs/project-status.md](docs/project-status.md)
 - 路线图: [docs/roadmap.md](docs/roadmap.md)
+- 项目发展计划: [docs/development-plan.md](docs/development-plan.md)
 - 待办清单: [docs/todo.md](docs/todo.md)
 - 已完成清单归档: [docs/todo-done.md](docs/todo-done.md)
 - 面试亮点与演示路径: [docs/interview-highlights.md](docs/interview-highlights.md)

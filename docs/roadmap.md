@@ -5,6 +5,7 @@
 - AI 助手上下文入口: [ai-context.md](ai-context.md)
 - 目标架构与收口计划: [target-architecture.md](target-architecture.md)
 - 项目现状: [project-status.md](project-status.md)
+- 项目发展计划: [development-plan.md](development-plan.md)
 - 架构说明: [architecture.md](architecture.md)
 - 多租户企业知识库 RAG 规划: [multitenant-rag.md](multitenant-rag.md)
 - 入库策略: [ingestion.md](ingestion.md)
@@ -122,11 +123,11 @@ evaluation/
 
 计划内容:
 
-- [ ] 登录 / 注册 / 当前用户
-- [ ] 知识库列表、创建、编辑、删除和选择
-- [ ] 文档上传、状态追踪、手动处理和删除
-- [ ] 基于当前知识库聊天，展示引用和历史会话
-- [ ] 移除对 `VITE_API_TOKEN` 和 `VITE_KB_ID` 的手动依赖
+- [x] 登录 / 注册 / 当前用户
+- [x] 知识库列表、创建、编辑、删除和选择
+- [x] 文档上传、状态追踪、手动处理和删除
+- [x] 基于当前知识库聊天，展示引用和历史会话
+- [x] 移除对 `VITE_API_TOKEN` 和 `VITE_KB_ID` 的手动依赖
 
 实现约束:
 

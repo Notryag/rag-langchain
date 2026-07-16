@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
 from langchain_core.documents import Document as LangChainDocument
+from langchain_core.vectorstores.utils import maximal_marginal_relevance
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,7 @@ class PgVectorRetrievedChunk:
     content: str
     metadata: dict[str, Any]
     distance: float | None = None
+    embedding: list[float] | None = None
 
     def to_retrieved_chunk(self, *, rank: int | None = None) -> RetrievedChunk:
         return RetrievedChunk(
@@ -117,9 +120,9 @@ def retrieve_pgvector_chunks(
     reranker_enabled: bool = False,
     embeddings=None,
 ) -> list[PgVectorRetrievedChunk]:
-    candidate_k = max(fetch_k or top_k, top_k) if reranker_enabled else top_k
     normalized_search_type = search_type.strip().lower()
     if normalized_search_type == "hybrid":
+        candidate_k = max(fetch_k or top_k, top_k) if reranker_enabled else top_k
         chunks = retrieve_pgvector_hybrid_chunks(
             session,
             user_id=user_id,
@@ -130,9 +133,10 @@ def retrieve_pgvector_chunks(
             embeddings=embeddings,
         )
         return rerank_pgvector_chunks(query, chunks, top_k=top_k) if reranker_enabled else chunks[:top_k]
-    if normalized_search_type != "similarity":
+    if normalized_search_type not in {"similarity", "mmr"}:
         raise ValueError(f"Unsupported pgvector search_type: {search_type}")
 
+    candidate_k = max(fetch_k or top_k, top_k) if normalized_search_type == "mmr" or reranker_enabled else top_k
     query_embedding = (embeddings or get_embeddings()).embed_query(query)
     _validate_embedding_dimension(query_embedding)
     distance = DocumentChunk.embedding.cosine_distance(query_embedding).label("distance")
@@ -155,9 +159,30 @@ def retrieve_pgvector_chunks(
                 content=chunk.content,
                 metadata=dict(chunk.chunk_metadata or {}),
                 distance=float(score) if score is not None else None,
+                embedding=getattr(chunk, "embedding", None) if normalized_search_type == "mmr" else None,
             )
         )
+    if normalized_search_type == "mmr":
+        results = _maximal_marginal_relevance_chunks(query_embedding, results, top_k=top_k)
     return rerank_pgvector_chunks(query, results, top_k=top_k) if reranker_enabled else results[:top_k]
+
+
+def _maximal_marginal_relevance_chunks(
+    query_embedding: list[float],
+    chunks: list[PgVectorRetrievedChunk],
+    *,
+    top_k: int,
+) -> list[PgVectorRetrievedChunk]:
+    chunks_with_embeddings = [(chunk, chunk.embedding) for chunk in chunks if chunk.embedding is not None]
+    if not chunks_with_embeddings:
+        return []
+
+    selected_indices = maximal_marginal_relevance(
+        np.asarray(query_embedding, dtype=float),
+        [embedding for _, embedding in chunks_with_embeddings],
+        k=top_k,
+    )
+    return [chunks_with_embeddings[index][0] for index in selected_indices]
 
 
 def retrieve_pgvector_lexical_chunks(
