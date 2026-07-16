@@ -10,15 +10,15 @@
 /api/v1 + Runtime + Agent + PostgreSQL + pgvector + JWT + Redis/Celery
 ```
 
-旧 `/api + Chroma + CLI + Streamlit` 已删除。Runtime 是当前问答运行态主线，负责 chat run 生命周期、SSE StreamBridge、取消和运行态查询。Agent 已恢复为当前主线的一部分，`retrieve_context` tool 直接调用 PostgreSQL/pgvector，并在 SQL 层保留 `user_id + kb_id` 权限过滤。当前最短板是质量评测还没有绑定真实知识库数据集，以及前端还没有会话历史加载。
+旧 `/api + Chroma + CLI + Streamlit` 已删除。Runtime 是当前问答运行态主线，负责 chat run 生命周期、SSE StreamBridge、取消和运行态查询。Agent 已恢复为当前主线的一部分，`retrieve_context` tool 直接调用 PostgreSQL/pgvector，并在 SQL 层保留 `user_id + kb_id` 权限过滤。当前最短板是还没有在真实 PostgreSQL 数据上保存可比较的 retrieval / answer baseline，以及 hybrid lexical 召回仍会在 Python 中扫描知识库 chunks。
 
 ## 当前优先级
 
-1. 准备与当前知识库一致的 eval dataset，并跑 pgvector retrieval / answer baseline。
+1. 在真实 PostgreSQL 数据上跑 pgvector retrieval / answer baseline。
 2. 根据 bad cases 决定 hybrid / rerank 默认策略。
-3. 补齐前端聊天体验: 新会话、历史会话列表、消息加载、usage 展示。
-4. 补齐 Agentic RAG 工程增强: Prompt 版本管理、MCP Server 示例、LangSmith trace 链接回填。
-5. 再考虑更复杂的权限模型、运维面板和质量运营。
+3. 将 hybrid lexical 召回迁移到适合中文资料的数据库检索方案。
+4. 把反馈、bad case 审核和固定评测集串成质量运营闭环。
+5. 再考虑可靠入库、多实例运行态和更复杂的权限模型。
 
 ## Batch P1: 面试项目工程加固
 
@@ -150,7 +150,7 @@ frontend/src/components/ReferenceList.tsx
 
 - [x] 增加 baseline runner 自定义 retrieval / answer dataset 参数
 - [x] 增加质量评测闭环文档和 dataset 格式说明
-- [ ] 准备一组与当前知识库一致的 eval dataset
+- [x] 准备一组与当前知识库一致的 eval dataset
 - [ ] 运行 pgvector retrieval baseline
 - [ ] 运行 pgvector answer sampling
 - [ ] 运行 answer eval

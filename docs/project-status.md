@@ -47,5 +47,5 @@
 1. 在真实 PostgreSQL + pgvector 数据上跑 retrieval baseline。
 2. 采样 pgvector answer run 并跑 answer eval。
 3. 根据 bad cases 决定 hybrid / rerank 默认策略。
-4. 补齐 run 查询、取消和更完整的前端多租户登录/知识库管理体验。
-5. 之后再考虑组织、团队和细粒度 ACL；当前只保留面试项目所需的最小角色模型。
+4. 将反馈和 bad cases 串成可持续回归的质量运营闭环。
+5. 之后再处理可靠入库和多实例运行态；组织、团队和细粒度 ACL 继续保持较低优先级。

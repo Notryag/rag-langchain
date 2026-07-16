@@ -24,7 +24,7 @@
 - [x] 统一 `RetrievalProfile` 与 pgvector 执行层的 MMR 能力
 - [x] 让本地测试命令不依赖手工准备生产环境变量
 - [ ] 保存真实数据 baseline manifest、answer runs 和 bad cases
-- [ ] 修正文档状态，避免路线图与实际能力不一致
+- [x] 修正文档状态，避免路线图与实际能力不一致
 - [x] 增加前端 API 与 SSE 核心流程测试
 
 完成标准:
