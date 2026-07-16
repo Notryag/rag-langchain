@@ -233,8 +233,8 @@ export async function streamChat({
   }
 }
 
-function parseSse(buffer: string, onEvent: (event: StreamEvent) => void) {
-  const chunks = buffer.split("\n\n");
+export function parseSse(buffer: string, onEvent: (event: StreamEvent) => void) {
+  const chunks = buffer.replace(/\r\n/g, "\n").split("\n\n");
   const rest = chunks.pop() || "";
 
   for (const chunk of chunks) {

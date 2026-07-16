@@ -109,6 +109,7 @@ uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrie
 ```powershell
 cd frontend
 npm install
+npm test
 npm run build
 ```
 
