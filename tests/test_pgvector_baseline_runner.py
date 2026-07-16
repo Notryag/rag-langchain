@@ -83,8 +83,17 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         with TemporaryDirectory() as tmpdir:
             paths = build_baseline_paths(Path(tmpdir), run_id="run-1")
             commands = [["python", "-m", "evaluation.evaluate_pgvector_retrieval"]]
+            retrieval_dataset = Path(tmpdir) / "retrieval.jsonl"
+            retrieval_dataset.write_text('{"id":"one"}\n{"id":"two"}\n', encoding="utf-8")
 
-            write_baseline_manifest(paths, run_id="run-1", user_id=1, kb_id=2, commands=commands)
+            write_baseline_manifest(
+                paths,
+                run_id="run-1",
+                user_id=1,
+                kb_id=2,
+                commands=commands,
+                retrieval_dataset=str(retrieval_dataset),
+            )
 
             payload = json.loads(paths.manifest.read_text(encoding="utf-8"))
 
@@ -92,6 +101,11 @@ class PgVectorBaselineRunnerTests(unittest.TestCase):
         self.assertEqual(payload["user_id"], 1)
         self.assertEqual(payload["kb_id"], 2)
         self.assertEqual(payload["commands"], commands)
+        self.assertIn("git_commit", payload)
+        self.assertEqual(payload["datasets"]["retrieval"]["records"], 2)
+        self.assertEqual(len(payload["datasets"]["retrieval"]["sha256"]), 64)
+        self.assertIsNone(payload["datasets"]["answer"])
+        self.assertIn("embedding_model", payload["runtime"])
         self.assertIn("answer_bad_cases", payload["artifacts"])
         self.assertIn("answer_summary", payload["artifacts"])
 

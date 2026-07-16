@@ -243,7 +243,7 @@ uv run python -m evaluation.run_pgvector_baseline --user-id 1 --kb-id 1 --retrie
 
 `evaluate_pgvector_retrieval` 使用相同 retrieval eval 样本评测 `/api/v1` 主链路的 PostgreSQL + pgvector 检索。它必须显式传入 `--user-id` 和 `--kb-id`，结果会同时检查 source / keyword 命中和返回 chunk metadata 中的租户范围是否匹配当前用户与知识库。`--search-type similarity hybrid` 可以对比纯向量召回与 pgvector dense + lexical RRF 融合召回，`--reranker off on` 可以对比 embedding + lexical rerank 效果。
 
-`run_pgvector_baseline` 会串行运行 pgvector retrieval eval、pgvector answer sampling 和 answer eval，并把 baseline manifest、bad cases 和 answer runs 放到 `storage/exports/pgvector_baselines/{run_id}/`。实际执行完成后，`baseline_manifest.json` 会回填 retrieval manifest 数量、answer run 数量和 bad case 数量。
+`run_pgvector_baseline` 会串行运行 pgvector retrieval eval、pgvector answer sampling 和 answer eval，并把 baseline manifest、bad cases 和 answer runs 放到 `storage/exports/pgvector_baselines/{run_id}/`。manifest 会记录 Git commit、模型环境和数据集 SHA-256；实际执行完成后还会回填 retrieval manifest 数量、answer run 数量和 bad case 数量。
 
 如果 baseline 中途失败，`baseline_manifest.json` 会标记 `status=failed` 并记录失败命令。常见原因是 `EMBEDDING_DIMENSION` 与实际 embedding 模型输出维度不一致，或缺少模型 API Key。
 

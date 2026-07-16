@@ -110,7 +110,7 @@ storage/exports/pgvector_baselines/{run_id}/
 
 重点查看:
 
-- `baseline_manifest.json`: 本次命令、状态、汇总。
+- `baseline_manifest.json`: 本次命令、状态、Git commit、模型环境、数据集 SHA-256 和汇总。
 - `pgvector_retrieval_manifest_*.json`: 各检索策略通过率。
 - `pgvector_retrieval_bad_cases.jsonl`: 召回失败样本。
 - `pgvector_answer_runs.jsonl`: 实际回答、引用、usage。

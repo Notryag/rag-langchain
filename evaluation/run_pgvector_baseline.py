@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import platform
 import subprocess
 import sys
 import traceback
@@ -9,7 +12,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from evaluation.dataset import DEFAULT_ANSWER_EVAL_PATH, DEFAULT_RETRIEVAL_EVAL_PATH
 from evaluation.history import append_history_record, build_history_record
+from evaluation.history import current_git_commit
 
 
 DEFAULT_OUTPUT_DIR = Path("storage/exports/pgvector_baselines")
@@ -120,6 +125,8 @@ def write_baseline_manifest(
     user_id: int,
     kb_id: int,
     commands: list[list[str]],
+    retrieval_dataset: str | None = None,
+    answer_dataset: str | None = None,
     status: str = "planned",
     summary: dict | None = None,
 ) -> None:
@@ -129,6 +136,17 @@ def write_baseline_manifest(
         "status": status,
         "user_id": user_id,
         "kb_id": kb_id,
+        "git_commit": current_git_commit(),
+        "runtime": {
+            "python_version": platform.python_version(),
+            "chat_model": os.getenv("CHAT_MODEL", "gpt-4.1-mini"),
+            "embedding_model": os.getenv("EMBEDDING_MODEL", "bge-m3"),
+            "embedding_dimension": os.getenv("EMBEDDING_DIMENSION", "1024"),
+        },
+        "datasets": {
+            "retrieval": _dataset_metadata(retrieval_dataset),
+            "answer": _dataset_metadata(answer_dataset),
+        },
         "commands": commands,
         "artifacts": {
             "retrieval_manifest_prefix": str(paths.retrieval_manifest),
@@ -142,6 +160,29 @@ def write_baseline_manifest(
     paths.run_dir.mkdir(parents=True, exist_ok=True)
     with paths.manifest.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+
+def _dataset_metadata(path: str | None) -> dict | None:
+    if path is None:
+        return None
+
+    dataset_path = Path(path)
+    metadata: dict[str, str | int | bool] = {
+        "path": dataset_path.as_posix(),
+        "exists": dataset_path.is_file(),
+    }
+    if not dataset_path.is_file():
+        return metadata
+
+    content = dataset_path.read_bytes()
+    metadata.update(
+        {
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "bytes": len(content),
+            "records": sum(1 for line in content.splitlines() if line.strip()),
+        }
+    )
+    return metadata
 
 
 def run_commands(commands: list[list[str]]) -> None:
@@ -193,6 +234,8 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
+    retrieval_dataset = args.retrieval_dataset or str(DEFAULT_RETRIEVAL_EVAL_PATH)
+    answer_dataset = args.answer_dataset or str(DEFAULT_ANSWER_EVAL_PATH)
     run_id = args.run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     paths = build_baseline_paths(Path(args.output_dir), run_id=run_id)
     paths.run_dir.mkdir(parents=True, exist_ok=True)
@@ -200,8 +243,8 @@ def main() -> None:
         paths=paths,
         user_id=args.user_id,
         kb_id=args.kb_id,
-        retrieval_dataset=args.retrieval_dataset,
-        answer_dataset=args.answer_dataset,
+        retrieval_dataset=retrieval_dataset,
+        answer_dataset=answer_dataset,
         retrieval_limit=args.retrieval_limit,
         answer_limit=args.answer_limit,
         skip_answer=args.skip_answer,
@@ -212,6 +255,8 @@ def main() -> None:
         user_id=args.user_id,
         kb_id=args.kb_id,
         commands=commands,
+        retrieval_dataset=retrieval_dataset,
+        answer_dataset=answer_dataset,
     )
     print(f"baseline_manifest={paths.manifest.as_posix()}")
     if args.dry_run:
@@ -233,6 +278,8 @@ def main() -> None:
             user_id=args.user_id,
             kb_id=args.kb_id,
             commands=commands,
+            retrieval_dataset=retrieval_dataset,
+            answer_dataset=answer_dataset,
             status="failed",
             summary=summary,
         )
@@ -250,6 +297,8 @@ def main() -> None:
             user_id=args.user_id,
             kb_id=args.kb_id,
             commands=commands,
+            retrieval_dataset=retrieval_dataset,
+            answer_dataset=answer_dataset,
             status="completed",
             summary=summary,
         )
